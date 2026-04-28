@@ -49,7 +49,7 @@ function newConversation(model: string): Conversation {
   };
 }
 
-export default function App() {
+export default function LegacyApp() {
   const { theme, toggle: toggleTheme } = useTheme();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);

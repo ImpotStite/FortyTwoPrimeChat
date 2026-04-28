@@ -1,6 +1,7 @@
 import type { ChatMessage, Conversation, ImageAttachment } from "../types";
 
 const KEY = "fortytwo-prime-chat:conversations";
+const PRIME_KEY = "fortytwo-prime-chat:prime-conversations";
 
 function rid(prefix: string) {
   return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 9)}`;
@@ -79,9 +80,9 @@ export function normalizeConversations(raw: unknown[]): Conversation[] {
   return raw.map((x) => normalizeConversation(x));
 }
 
-export function loadConversations(): Conversation[] {
+function loadFromKey(key: string): Conversation[] {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -91,10 +92,26 @@ export function loadConversations(): Conversation[] {
   }
 }
 
-export function saveConversations(convs: Conversation[]): void {
+function saveToKey(key: string, convs: Conversation[]): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(convs));
+    localStorage.setItem(key, JSON.stringify(convs));
   } catch {
     // quota exceeded or storage unavailable -> ignore
   }
+}
+
+export function loadConversations(): Conversation[] {
+  return loadFromKey(KEY);
+}
+
+export function saveConversations(convs: Conversation[]): void {
+  saveToKey(KEY, convs);
+}
+
+export function loadPrimeConversations(): Conversation[] {
+  return loadFromKey(PRIME_KEY);
+}
+
+export function savePrimeConversations(convs: Conversation[]): void {
+  saveToKey(PRIME_KEY, convs);
 }
