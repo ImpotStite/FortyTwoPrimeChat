@@ -1,11 +1,11 @@
 {
   "name": "FortyTwo Prime Chat",
   "short_name": "Prime Chat",
-  "description": "Modern AI chat connected to OpenRouter (Claude / ChatGPT–style).",
+  "description": "FortyTwo Prime — pay-per-use AI inference settled in USDC on Monad.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#d0ff00",
   "theme_color": "#d0ff00",
   "orientation": "any",
   "lang": "en",

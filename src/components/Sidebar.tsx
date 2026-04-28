@@ -14,7 +14,6 @@ interface Props {
   onExportAll: () => void;
   onImport: () => void;
   modelLabel: string;
-  onClose?: () => void;
 }
 
 export function Sidebar({
@@ -29,7 +28,6 @@ export function Sidebar({
   onExportAll,
   onImport,
   modelLabel,
-  onClose,
 }: Props) {
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -155,15 +153,6 @@ export function Sidebar({
               {modelLabel}
             </div>
           </div>
-          {onClose && (
-            <button
-              type="button"
-              className="icon-btn close-mobile"
-              onClick={onClose}
-            >
-              ×
-            </button>
-          )}
         </div>
         <button type="button" className="btn btn-primary new-chat" onClick={onNew}>
           <PlusIcon /> New chat

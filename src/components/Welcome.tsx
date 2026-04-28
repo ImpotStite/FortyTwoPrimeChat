@@ -25,12 +25,22 @@ const SUGGESTIONS = [
 ];
 
 export function Welcome({ onPick, modelLabel }: Props) {
+  const isPrime = modelLabel === "FortyTwo Prime";
   return (
     <div className="welcome">
       <div className="welcome-logo">42</div>
       <h1 className="welcome-title">How can I help you today?</h1>
       <p className="welcome-sub">
-        Connected to <code>{modelLabel}</code> via OpenRouter.
+        {isPrime ? (
+          <>
+            Powered by <strong>FortyTwo Prime</strong> · pay-per-use in USDC on
+            Monad.
+          </>
+        ) : (
+          <>
+            Connected to <code>{modelLabel}</code> via OpenRouter.
+          </>
+        )}
       </p>
       <div className="suggestions">
         {SUGGESTIONS.map((s) => (

@@ -20,12 +20,15 @@
  */
 
 import {
+  createPublicClient,
   hashTypedData,
+  http,
   parseSignature,
   type Address,
   type Hex,
   type TypedDataDomain,
 } from "viem";
+import { monad } from "./privy";
 
 /**
  * Default endpoint: same-origin `/api/mcp` (Vercel Function proxy in `api/mcp.ts`).
@@ -156,6 +159,21 @@ function randomNonce32(): Hex {
   return hex as Hex;
 }
 
+/** RFC 4122 v4 UUID — used for `x-idempotency-key` (FortyTwo canonical format). */
+function uuidV4(): string {
+  const c = (globalThis as unknown as { crypto?: Crypto }).crypto;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const hx = (i: number) => b[i].toString(16).padStart(2, "0");
+  return (
+    `${hx(0)}${hx(1)}${hx(2)}${hx(3)}-${hx(4)}${hx(5)}-${hx(6)}${hx(7)}` +
+    `-${hx(8)}${hx(9)}-${hx(10)}${hx(11)}${hx(12)}${hx(13)}${hx(14)}${hx(15)}`
+  );
+}
+
 // --------------------------------------------------------------------------
 // Session cache (per-address, localStorage)
 // --------------------------------------------------------------------------
@@ -243,10 +261,13 @@ async function makeToolsCallRequest(args: MakeRequestArgs): Promise<Response> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "text/event-stream, application/json",
+    // FortyTwo's spec requires `x-idempotency-key` on every `tools/call`,
+    // including the initial 402-triggering call and the payment retry.
+    // Format: RFC 4122 v4 UUID (matches canonical Python script).
+    "x-idempotency-key": uuidV4(),
   };
   if (args.sessionId) {
     headers["x-session-id"] = args.sessionId;
-    headers["x-idempotency-key"] = randomNonce32();
   }
   if (args.paymentSignatureB64) {
     headers["payment-signature"] = args.paymentSignatureB64;
@@ -427,6 +448,115 @@ function buildSession(
   };
 }
 
+/**
+ * EIP-712 domain detection.
+ *
+ * Different USDC deployments (and forks) use different `name`/`version`:
+ * - Ethereum / Polygon / Base: name="USD Coin", version="2"
+ * - Monad mainnet: name="USDC", version="2" (verified via eth_call to
+ *   0x754704Bc059F8C67012fEd69BC8A327a5aafb603)
+ * - Some testnets bump version to "3"
+ *
+ * If we sign with the wrong values, the wallet still signs (it just hashes
+ * the user-provided domain) but the on-chain `transferWithAuthorization`
+ * reverts with `ExecutionFailed` because the recovered address won't match
+ * the `from` field. To avoid that we probe `name()`/`version()` on the
+ * actual asset contract, with a small in-memory + localStorage cache.
+ */
+
+const ABI_NAME_VERSION = [
+  {
+    type: "function",
+    name: "name",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "string" }],
+  },
+  {
+    type: "function",
+    name: "version",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "string" }],
+  },
+] as const;
+
+const DOMAIN_CACHE_KEY = "fortytwo:eip712-domain:";
+
+interface ResolvedDomain {
+  name: string;
+  version: string;
+}
+
+const memDomainCache = new Map<string, ResolvedDomain>();
+
+async function resolveDomainHints(
+  asset: Address,
+  fallback: { name: string; version: string }
+): Promise<ResolvedDomain> {
+  const key = asset.toLowerCase();
+
+  const memHit = memDomainCache.get(key);
+  if (memHit) return memHit;
+
+  try {
+    const cached = localStorage.getItem(DOMAIN_CACHE_KEY + key);
+    if (cached) {
+      const parsed = JSON.parse(cached) as ResolvedDomain;
+      if (parsed?.name && parsed?.version) {
+        memDomainCache.set(key, parsed);
+        return parsed;
+      }
+    }
+  } catch {
+    /* ignore corrupted cache */
+  }
+
+  try {
+    const client = createPublicClient({ chain: monad, transport: http() });
+    const [name, version] = await Promise.all([
+      client.readContract({
+        address: asset,
+        abi: ABI_NAME_VERSION,
+        functionName: "name",
+      }),
+      client.readContract({
+        address: asset,
+        abi: ABI_NAME_VERSION,
+        functionName: "version",
+      }),
+    ]);
+    const resolved: ResolvedDomain = {
+      name: String(name),
+      version: String(version),
+    };
+    memDomainCache.set(key, resolved);
+    try {
+      localStorage.setItem(DOMAIN_CACHE_KEY + key, JSON.stringify(resolved));
+    } catch {
+      /* quota — best-effort */
+    }
+    return resolved;
+  } catch {
+    // RPC unreachable (or asset on a different chain than Monad) — caller
+    // should still get a sensible default.
+    return fallback;
+  }
+}
+
+/**
+ * FortyTwo's `x402Escrow` is built on EIP-3009 *`receiveWithAuthorization`*
+ * (NOT `transferWithAuthorization`): only the escrow contract can pull the
+ * funds, which makes the authorization MEV-resistant. The struct fields are
+ * identical to `TransferWithAuthorization` but the type name differs, which
+ * changes the EIP-712 typeHash and therefore the digest the user signs.
+ *
+ * Refs:
+ * - github.com/Fortytwo-Network/fortytwo-x402Escrow (README)
+ * - platform.fortytwo.network/x402escrow ("EIP-3009 receiveWithAuthorization
+ *   (not transfer)")
+ * - EIP-3009 spec ("ReceiveWithAuthorization" primaryType)
+ */
 const EIP3009_TYPES = {
   EIP712Domain: [
     { name: "name", type: "string" },
@@ -434,7 +564,7 @@ const EIP3009_TYPES = {
     { name: "chainId", type: "uint256" },
     { name: "verifyingContract", type: "address" },
   ],
-  TransferWithAuthorization: [
+  ReceiveWithAuthorization: [
     { name: "from", type: "address" },
     { name: "to", type: "address" },
     { name: "value", type: "uint256" },
@@ -455,9 +585,15 @@ async function buildPaymentSignature(
   const validBefore = now + window;
   const nonce = randomNonce32();
 
+  // Resolve the canonical EIP-712 domain for this asset. Prefer server hints,
+  // then on-chain probe, then a Monad-specific default ("USDC" / "2").
+  const resolved = await resolveDomainHints(accept.asset, {
+    name: "USDC",
+    version: "2",
+  });
   const domain: TypedDataDomain = {
-    name: accept.extra?.name ?? "USD Coin",
-    version: accept.extra?.version ?? "2",
+    name: accept.extra?.name ?? resolved.name,
+    version: accept.extra?.version ?? resolved.version,
     chainId: 143,
     verifyingContract: accept.asset,
   };
@@ -472,7 +608,7 @@ async function buildPaymentSignature(
   };
 
   // Strip the `readonly` markers added by `as const` for the EIP-712 schema.
-  const transferType = EIP3009_TYPES.TransferWithAuthorization.map((f) => ({
+  const receiveType = EIP3009_TYPES.ReceiveWithAuthorization.map((f) => ({
     name: f.name,
     type: f.type,
   }));
@@ -481,15 +617,15 @@ async function buildPaymentSignature(
       name: f.name,
       type: f.type,
     })),
-    TransferWithAuthorization: transferType,
+    ReceiveWithAuthorization: receiveType,
   };
 
   let signature: Hex;
   try {
     signature = await signTypedDataAsync({
       domain,
-      types: { TransferWithAuthorization: transferType },
-      primaryType: "TransferWithAuthorization",
+      types: { ReceiveWithAuthorization: receiveType },
+      primaryType: "ReceiveWithAuthorization",
       message: message as unknown as Record<string, unknown>,
     });
   } catch (err) {
@@ -497,7 +633,7 @@ async function buildPaymentSignature(
     signature = await signTypedDataAsync({
       domain,
       types: fullTypes,
-      primaryType: "TransferWithAuthorization",
+      primaryType: "ReceiveWithAuthorization",
       message: message as unknown as Record<string, unknown>,
     });
     void err;
@@ -506,11 +642,20 @@ async function buildPaymentSignature(
   // Sanity: ensure the digest is recoverable (helps debugging signature issues).
   void hashTypedData({
     domain,
-    types: { TransferWithAuthorization: transferType },
-    primaryType: "TransferWithAuthorization",
+    types: { ReceiveWithAuthorization: receiveType },
+    primaryType: "ReceiveWithAuthorization",
     message,
   });
 
+  // FortyTwo's facilitator uses an x402-v2 *escrow* extension whose wire
+  // payload differs from the canonical Coinbase shape: it expects
+  // `{client, maxAmount, validAfter, validBefore, nonce, v, r, s}` flattened
+  // under `payload`, then reconstructs the EIP-3009 `ReceiveWithAuthorization`
+  // struct and calls `escrow.settle(...)` (which forwards to USDC's
+  // `receiveWithAuthorization`). The struct typeHash MUST be Receive, not
+  // Transfer — that part is enforced via `primaryType` above. The 27/28
+  // recovery byte is required (some EIP-1271 wallets use 0/1, but EOAs use
+  // 27/28).
   const split = parseSignature(signature);
   const v = split.v ?? (split.yParity === 1 ? 28 : 27);
 

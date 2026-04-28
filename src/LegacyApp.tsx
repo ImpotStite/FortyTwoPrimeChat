@@ -485,7 +485,6 @@ export default function LegacyApp() {
         onExportAll={handleExportAll}
         onImport={handleImportClick}
         modelLabel={activeModel}
-        onClose={() => setSidebarOpen(false)}
       />
 
       {sidebarOpen && (

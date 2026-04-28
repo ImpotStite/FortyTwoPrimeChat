@@ -21,6 +21,7 @@ import {
 } from "./lib/fortytwo";
 import { monad } from "./lib/privy";
 import { readUsdcBalance, type UsdcBalance } from "./lib/usdc";
+import { UsdcMark } from "./components/Icons";
 import type {
   ChatMessage,
   Conversation,
@@ -65,6 +66,8 @@ export default function PrimeApp() {
   const [pendingAmount, setPendingAmount] = useState<string | null>(null);
   const [usdcBalance, setUsdcBalance] = useState<UsdcBalance | null>(null);
   const [usdcLoading, setUsdcLoading] = useState(false);
+  /** Forces session pill label to recompute as wall-clock time advances. */
+  const [sessionTimerTick, setSessionTimerTick] = useState(0);
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -100,6 +103,14 @@ export default function PrimeApp() {
     }
     setSession(loadSession(address));
   }, [address]);
+
+  useEffect(() => {
+    if (!session) return;
+    const id = window.setInterval(() => {
+      setSessionTimerTick((n) => n + 1);
+    }, 10_000);
+    return () => window.clearInterval(id);
+  }, [session?.sessionId, session?.expiresAt]);
 
   // Poll USDC balance: on connect, after each successful reply, every 30s.
   useEffect(() => {
@@ -594,7 +605,7 @@ export default function PrimeApp() {
       label: `Session · ${mins}m left`,
       title: `Up to ${session.authorizedAmountDisplay} authorized — no further signature needed for ~${mins} min`,
     };
-  }, [session]);
+  }, [session, sessionTimerTick]);
 
   return (
     <div
@@ -621,7 +632,6 @@ export default function PrimeApp() {
         onExportAll={handleExportAll}
         onImport={handleImportClick}
         modelLabel="FortyTwo Prime"
-        onClose={() => setSidebarOpen(false)}
       />
 
       {sidebarOpen && (
@@ -645,12 +655,6 @@ export default function PrimeApp() {
             {active?.title || "New chat"}
           </div>
           <div className="topbar-tools">
-            <span
-              className="prime-badge"
-              title="Pay-per-use · USDC on Monad"
-            >
-              FortyTwo Prime
-            </span>
             {ready && authenticated && address && (
               <span
                 className={`session-pill ${
@@ -667,11 +671,10 @@ export default function PrimeApp() {
               </span>
             )}
             {ready && authenticated && address ? (
-              <div className="wallet-pill">
-                <span className="wallet-dot" />
-                <span className="wallet-addr" title={address}>
-                  {shortAddress(address)}
-                </span>
+              <div
+                className="wallet-pill"
+                title={`${address} · Monad`}
+              >
                 <span
                   className="wallet-balance"
                   title={
@@ -680,20 +683,35 @@ export default function PrimeApp() {
                       : "Reading USDC balance…"
                   }
                 >
+                  <UsdcMark size={14} />
                   {usdcBalance
-                    ? `${usdcBalance.display} USDC`
+                    ? usdcBalance.display
                     : usdcLoading
                       ? "…"
-                      : "— USDC"}
+                      : "—"}
                 </span>
-                <span className="wallet-net">Monad</span>
+                <span className="wallet-addr">{shortAddress(address)}</span>
                 <button
                   type="button"
                   className="wallet-disconnect"
                   onClick={handleDisconnectWallet}
+                  aria-label="Disconnect wallet"
                   title="Disconnect"
                 >
-                  ×
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    aria-hidden
+                  >
+                    <path
+                      d="M6 6l12 12M18 6L6 18"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </button>
               </div>
             ) : (
@@ -714,6 +732,14 @@ export default function PrimeApp() {
             >
               {theme === "dark" ? <SunIcon /> : <MoonIcon />}
             </button>
+            <a
+              className="brand-mark"
+              href="/"
+              title="FortyTwo · home"
+              aria-label="FortyTwo home"
+            >
+              42
+            </a>
           </div>
         </header>
 
@@ -769,7 +795,7 @@ export default function PrimeApp() {
         {!authenticated && (
           <div className="error-bar" role="status">
             Connect your wallet (MetaMask, Rabby, WalletConnect…) to start chatting.
-            You'll need USDC + a tiny amount of MON for gas on Monad.
+            You'll need USDC on Monad.
           </div>
         )}
 
@@ -801,9 +827,13 @@ export default function PrimeApp() {
               <>
                 <p className="modal-text">
                   You're about to authorize up to{" "}
-                  <strong>{pendingAmount ?? "—"}</strong> for this session on{" "}
-                  <strong>Monad</strong>. Subsequent messages in this session
-                  won't require another signature until it expires.
+                  <span className="modal-amount">
+                    <UsdcMark size={16} />
+                    <strong>{pendingAmount ?? "—"}</strong>
+                  </span>{" "}
+                  for this session on <strong>Monad</strong>. Subsequent
+                  messages in this session won't require another signature
+                  until it expires.
                 </p>
                 <p className="modal-sub">
                   No tokens move until FortyTwo settles your reply on-chain.
