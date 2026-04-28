@@ -1,0 +1,20 @@
+{
+  "name": "FortyTwo Prime Chat",
+  "short_name": "Prime Chat",
+  "description": "Modern AI chat connected to OpenRouter (Claude / ChatGPT–style).",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#d0ff00",
+  "orientation": "any",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
