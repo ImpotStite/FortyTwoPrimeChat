@@ -50,33 +50,53 @@ export const maxDuration = 300;
 export default async function handler(req: Request): Promise<Response> {
   const origin = req.headers.get("origin");
 
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders(origin) });
-  }
+  try {
+    if (req.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders(origin) });
+    }
 
-  if (req.method !== "POST") {
-    return new Response("Method Not Allowed", {
-      status: 405,
-      headers: { Allow: "POST, OPTIONS", ...corsHeaders(origin) },
-    });
-  }
+    if (req.method !== "POST") {
+      return new Response("Method Not Allowed", {
+        status: 405,
+        headers: { Allow: "POST, OPTIONS", ...corsHeaders(origin) },
+      });
+    }
 
-  const upstreamHeaders = new Headers();
-  for (const name of FORWARDED_REQUEST_HEADERS) {
-    const v = req.headers.get(name);
-    if (v) upstreamHeaders.set(name, v);
-  }
-  if (!upstreamHeaders.has("content-type")) {
-    upstreamHeaders.set("content-type", "application/json");
-  }
-  if (!upstreamHeaders.has("accept")) {
-    upstreamHeaders.set("accept", "text/event-stream, application/json");
-  }
+    const upstreamHeaders = new Headers();
+    for (const name of FORWARDED_REQUEST_HEADERS) {
+      const v = req.headers.get(name);
+      if (v) upstreamHeaders.set(name, v);
+    }
+    if (!upstreamHeaders.has("content-type")) {
+      upstreamHeaders.set("content-type", "application/json");
+    }
+    if (!upstreamHeaders.has("accept")) {
+      upstreamHeaders.set("accept", "text/event-stream, application/json");
+    }
+    /** Avoid gzip + manual header stripping mismatches when relaying to the browser. */
+    upstreamHeaders.set("Accept-Encoding", "identity");
 
-  const contentLength = req.headers.get("content-length");
-  if (contentLength != null && /^\d+$/.test(contentLength)) {
-    const n = Number(contentLength);
-    if (n > MAX_PROXY_BODY_BYTES) {
+    const contentLength = req.headers.get("content-length");
+    if (contentLength != null && /^\d+$/.test(contentLength)) {
+      const n = Number(contentLength);
+      if (n > MAX_PROXY_BODY_BYTES) {
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: -32600,
+              message: "Request body too large",
+            },
+          }),
+          {
+            status: 413,
+            headers: { "content-type": "application/json", ...corsHeaders(origin) },
+          }
+        );
+      }
+    }
+
+    const body = await req.arrayBuffer();
+    if (body.byteLength > MAX_PROXY_BODY_BYTES) {
       return new Response(
         JSON.stringify({
           error: {
@@ -90,37 +110,65 @@ export default async function handler(req: Request): Promise<Response> {
         }
       );
     }
-  }
 
-  const body = await req.arrayBuffer();
-  if (body.byteLength > MAX_PROXY_BODY_BYTES) {
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: -32600,
-          message: "Request body too large",
-        },
-      }),
-      {
-        status: 413,
-        headers: { "content-type": "application/json", ...corsHeaders(origin) },
-      }
-    );
-  }
+    let upstream: Response;
+    try {
+      upstream = await fetch(FORTYTWO_ENDPOINT, {
+        method: "POST",
+        headers: upstreamHeaders,
+        body,
+      });
+    } catch (err) {
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: -32000,
+            message: `proxy upstream error: ${(err as Error).message}`,
+          },
+        }),
+        {
+          status: 502,
+          headers: {
+            "content-type": "application/json",
+            ...corsHeaders(origin),
+          },
+        }
+      );
+    }
 
-  let upstream: Response;
-  try {
-    upstream = await fetch(FORTYTWO_ENDPOINT, {
-      method: "POST",
-      headers: upstreamHeaders,
-      body,
+    const outHeaders = new Headers(upstream.headers);
+    for (const [k, v] of Object.entries(corsHeaders(origin))) {
+      outHeaders.set(k, v as string);
+    }
+    outHeaders.delete("content-encoding");
+    outHeaders.delete("content-length");
+    outHeaders.set("x-upstream-status", String(upstream.status));
+
+    const contentType = upstream.headers.get("content-type") || "";
+    const sse = contentType.includes("text/event-stream") && upstream.ok;
+
+    // Buffer non-SSE bodies so error JSON / 402 payloads are not lost on Vercel.
+    if (!sse) {
+      const buf = await upstream.arrayBuffer();
+      return new Response(buf, {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers: outHeaders,
+      });
+    }
+
+    return new Response(upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: outHeaders,
     });
   } catch (err) {
+    console.error("[api/mcp]", err);
     return new Response(
       JSON.stringify({
         error: {
           code: -32000,
-          message: `proxy upstream error: ${(err as Error).message}`,
+          message: `proxy internal error: ${(err as Error).message}`,
         },
       }),
       {
@@ -132,18 +180,4 @@ export default async function handler(req: Request): Promise<Response> {
       }
     );
   }
-
-  const outHeaders = new Headers(upstream.headers);
-  for (const [k, v] of Object.entries(corsHeaders(origin))) {
-    outHeaders.set(k, v as string);
-  }
-  outHeaders.delete("content-encoding");
-  outHeaders.delete("content-length");
-  outHeaders.set("x-upstream-status", String(upstream.status));
-
-  return new Response(upstream.body, {
-    status: upstream.status,
-    statusText: upstream.statusText,
-    headers: outHeaders,
-  });
 }

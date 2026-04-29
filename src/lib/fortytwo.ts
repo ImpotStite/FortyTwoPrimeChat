@@ -275,13 +275,29 @@ export function clearSession(address: string): void {
 // Free JSON-RPC calls (no payment)
 // --------------------------------------------------------------------------
 
+/** Negotiated in practice with `fortytwo-mcp` (see `initialize` result.protocolVersion). */
+const MCP_PROTOCOL_VERSION = "2025-11-25";
+
+let mcpReady: Promise<void> | null = null;
+
+/** One JSON-RPC `initialize` per page load before paid `tools/call` (some MCP stacks expect it). */
+function ensureMcpInitialized(signal?: AbortSignal): Promise<void> {
+  mcpReady ??= mcpInitialize(signal)
+    .then(() => undefined)
+    .catch((e) => {
+      mcpReady = null;
+      throw e;
+    });
+  return mcpReady;
+}
+
 export async function mcpInitialize(signal?: AbortSignal): Promise<unknown> {
   const res = await fetch(ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(
       rpcCall("initialize", {
-        protocolVersion: "2025-03-26",
+        protocolVersion: MCP_PROTOCOL_VERSION,
         capabilities: {},
         clientInfo: { name: "fortytwo-prime-chat", version: "0.1.0" },
       })
@@ -847,6 +863,8 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
 
   let currentSession = session ?? null;
 
+  await ensureMcpInitialized(signal);
+
   // Up to 2 attempts: e.g. cached session rejected → retry without x-session-id.
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await makeToolsCallRequest({
@@ -890,16 +908,24 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
     }
 
     if (res.status === 402) {
-      const required = decodePaymentRequired(res);
-      // Drain the body (some servers expect it).
+      let required = decodePaymentRequired(res);
+      let bodyText = "";
       try {
-        await res.text();
+        bodyText = await res.text();
       } catch {
         /* ignore */
       }
+      if (!required && bodyText) {
+        try {
+          const obj = JSON.parse(bodyText) as PaymentRequired;
+          if (obj && Array.isArray(obj.accepts)) required = obj;
+        } catch {
+          /* not JSON */
+        }
+      }
       if (!required) {
         throw new Error(
-          "Payment required but server didn't send a payment-required header"
+          "Payment required but server didn't send a payment-required header or JSON accepts"
         );
       }
       const accept = pickMonadAccept(required);
