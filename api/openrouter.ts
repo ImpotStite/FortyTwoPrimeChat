@@ -62,7 +62,7 @@ function validatePayload(body: unknown): boolean {
   return true;
 }
 
-export default async function handler(req: Request): Promise<Response> {
+async function proxyOpenRouter(req: Request): Promise<Response> {
   const origin = req.headers.get("origin");
 
   if (req.method === "OPTIONS") {
@@ -151,3 +151,5 @@ export default async function handler(req: Request): Promise<Response> {
     headers: outHeaders,
   });
 }
+
+export default { fetch: proxyOpenRouter };

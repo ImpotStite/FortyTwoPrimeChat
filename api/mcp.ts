@@ -47,10 +47,11 @@ function corsHeaders(origin: string | null): HeadersInit {
 /** Hobby: up to 300s — required so payment replay + SSE are not cut off with 504. */
 export const maxDuration = 300;
 
-export default async function handler(req: Request): Promise<Response> {
-  const origin = req.headers.get("origin");
-
+async function proxyMcp(req: Request): Promise<Response> {
+  let origin: string | null = null;
   try {
+    origin = req.headers.get("origin");
+
     if (req.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(origin) });
     }
@@ -181,3 +182,6 @@ export default async function handler(req: Request): Promise<Response> {
     );
   }
 }
+
+/** Vercel "other" framework: must use Web Handler object, not `export default async function`. */
+export default { fetch: proxyMcp };
