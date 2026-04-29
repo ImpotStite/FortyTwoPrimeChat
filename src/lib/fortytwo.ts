@@ -8,11 +8,18 @@
  *  1. Replay session if we already have one (header `x-session-id`).
  *  2. Otherwise call `tools/call` without signature → server replies HTTP 402
  *     with a base64 JSON `payment-required` payload listing accepted networks.
- *  3. Pick `eip155:143` (Monad), build an EIP-712 / EIP-3009 `TransferWithAuthorization`
- *     for USDC, sign it with the user's wallet (via Privy → viem).
+ *  3. Pick `eip155:143` (Monad), build an EIP-712 / EIP-3009
+ *     `ReceiveWithAuthorization` for USDC, sign it with the user's wallet
+ *     (via Privy → viem).
  *  4. Replay the same `tools/call` with `payment-signature` (base64 JSON) header.
- *  5. Server replies 200 with `x-session-id`; cache it for follow-ups in the
- *     same session.
+ *  5. Server replies 200 with `x-session-id` and `payment-response` (txHash);
+ *     cache them for follow-ups within the same billing session.
+ *
+ * Session lifetime (per docs.fortytwo.network/docs/mcp-integration):
+ *  - 60 minutes hard cap from session opening
+ *  - 10 minutes idle timeout
+ *  - Closed earlier on budget-exhausted, dropped connection, or upstream error
+ * Closure response codes: HTTP 410 (expired) or 402 (re-payment required).
  *
  * Streaming: if the server returns `Content-Type: text/event-stream`, parse
  * `data:` frames as JSON-RPC progress notifications and emit chunks via
@@ -84,7 +91,20 @@ export interface PrimeSession {
   /** Display-friendly amount. */
   authorizedAmountDisplay: string;
   network: string;
+  /**
+   * On-chain settle transaction hash returned in the `payment-response` header
+   * after the server credits the escrow. Useful for support / refund flows.
+   */
+  paymentTxHash?: string;
+  /** Timestamp (ms) when the session was opened — used to enforce the 60min hard cap. */
+  openedAt?: number;
 }
+
+/**
+ * FortyTwo session hard cap (see docs/mcp-integration).
+ * The 10min idle timeout is enforced by the UI from last-activity timestamps.
+ */
+const SESSION_HARD_CAP_MS = 60 * 60 * 1000;
 
 export interface AskPrimeOptions {
   query: string;
@@ -433,19 +453,46 @@ function buildSession(
 ): PrimeSession | null {
   const sessionId = res.headers.get("x-session-id");
   if (!sessionId) return null;
-  // FortyTwo currently exposes `maxTimeoutSeconds` (signature window). Sessions
-  // typically last longer than a single signature, so we extrapolate to one hour
-  // by default; if the server later returns a richer hint we can refresh it.
-  const validity = (accept.maxTimeoutSeconds ?? 60) * 60;
   const decimals = 6; // USDC
   const human = (Number(accept.amount) / 10 ** decimals).toString();
+  // Per the integration docs, sessions are bounded by a 60min hard cap (and
+  // a 10min idle timeout — re-arm on activity, not handled here). The
+  // `maxTimeoutSeconds` field describes the signature window, not the session
+  // lifetime, and must not be used to compute `expiresAt`.
+  const openedAt = Date.now();
+  const txHash = parsePaymentResponseTxHash(res);
   return {
     sessionId,
-    expiresAt: Date.now() + validity * 1000,
+    expiresAt: openedAt + SESSION_HARD_CAP_MS,
     authorizedAmount: accept.amount,
     authorizedAmountDisplay: `${human} USDC`,
     network: accept.network,
+    openedAt,
+    paymentTxHash: txHash,
   };
+}
+
+/** Decode the `payment-response` header to extract the settle txHash. */
+function parsePaymentResponseTxHash(res: Response): string | undefined {
+  const raw = res.headers.get("payment-response");
+  if (!raw) return undefined;
+  try {
+    const json = JSON.parse(b64decode(raw)) as Record<string, unknown>;
+    const direct =
+      (json.txHash as string | undefined) ??
+      (json.transaction as string | undefined);
+    if (typeof direct === "string") return direct;
+    const payload = json.payload as Record<string, unknown> | undefined;
+    if (payload) {
+      const inner =
+        (payload.txHash as string | undefined) ??
+        (payload.transaction as string | undefined);
+      if (typeof inner === "string") return inner;
+    }
+  } catch {
+    /* not base64-JSON — ignore */
+  }
+  return undefined;
 }
 
 /**

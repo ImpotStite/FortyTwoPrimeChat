@@ -68,6 +68,8 @@ export default function PrimeApp() {
   const [usdcLoading, setUsdcLoading] = useState(false);
   /** Forces session pill label to recompute as wall-clock time advances. */
   const [sessionTimerTick, setSessionTimerTick] = useState(0);
+  /** Last successful exchange (ms) — used for the 10min idle timeout. */
+  const [lastActivityAt, setLastActivityAt] = useState<number>(() => Date.now());
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -101,7 +103,9 @@ export default function PrimeApp() {
       setSession(null);
       return;
     }
-    setSession(loadSession(address));
+    const restored = loadSession(address);
+    setSession(restored);
+    if (restored) setLastActivityAt(Date.now());
   }, [address]);
 
   useEffect(() => {
@@ -329,6 +333,7 @@ export default function PrimeApp() {
             onSession: (s) => {
               if (address) saveSession(address, s);
               setSession(s);
+              setLastActivityAt(Date.now());
               setSigningState("idle");
               setPendingAmount(null);
             },
@@ -355,6 +360,8 @@ export default function PrimeApp() {
             ...m,
             content: m.content && m.content.length > 0 ? m.content : result.text,
           }));
+          // Re-arm the 10-min idle timer.
+          setLastActivityAt(Date.now());
           lastError = null;
           break;
         } catch (e) {
@@ -592,7 +599,12 @@ export default function PrimeApp() {
         label: "No session",
         title: "First message will require a one-time signature",
       };
-    const ms = session.expiresAt - Date.now();
+    // FortyTwo closes a session on the *earlier* of the 60min hard cap or
+    // 10min idle timeout — mirror that locally so the pill matches reality.
+    const IDLE_MS = 10 * 60 * 1000;
+    const idleExpiry = lastActivityAt + IDLE_MS;
+    const effectiveExpiry = Math.min(session.expiresAt, idleExpiry);
+    const ms = effectiveExpiry - Date.now();
     if (ms <= 0)
       return {
         active: false,
@@ -600,12 +612,16 @@ export default function PrimeApp() {
         title: "Next message will require a fresh signature",
       };
     const mins = Math.max(1, Math.round(ms / 60000));
+    const reason = idleExpiry < session.expiresAt ? "idle" : "cap";
     return {
       active: true,
       label: `Session · ${mins}m left`,
-      title: `Up to ${session.authorizedAmountDisplay} authorized — no further signature needed for ~${mins} min`,
+      title:
+        reason === "idle"
+          ? `Idle timeout in ~${mins} min — send any message to keep the session alive (up to ${session.authorizedAmountDisplay} authorized)`
+          : `Up to ${session.authorizedAmountDisplay} authorized — no further signature needed for ~${mins} min`,
     };
-  }, [session, sessionTimerTick]);
+  }, [session, sessionTimerTick, lastActivityAt]);
 
   return (
     <div
@@ -732,14 +748,6 @@ export default function PrimeApp() {
             >
               {theme === "dark" ? <SunIcon /> : <MoonIcon />}
             </button>
-            <a
-              className="brand-mark"
-              href="/"
-              title="FortyTwo · home"
-              aria-label="FortyTwo home"
-            >
-              42
-            </a>
           </div>
         </header>
 

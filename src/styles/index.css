@@ -363,6 +363,7 @@ kbd {
 
 .new-chat {
   width: 100%;
+  border-radius: 10px;
 }
 
 .search-wrap {
@@ -445,6 +446,8 @@ kbd {
   color: var(--text-dim);
   font-size: 14px;
   transition: background 0.12s ease, color 0.12s ease;
+  position: relative;
+  min-width: 0;
 }
 
 .conv-item:hover {
@@ -467,6 +470,7 @@ kbd {
 
 .conv-title {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -474,6 +478,7 @@ kbd {
 
 .conv-rename {
   flex: 1;
+  min-width: 0;
   background: var(--bg-elev-3);
   border: 1px solid var(--border-strong);
   border-radius: 6px;
@@ -491,17 +496,47 @@ kbd {
 }
 
 /* Pin / rename / delete: fade in only on row hover (or focus within for
-   keyboard + rename field). Touch devices without hover keep actions visible. */
+   keyboard + rename field). Touch devices without hover keep actions visible.
+   On fine pointer: actions are absolutely positioned so they do not reserve
+   flex width while hidden — title uses full row; on hover, title gains
+   padding so ellipsis respects the action strip. */
 @media (hover: hover) {
   .conv-actions {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+    display: flex;
+    gap: 2px;
     opacity: 0;
     pointer-events: none;
+    transition: opacity 0.2s ease, background 0.15s ease, box-shadow 0.15s ease;
   }
 
   .conv-item:hover .conv-actions,
   .conv-item:focus-within .conv-actions {
     opacity: 1;
     pointer-events: auto;
+    background: var(--bg-elev-1);
+    border-radius: 6px;
+    padding: 0 2px;
+    box-shadow: 0 0 0 1px var(--border);
+  }
+
+  :root[data-theme="dark"] .conv-item:hover .conv-actions,
+  :root[data-theme="dark"] .conv-item:focus-within .conv-actions {
+    background: var(--bg-elev-2);
+  }
+
+  .conv-item:hover .conv-title,
+  .conv-item:focus-within .conv-title {
+    padding-right: 86px;
+  }
+
+  .conv-item:hover .conv-rename,
+  .conv-item:focus-within .conv-rename {
+    padding-right: 86px;
   }
 }
 
@@ -565,6 +600,12 @@ kbd {
   min-height: 0;
   min-width: 0;
   position: relative;
+}
+
+/* Light: main column must be opaque — semi-transparent `--bg-elev-2/3`
+   tokens are meant to sit on white; on lime body they read as muddy green. */
+:root[data-theme="light"] .main {
+  background: var(--bg-elev-1);
 }
 
 .topbar {
@@ -1502,42 +1543,6 @@ kbd {
 /* --------------------------------------------------------------------------
    FortyTwo Prime: wallet, session badges and signature modal
    -------------------------------------------------------------------------- */
-
-.brand-mark {
-  display: inline-grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--ft-black, #000);
-  background: var(--ft-lime, #d0ff00);
-  color: var(--ft-black, #000);
-  border-radius: var(--radius, 4px);
-  margin-left: 4px;
-  font-weight: 900;
-  font-size: 14px;
-  letter-spacing: -0.04em;
-  text-decoration: none;
-  flex-shrink: 0;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
-  transition: transform 0.1s ease, box-shadow 0.15s ease;
-}
-
-.brand-mark:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-}
-
-.brand-mark:active {
-  transform: translateY(0);
-}
-
-@media (max-width: 480px) {
-  .brand-mark {
-    width: 32px;
-    height: 32px;
-    font-size: 13px;
-  }
-}
 
 .session-pill {
   display: inline-flex;
