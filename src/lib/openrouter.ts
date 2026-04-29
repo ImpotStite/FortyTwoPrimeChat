@@ -1,6 +1,7 @@
 import type { ChatMessage, OpenRouterModel, Usage } from "../types";
 
-const API_URL = "https://openrouter.ai/api/v1/chat/completions";
+/** Same-origin Edge Function (`api/openrouter.ts`) or Vite dev middleware — never embeds the API key in the client. */
+const CHAT_COMPLETIONS_PROXY = "/api/openrouter";
 const MODELS_URL = "https://openrouter.ai/api/v1/models";
 
 const DEFAULT_GEMMA_31B_FALLBACKS = [
@@ -66,7 +67,6 @@ function buildApiContent(
 }
 
 export interface StreamOptions {
-  apiKey: string;
   model: string;
   messages: ChatMessage[];
   signal?: AbortSignal;
@@ -78,8 +78,7 @@ export interface StreamOptions {
 export async function streamChatCompletion(
   opts: StreamOptions
 ): Promise<void> {
-  const { apiKey, model, messages, signal, onToken, onMeta, systemPrompt } =
-    opts;
+  const { model, messages, signal, onToken, onMeta, systemPrompt } = opts;
 
   const fallbacks = resolveFallbackChain(model);
 
@@ -98,14 +97,11 @@ export async function streamChatCompletion(
 
   if (fallbacks.length > 0) payload.models = fallbacks;
 
-  const response = await fetch(API_URL, {
+  const response = await fetch(CHAT_COMPLETIONS_PROXY, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      "HTTP-Referer":
-        typeof window !== "undefined" ? window.location.origin : "",
-      "X-Title": "FortyTwo Prime Chat",
+      Accept: "text/event-stream, application/json",
     },
     body: JSON.stringify(payload),
     signal,
@@ -114,8 +110,14 @@ export async function streamChatCompletion(
   if (!response.ok || !response.body) {
     let errText = `OpenRouter error ${response.status}`;
     try {
-      const j = await response.json();
-      errText = j?.error?.message || JSON.stringify(j);
+      const j = (await response.json()) as {
+        error?: { message?: string };
+      };
+      errText =
+        j?.error?.message ||
+        (response.status === 503
+          ? "OpenRouter is not configured on the server (set OPENROUTER_API_KEY on Vercel or in .env.local for local dev)."
+          : JSON.stringify(j));
     } catch {
       try {
         errText = await response.text();

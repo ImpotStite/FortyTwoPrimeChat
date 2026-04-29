@@ -73,12 +73,24 @@ export function exportAllJson(convs: Conversation[]): void {
 }
 
 export function parseImport(json: string): Conversation[] {
-  const parsed = JSON.parse(json);
-  if (Array.isArray(parsed))
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    throw new Error("Invalid JSON in import file");
+  }
+  if (Array.isArray(parsed)) {
     return normalizeConversations(parsed as unknown[]);
-  if (parsed && Array.isArray(parsed.conversations))
-    return normalizeConversations(parsed.conversations as unknown[]);
-  if (parsed && parsed.id && Array.isArray(parsed.messages))
-    return normalizeConversations([parsed as unknown]);
+  }
+  if (parsed === null || typeof parsed !== "object") {
+    throw new Error("Unrecognized import file format");
+  }
+  const obj = parsed as Record<string, unknown>;
+  if (Array.isArray(obj.conversations)) {
+    return normalizeConversations(obj.conversations as unknown[]);
+  }
+  if (typeof obj.id === "string" && Array.isArray(obj.messages)) {
+    return normalizeConversations([obj as unknown]);
+  }
   throw new Error("Unrecognized import file format");
 }

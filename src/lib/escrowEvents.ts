@@ -106,9 +106,8 @@ export interface WatchOptions {
   /** User wallet — refunds arrive *to* this address. */
   user: Address;
   /**
-   * Escrow addresses (`payTo` from 402). Refunds are USDC Transfer events
-   * `from ∈ escrows` and `to === user`. Multiple entries cover concurrent
-   * sessions and polling after local session state was cleared.
+   * Escrow `from` addresses to match in USDC `Transfer` logs (402 `payTo`,
+   * x402Escrow, etc.). Refunds are transfers *to* `user` with `from` in this set.
    */
   escrows: Address[];
   /** Called for each new refund log. */

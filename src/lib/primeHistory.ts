@@ -256,13 +256,6 @@ export function clearSessionHistory(address: string): void {
   }
 }
 
-/** Find the most-recent open (no closedAt) session for this wallet. */
-export function findOpenRecord(
-  address: string
-): PrimeSessionRecord | undefined {
-  return loadSessionHistory(address).find((r) => !r.closedAt);
-}
-
 /**
  * Pick the history row to attach a refund Transfer(log) to.
  * Prefers the active server session id, else the only matching row, else the

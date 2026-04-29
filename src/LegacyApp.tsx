@@ -20,7 +20,6 @@ import type {
   OpenRouterModel,
 } from "./types";
 
-const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined;
 const ENV_MODEL =
   (import.meta.env.VITE_OPENROUTER_MODEL as string | undefined) ||
   "google/gemma-4-31b-it:free";
@@ -220,7 +219,6 @@ export default function LegacyApp() {
             updateAssistant((m) => ({ ...m, content: "", error: false }));
           }
           await streamChatCompletion({
-            apiKey: API_KEY!,
             model: modelId,
             messages: history,
             systemPrompt: SYSTEM_PROMPT,
@@ -277,12 +275,6 @@ export default function LegacyApp() {
     async (overrideText?: string) => {
       const text = (overrideText ?? input).trim();
       if ((!text && attachments.length === 0) || isLoading || !active) return;
-      if (!API_KEY) {
-        setError(
-          "Missing OpenRouter API key. Set VITE_OPENROUTER_API_KEY in .env.local and restart the dev server."
-        );
-        return;
-      }
 
       const userMsg: ChatMessage = {
         id: uid("m_"),

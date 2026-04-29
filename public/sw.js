@@ -1,6 +1,6 @@
 /* FortyTwo Prime Chat — minimal service worker (offline app shell). */
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const APP_SHELL = `app-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `assets-${CACHE_VERSION}`;
 
@@ -10,6 +10,8 @@ const APP_SHELL_URLS = [
   "/manifest.webmanifest",
   "/favicon-32.png",
   "/fortytwo-prime-mark.png",
+  "/fortytwo-prime-icon-192.png",
+  "/fortytwo-prime-icon-512.png",
   "/apple-touch-icon.png",
 ];
 

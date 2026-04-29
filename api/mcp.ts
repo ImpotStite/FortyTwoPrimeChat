@@ -10,6 +10,9 @@
 
 const FORTYTWO_ENDPOINT = "https://mcp.fortytwo.network/mcp";
 
+/** Reject oversized POST bodies (abuse / accidental huge payloads). */
+const MAX_PROXY_BODY_BYTES = 6 * 1024 * 1024;
+
 const FORWARDED_REQUEST_HEADERS = [
   "content-type",
   "accept",
@@ -66,7 +69,40 @@ export default async function handler(req: Request): Promise<Response> {
     upstreamHeaders.set("accept", "text/event-stream, application/json");
   }
 
+  const contentLength = req.headers.get("content-length");
+  if (contentLength != null && /^\d+$/.test(contentLength)) {
+    const n = Number(contentLength);
+    if (n > MAX_PROXY_BODY_BYTES) {
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: -32600,
+            message: "Request body too large",
+          },
+        }),
+        {
+          status: 413,
+          headers: { "content-type": "application/json", ...corsHeaders(origin) },
+        }
+      );
+    }
+  }
+
   const body = await req.arrayBuffer();
+  if (body.byteLength > MAX_PROXY_BODY_BYTES) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: -32600,
+          message: "Request body too large",
+        },
+      }),
+      {
+        status: 413,
+        headers: { "content-type": "application/json", ...corsHeaders(origin) },
+      }
+    );
+  }
 
   let upstream: Response;
   try {

@@ -1,23 +1,30 @@
 # FortyTwo Prime Chat
 
-A modern **Claude / ChatGPT–style** chat app built with **React + Vite + TypeScript**, powered by **OpenRouter**.
+A **Claude / ChatGPT–style** chat built with **React + Vite + TypeScript**.
 
-## Features
+## Routes
 
-- **Streaming** completions (SSE) with automatic retries on transient provider errors (`Provider returned error`, 5xx, timeouts)
-- **Model picker**: all **free** models on OpenRouter, search, **vision-only** filter, context size badges
-- **Per-chat model**: each conversation can override the default model
-- **Edit & regenerate**: edit user messages (truncates history and resends), regenerate assistant replies, delete last message
-- **Image attachments** (multimodal): upload, paste from clipboard, multiple images per message
-- **Dark / light theme** with persistence
-- **Sidebar**: full-text search, **pin**, **rename** (double-click or pencil), **date grouping**
-- **Export / import**: Markdown or JSON per chat, full JSON backup, merge import by conversation id
-- **Tokens & cost** under each assistant reply (OpenRouter `usage` with `stream_options.include_usage`)
-- **Shortcuts**: `Ctrl+B` / `⌘B` (sidebar), `Ctrl+Shift+O` / `⌘⇧O` (new chat), `Esc` (stop generation)
-- **Mobile**: slide-out sidebar with backdrop
-- **PWA**: installable; offline shell for cached assets (service worker only in **production** build)
-- **Code blocks**: syntax highlighting + **Copy** button
-- **Thinking indicator** (three dots) before the first token
+| Path | What it is |
+|------|------------|
+| **`/`** | **FortyTwo Prime** — wallet login (Privy), x402 USDC on **Monad**, MCP tool `ask_fortytwo_prime` via a same-origin proxy (`/api/mcp` → `mcp.fortytwo.network`). Streaming replies, session + billing history, on-chain refund toasts. |
+| **`/test`** | **Legacy OpenRouter** playground — free models, vision, model picker; API key on the **server** only (`OPENROUTER_API_KEY` via Edge `api/openrouter.ts` or Vite dev middleware). |
+
+## Features (/)
+
+- **Privy** external wallets, **EIP-712 / EIP-3009** payment when the MCP returns HTTP 402
+- **Streaming** (SSE) assistant output
+- **USDC balance** + **session** popover; **past sessions** modal with explorer links
+- **On-chain refund detection** (USDC `Transfer` from FortyTwo escrow to your wallet)
+- Dark / light theme, sidebar, export-style chat storage (`localStorage`)
+- **PWA**: service worker registers only in **production** builds
+- Code blocks: syntax highlighting + copy
+
+## Features (/test — OpenRouter)
+
+- Model picker (including free models), vision when the model supports images
+- Streaming with retries on transient errors
+- Tokens & cost when OpenRouter returns `usage`
+- Per-chat model, edit / regenerate, image attachments
 
 ## Setup
 
@@ -26,20 +33,32 @@ npm install
 npm run dev
 ```
 
-Opens [http://localhost:5173](http://localhost:5173).
+Opens [http://localhost:5173](http://localhost:5173). In dev, Vite proxies `/api/mcp` to FortyTwo and serves `/api/openrouter` with your local `OPENROUTER_API_KEY` (see `vite.config.ts`).
 
 ## Configuration
 
-Create `.env.local`:
+Create `.env.local` (see `.env.example`):
+
+**FortyTwo Prime (`/`) — required for wallet app**
 
 ```env
-VITE_OPENROUTER_API_KEY=sk-or-v1-...
-VITE_OPENROUTER_MODEL=google/gemma-4-31b-it:free
-# Optional: fallback model ids sent as OpenRouter `models` when the primary fails
-# VITE_OPENROUTER_FALLBACK_MODELS=google/gemma-4-26b-a4b-it:free,google/gemma-3-27b-it:free
+VITE_PRIVY_APP_ID=...
+VITE_MONAD_RPC_URL=https://rpc3.monad.xyz
+# Optional MCP URL override (default: same-origin /api/mcp)
+# VITE_FORTYTWO_MCP_ENDPOINT=
 ```
 
-> **Security:** the API key is embedded in the client bundle. For a public deployment, proxy OpenRouter through a backend that holds the secret.
+**OpenRouter (`/test`)**
+
+```env
+OPENROUTER_API_KEY=sk-or-v1-...
+VITE_OPENROUTER_MODEL=google/gemma-4-31b-it:free
+# Optional: VITE_OPENROUTER_FALLBACK_MODELS=...
+```
+
+On **Vercel**, add `OPENROUTER_API_KEY` under Project → Settings → Environment Variables (Production / Preview as needed). It is read only by `api/openrouter.ts`, not bundled into the client.
+
+> **Security:** `OPENROUTER_API_KEY` must **not** use the `VITE_` prefix (that would embed it in the browser). The Privy app id remains a public client identifier.
 
 ## Production build
 
@@ -48,7 +67,7 @@ npm run build
 npm run preview
 ```
 
-The service worker registers only in **production** (not during `npm run dev`).
+Deploy on **Vercel**: `api/mcp.ts` and `api/openrouter.ts` are Edge proxies (CORS + streaming). Static assets + `sw.js` live under `public/`. `npm run preview` serves static files only — use `vercel dev` or a deployed preview to exercise `/api/*` routes locally.
 
 ## Keyboard shortcuts
 
@@ -64,22 +83,29 @@ The service worker registers only in **production** (not during `npm run dev`).
 
 ```
 src/
-  App.tsx
-  components/       # Sidebar, Message, Composer, ModelPicker, …
-  hooks/
-  lib/              # openrouter, storage, export/import, formatting
-  styles/
+  PrimeApp.tsx       # / FortyTwo Prime + Privy
+  LegacyApp.tsx      # /test OpenRouter
+  main.tsx           # Router: / vs /test
+  components/        # Sidebar, Message, Composer, SessionHistory, …
+  lib/
+    fortytwo.ts      # MCP client, x402, askPrime
+    primeHistory.ts  # Billing session history (localStorage)
+    escrowEvents.ts # Refund log polling
+    privy.ts         # Chain + shared Monad RPC transport
+    usdc.ts          # Balance + escrow address
+    openrouter.ts    # Legacy route only
+api/
+  mcp.ts             # Vercel Edge proxy to FortyTwo MCP
+  openrouter.ts      # Vercel Edge proxy to OpenRouter (holds OPENROUTER_API_KEY)
 public/
-  manifest.webmanifest
-  sw.js
+  manifest.webmanifest, sw.js, icons, brand assets
+scripts/
+  crop-brand-mark.py # Optional: tight crop for logo PNG (needs Python + Pillow + numpy)
 ```
 
-## Notes
+## Notes / tooling
 
-- Free `:free` models can be overloaded; the app retries automatically (up to 2 attempts) on generic provider errors.
-- Image upload requires a model that accepts **image** inputs; the paperclip is disabled when the current model does not support vision (based on OpenRouter model metadata).
-- `usage.cost` is usually **$0** on free models; token counts still reflect usage.
-
+- Regenerating cropped logo assets: run `python scripts/crop-brand-mark.py <src.png> public/fortytwo-prime-mark.png` (requires Python with **Pillow** and **numpy**), then regenerate `favicon-32.png`, `apple-touch-icon.png`, and manifest icons as needed.
 ## Language
 
-All UI strings, docs, and default assistant prompts in this repository are **English**. See `.cursor/rules/english-language.mdc`.
+All user-visible UI strings and this README are **English**. See `.cursor/rules/english-language.mdc`.

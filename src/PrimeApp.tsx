@@ -53,7 +53,6 @@ import { watchUsdcRefunds } from "./lib/escrowEvents";
 import type {
   ChatMessage,
   Conversation,
-  ImageAttachment,
 } from "./types";
 
 /** Base URL of the Monad mainnet block explorer. */
@@ -94,7 +93,6 @@ export default function PrimeApp() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -301,7 +299,6 @@ export default function PrimeApp() {
     setConversations((prev) => [c, ...prev]);
     setActiveId(c.id);
     setInput("");
-    setAttachments([]);
     setError(null);
   }, []);
 
@@ -655,7 +652,6 @@ export default function PrimeApp() {
       }));
 
       setInput("");
-      setAttachments([]);
 
       await runStream(active.id, assistantMsg.id, text);
     },
@@ -1031,8 +1027,10 @@ export default function PrimeApp() {
         <Composer
           value={input}
           onChange={setInput}
-          attachments={attachments}
-          onAttachmentsChange={setAttachments}
+          attachments={[]}
+          onAttachmentsChange={() => {
+            /* Prime route: text-only (FortyTwo MCP); no image modality in tool args */
+          }}
           onSubmit={() => handleSubmit()}
           onStop={handleStop}
           isLoading={isLoading}
