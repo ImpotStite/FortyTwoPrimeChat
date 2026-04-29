@@ -176,19 +176,17 @@ function rpcCall(method: string, params: Record<string, unknown>) {
 
 function b64encode(obj: unknown): string {
   const json = JSON.stringify(obj);
-  if (typeof btoa === "function") {
-    // btoa needs latin1 — replace any non-ascii via UTF-8 → escape.
-    return btoa(unescape(encodeURIComponent(json)));
-  }
-  // Node fallback (not used in the browser build).
-  return Buffer.from(json, "utf-8").toString("base64");
+  const bytes = new TextEncoder().encode(json);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
+  return btoa(bin);
 }
 
 function b64decode(value: string): string {
-  if (typeof atob === "function") {
-    return decodeURIComponent(escape(atob(value)));
-  }
-  return Buffer.from(value, "base64").toString("utf-8");
+  const bin = atob(value);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
 }
 
 function randomNonce32(): Hex {
