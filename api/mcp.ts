@@ -1,11 +1,14 @@
 /**
- * Vercel Function proxy for FortyTwo MCP.
+ * Vercel serverless proxy for Fortytwo MCP (Node.js runtime).
  *
  * The browser can't call `https://mcp.fortytwo.network/mcp` directly because
  * the server doesn't reply to CORS preflights. We forward the JSON-RPC body
- * and the small set of headers the FortyTwo protocol relies on, then pipe
+ * and the small set of headers the Fortytwo protocol relies on, then pipe
  * the response (including SSE streams) back to the browser with permissive
  * CORS headers and the `payment-required` / `x-session-id` headers exposed.
+ *
+ * Uses Node.js instead of Edge: Edge invocation wall-time is too low for
+ * settlement verification + streaming model output, which surfaced as HTTP 504.
  */
 
 const FORTYTWO_ENDPOINT = "https://mcp.fortytwo.network/mcp";
@@ -39,9 +42,8 @@ function corsHeaders(origin: string | null): HeadersInit {
   };
 }
 
-export const config = {
-  runtime: "edge",
-};
+/** Hobby: up to 300s — required so payment replay + SSE are not cut off with 504. */
+export const maxDuration = 300;
 
 export default async function handler(req: Request): Promise<Response> {
   const origin = req.headers.get("origin");

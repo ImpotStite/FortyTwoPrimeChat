@@ -1,4 +1,4 @@
-# FortyTwo Prime Chat
+# Fortytwo Prime Chat
 
 A **Claude / ChatGPT–style** chat built with **React + Vite + TypeScript**.
 
@@ -6,7 +6,7 @@ A **Claude / ChatGPT–style** chat built with **React + Vite + TypeScript**.
 
 | Path | What it is |
 |------|------------|
-| **`/`** | **FortyTwo Prime** — wallet login (Privy), x402 USDC on **Monad**, MCP tool `ask_fortytwo_prime` via a same-origin proxy (`/api/mcp` → `mcp.fortytwo.network`). Streaming replies, session + billing history, on-chain refund toasts. |
+| **`/`** | **Fortytwo Prime** — wallet login (Privy), x402 USDC on **Monad**, MCP tool `ask_fortytwo_prime` via a same-origin proxy (`/api/mcp` → `mcp.fortytwo.network`). Streaming replies, session + billing history, on-chain refund toasts. |
 | **`/test`** | **Legacy OpenRouter** playground — free models, vision, model picker; API key on the **server** only (`OPENROUTER_API_KEY` via Edge `api/openrouter.ts` or Vite dev middleware). |
 
 ## Features (/)
@@ -14,7 +14,7 @@ A **Claude / ChatGPT–style** chat built with **React + Vite + TypeScript**.
 - **Privy** external wallets, **EIP-712 / EIP-3009** payment when the MCP returns HTTP 402
 - **Streaming** (SSE) assistant output
 - **USDC balance** + **session** popover; **past sessions** modal with explorer links
-- **On-chain refund detection** (USDC `Transfer` from FortyTwo escrow to your wallet)
+- **On-chain refund detection** (USDC `Transfer` from Fortytwo escrow to your wallet)
 - Dark / light theme, sidebar, export-style chat storage (`localStorage`)
 - **PWA**: service worker registers only in **production** builds
 - Code blocks: syntax highlighting + copy
@@ -33,13 +33,13 @@ npm install
 npm run dev
 ```
 
-Opens [http://localhost:5173](http://localhost:5173). In dev, Vite proxies `/api/mcp` to FortyTwo and serves `/api/openrouter` with your local `OPENROUTER_API_KEY` (see `vite.config.ts`).
+Opens [http://localhost:5173](http://localhost:5173). In dev, Vite proxies `/api/mcp` to Fortytwo and serves `/api/openrouter` with your local `OPENROUTER_API_KEY` (see `vite.config.ts`).
 
 ## Configuration
 
 Create `.env.local` (see `.env.example`):
 
-**FortyTwo Prime (`/`) — required for wallet app**
+**Fortytwo Prime (`/`) — required for wallet app**
 
 ```env
 VITE_PRIVY_APP_ID=...
@@ -83,7 +83,7 @@ Deploy on **Vercel**: `api/mcp.ts` and `api/openrouter.ts` are Edge proxies (COR
 
 ```
 src/
-  PrimeApp.tsx       # / FortyTwo Prime + Privy
+  PrimeApp.tsx       # / Fortytwo Prime + Privy
   LegacyApp.tsx      # /test OpenRouter
   main.tsx           # Router: / vs /test
   components/        # Sidebar, Message, Composer, SessionHistory, …
@@ -95,7 +95,7 @@ src/
     usdc.ts          # Balance + escrow address
     openrouter.ts    # Legacy route only
 api/
-  mcp.ts             # Vercel Edge proxy to FortyTwo MCP
+  mcp.ts             # Vercel Edge proxy to Fortytwo MCP
   openrouter.ts      # Vercel Edge proxy to OpenRouter (holds OPENROUTER_API_KEY)
 public/
   manifest.webmanifest, sw.js, icons, brand assets

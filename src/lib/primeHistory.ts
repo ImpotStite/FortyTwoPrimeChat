@@ -1,5 +1,5 @@
 /**
- * Per-wallet history of FortyTwo Prime billing sessions.
+ * Per-wallet history of Fortytwo Prime billing sessions.
  *
  * A record is appended when a session opens (settle TX confirmed) and
  * patched on closure (idle / hard cap / 410 / refund detected via on-chain

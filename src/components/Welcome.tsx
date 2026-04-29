@@ -25,7 +25,7 @@ const SUGGESTIONS = [
 ];
 
 export function Welcome({ onPick, modelLabel }: Props) {
-  const isPrime = modelLabel === "FortyTwo Prime";
+  const isPrime = modelLabel === "Fortytwo Prime";
   return (
     <div className="welcome">
       <div className="welcome-logo">
@@ -34,14 +34,14 @@ export function Welcome({ onPick, modelLabel }: Props) {
           src="/fortytwo-prime-mark.png"
           width={64}
           height={64}
-          alt="FortyTwo Prime"
+          alt="Fortytwo Prime"
         />
       </div>
       <h1 className="welcome-title">How can I help you today?</h1>
       <p className="welcome-sub">
         {isPrime ? (
           <>
-            Powered by <strong>FortyTwo Prime</strong> · pay-per-use in USDC on
+            Powered by <strong>Fortytwo Prime</strong> · pay-per-use in USDC on
             Monad.
           </>
         ) : (

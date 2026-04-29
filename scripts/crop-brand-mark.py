@@ -1,4 +1,4 @@
-"""One-off: tight square crop of FortyTwo Prime mark PNG for public assets."""
+"""One-off: tight square crop of Fortytwo Prime mark PNG for public assets."""
 from __future__ import annotations
 
 import sys

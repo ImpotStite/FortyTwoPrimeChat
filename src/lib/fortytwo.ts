@@ -1,5 +1,5 @@
 /**
- * FortyTwo MCP client.
+ * Fortytwo MCP client.
  *
  * Single endpoint: POST https://mcp.fortytwo.network/mcp (JSON-RPC 2.0).
  * Tool used: `ask_fortytwo_prime`.
@@ -43,7 +43,7 @@ import { monad, monadHttpTransport } from "./privy";
  * forwards the streaming body verbatim.
  *
  * Override with `VITE_FORTYTWO_MCP_ENDPOINT` if you have your own proxy or if
- * FortyTwo eventually enables CORS server-side.
+ * Fortytwo eventually enables CORS server-side.
  */
 const ENDPOINT =
   (import.meta.env.VITE_FORTYTWO_MCP_ENDPOINT as string | undefined) ||
@@ -99,7 +99,7 @@ export interface PrimeSession {
   openedAt?: number;
   /** ERC-20 asset signed against (USDC contract address). */
   asset?: Address;
-  /** Recipient of the EIP-3009 transfer (FortyTwo escrow address). */
+  /** Recipient of the EIP-3009 transfer (Fortytwo escrow address). */
   payTo?: Address;
   /**
    * Last tools/call completion time (ms) — persisted so idle timeout survives
@@ -117,7 +117,7 @@ export interface TokenUsage {
 }
 
 /**
- * FortyTwo session hard cap (see docs/mcp-integration).
+ * Fortytwo session hard cap (see docs/mcp-integration).
  * The 10min idle timeout is enforced by the UI from last-activity timestamps.
  */
 const SESSION_HARD_CAP_MS = 60 * 60 * 1000;
@@ -197,7 +197,7 @@ function randomNonce32(): Hex {
   return hex as Hex;
 }
 
-/** RFC 4122 v4 UUID — used for `x-idempotency-key` (FortyTwo canonical format). */
+/** RFC 4122 v4 UUID — used for `x-idempotency-key` (Fortytwo canonical format). */
 function uuidV4(): string {
   const c = (globalThis as unknown as { crypto?: Crypto }).crypto;
   if (c && typeof c.randomUUID === "function") return c.randomUUID();
@@ -299,7 +299,7 @@ async function makeToolsCallRequest(args: MakeRequestArgs): Promise<Response> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "text/event-stream, application/json",
-    // FortyTwo's spec requires `x-idempotency-key` on every `tools/call`,
+    // Fortytwo's spec requires `x-idempotency-key` on every `tools/call`,
     // including the initial 402-triggering call and the payment retry.
     // Format: RFC 4122 v4 UUID (matches canonical Python script).
     "x-idempotency-key": uuidV4(),
@@ -357,7 +357,7 @@ function pickUsdcBaseUnits(
   return undefined;
 }
 
-/** Parse `_meta.usage` (FortyTwo) or `usage` (OpenAI-ish) into TokenUsage. */
+/** Parse `_meta.usage` (Fortytwo) or `usage` (OpenAI-ish) into TokenUsage. */
 function pickUsage(rpcResult: unknown): TokenUsage | undefined {
   if (!rpcResult || typeof rpcResult !== "object") return undefined;
   const r = rpcResult as Record<string, unknown>;
@@ -676,7 +676,7 @@ async function resolveDomainHints(
 }
 
 /**
- * FortyTwo's `x402Escrow` is built on EIP-3009 *`receiveWithAuthorization`*
+ * Fortytwo's `x402Escrow` is built on EIP-3009 *`receiveWithAuthorization`*
  * (NOT `transferWithAuthorization`): only the escrow contract can pull the
  * funds, which makes the authorization MEV-resistant. The struct fields are
  * identical to `TransferWithAuthorization` but the type name differs, which
@@ -778,7 +778,7 @@ async function buildPaymentSignature(
     message,
   });
 
-  // FortyTwo's facilitator uses an x402-v2 *escrow* extension whose wire
+  // Fortytwo's facilitator uses an x402-v2 *escrow* extension whose wire
   // payload differs from the canonical Coinbase shape: it expects
   // `{client, maxAmount, validAfter, validBefore, nonce, v, r, s}` flattened
   // under `payload`, then reconstructs the EIP-3009 `ReceiveWithAuthorization`
@@ -888,7 +888,7 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
       if (!replay.ok) {
         const txt = await safeReadText(replay);
         throw new Error(
-          `FortyTwo refused payment (${replay.status} ${replay.statusText})${
+          `Fortytwo refused payment (${replay.status} ${replay.statusText})${
             txt ? ` — ${txt}` : ""
           }`
         );
@@ -911,7 +911,7 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
     // Other errors → bail out.
     const txt = await safeReadText(res);
     throw new Error(
-      `FortyTwo error ${res.status} ${res.statusText}${txt ? ` — ${txt}` : ""}`
+      `Fortytwo error ${res.status} ${res.statusText}${txt ? ` — ${txt}` : ""}`
     );
   }
 

@@ -1,16 +1,16 @@
 /**
- * Vercel Edge proxy for OpenRouter chat completions.
+ * Vercel serverless proxy for OpenRouter chat completions (Node.js runtime).
  *
  * The browser never sees `OPENROUTER_API_KEY`; it POSTs the same JSON body
  * OpenRouter expects (built in `streamChatCompletion`) and this handler
  * attaches `Authorization` server-side.
+ *
+ * Node.js runtime matches `/api/mcp`: long SSE streams exceed Edge time limits.
  */
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-export const config = {
-  runtime: "edge",
-};
+export const maxDuration = 300;
 
 function corsHeaders(origin: string | null): HeadersInit {
   return {
@@ -122,7 +122,7 @@ export default async function handler(req: Request): Promise<Response> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${key}`,
         "HTTP-Referer": referer,
-        "X-Title": "FortyTwo Prime Chat",
+        "X-Title": "Fortytwo Prime Chat",
       },
       body: JSON.stringify(parsed),
     });

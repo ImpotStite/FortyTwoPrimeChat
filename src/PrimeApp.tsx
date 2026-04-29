@@ -372,7 +372,7 @@ export default function PrimeApp() {
       kind: "info",
       title: "Session ended",
       description:
-        "Refund will arrive on-chain when FortyTwo settles the unused balance.",
+        "Refund will arrive on-chain when Fortytwo settles the unused balance.",
       durationMs: 7000,
     });
   }, [address, session, toasts]);
@@ -777,7 +777,7 @@ export default function PrimeApp() {
         effectiveExpiresAt: null,
         reason: null,
       };
-    // FortyTwo closes a session on the *earlier* of the 60min hard cap or
+    // Fortytwo closes a session on the *earlier* of the 60min hard cap or
     // 10min idle timeout — mirror that locally so the pill matches reality.
     const IDLE_MS = 10 * 60 * 1000;
     const idleExpiry = lastActivityAt + IDLE_MS;
@@ -825,7 +825,7 @@ export default function PrimeApp() {
         onDelete={handleDelete}
         onRename={handleRename}
         onTogglePin={handleTogglePin}
-        modelLabel="FortyTwo Prime"
+        modelLabel="Fortytwo Prime"
       />
 
       {sidebarOpen && (
@@ -965,7 +965,7 @@ export default function PrimeApp() {
         <div className="messages" ref={scrollRef}>
           {!active || active.messages.length === 0 ? (
             <Welcome
-              modelLabel="FortyTwo Prime"
+              modelLabel="Fortytwo Prime"
               onPick={(p) => {
                 setInput(p);
                 if (authenticated) void handleSubmit(p);
@@ -1029,7 +1029,7 @@ export default function PrimeApp() {
           onChange={setInput}
           attachments={[]}
           onAttachmentsChange={() => {
-            /* Prime route: text-only (FortyTwo MCP); no image modality in tool args */
+            /* Prime route: text-only (Fortytwo MCP); no image modality in tool args */
           }}
           onSubmit={() => handleSubmit()}
           onStop={handleStop}
@@ -1043,7 +1043,7 @@ export default function PrimeApp() {
       {signingState !== "idle" && (
         <div className="modal-scrim" onClick={() => signingState === "awaiting-confirm" && confirmSign(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title">Authorize FortyTwo Prime session</h2>
+            <h2 className="modal-title">Authorize Fortytwo Prime session</h2>
             {signingState === "awaiting-confirm" ? (
               <>
                 <p className="modal-text">
@@ -1057,7 +1057,7 @@ export default function PrimeApp() {
                   until it expires.
                 </p>
                 <p className="modal-sub">
-                  No tokens move until FortyTwo settles your reply on-chain.
+                  No tokens move until Fortytwo settles your reply on-chain.
                 </p>
                 <div className="modal-actions">
                   <button

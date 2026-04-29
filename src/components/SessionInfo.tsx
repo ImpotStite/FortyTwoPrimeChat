@@ -1,5 +1,5 @@
 /**
- * Click-to-expand popover for the current FortyTwo Prime session.
+ * Click-to-expand popover for the current Fortytwo Prime session.
  *
  * Surfaces the data already captured elsewhere: session id, opened/expires,
  * authorized/spent USDC, settle TX, refund TX (when known), and a running

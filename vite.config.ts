@@ -88,7 +88,7 @@ export default defineConfig(({ mode }) => {
                         "application/json",
                       Authorization: `Bearer ${key}`,
                       "HTTP-Referer": `http://localhost:${port}`,
-                      "X-Title": "FortyTwo Prime Chat",
+                      "X-Title": "Fortytwo Prime Chat",
                     },
                     body,
                   }
@@ -135,7 +135,7 @@ export default defineConfig(({ mode }) => {
       /**
        * Dev-only proxy: in production the request hits the Vercel Function in
        * `api/mcp.ts`, but `vite dev` doesn't run Functions. Forward `/api/mcp`
-       * straight to FortyTwo's MCP endpoint so signing flows can be tested
+       * straight to Fortytwo's MCP endpoint so signing flows can be tested
        * locally without `vercel dev`.
        */
       proxy: {

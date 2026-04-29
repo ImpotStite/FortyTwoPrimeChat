@@ -1,7 +1,7 @@
 /**
  * USDC balance reader for Monad mainnet.
  *
- * The USDC asset address used by FortyTwo on Monad was observed in a real
+ * The USDC asset address used by Fortytwo on Monad was observed in a real
  * `payment-required` payload: 0x754704Bc059F8C67012fEd69BC8A327a5aafb603.
  * We read `balanceOf` with a viem public client over the configured RPC URL.
  */
@@ -18,7 +18,7 @@ export const USDC_MONAD_ADDRESS: Address =
   "0x754704Bc059F8C67012fEd69BC8A327a5aafb603";
 
 /**
- * FortyTwo x402Escrow contract on Monad (same address on Base per docs).
+ * Fortytwo x402Escrow contract on Monad (same address on Base per docs).
  * Used when older history rows lack `payTo` so we can still match refunds.
  * @see https://docs.fortytwo.network/docs/mcp-integration
  */

@@ -1,5 +1,5 @@
 /**
- * Modal listing past FortyTwo Prime billing sessions for the connected wallet.
+ * Modal listing past Fortytwo Prime billing sessions for the connected wallet.
  *
  * Each row shows: opened/closed timestamps, close reason, authorized vs.
  * spent USDC, message count, token totals, and explorer links to the

@@ -1,11 +1,11 @@
 /**
- * Inline SVG marks used in the FortyTwo Prime UI.
+ * Inline SVG marks used in the Fortytwo Prime UI.
  *
  * USDC: simplified version of Circle's official mark — a blue disc with a
  * white "$" cuff. Drawn in pure SVG so it scales with `font-size: currentColor`
  * neighbours and doesn't pull a bitmap.
  *
- * FortyTwo: `FortyTwoSign` renders the bundled `public/fortytwo-prime-mark.png`.
+ * Fortytwo: `FortytwoSign` renders the bundled `public/fortytwo-prime-mark.png`.
  */
 
 interface SizedProps {
@@ -43,12 +43,12 @@ export function UsdcMark({
 }
 
 /**
- * FortyTwo Prime mark — lime square with black 2×2 dots + bars (bundled PNG).
+ * Fortytwo Prime mark — lime square with black 2×2 dots + bars (bundled PNG).
  */
 export function FortytwoSign({
   size = 18,
   className,
-  title = "FortyTwo",
+  title = "Fortytwo",
 }: SizedProps) {
   return (
     <img

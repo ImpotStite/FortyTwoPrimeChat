@@ -1,7 +1,7 @@
 /**
  * On-chain refund detection.
  *
- * FortyTwo's escrow contract releases unused funds back to the client wallet
+ * Fortytwo's escrow contract releases unused funds back to the client wallet
  * after a session closes. Since the server doesn't push us a notification
  * for that release (it can happen minutes later, possibly while we're
  * disconnected), we observe USDC `Transfer(from, to, value)` events directly

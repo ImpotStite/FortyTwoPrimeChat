@@ -1,4 +1,4 @@
-/* FortyTwo Prime Chat — minimal service worker (offline app shell). */
+/* Fortytwo Prime Chat — minimal service worker (offline app shell). */
 
 const CACHE_VERSION = "v3";
 const APP_SHELL = `app-shell-${CACHE_VERSION}`;
