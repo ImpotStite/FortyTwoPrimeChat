@@ -29,6 +29,8 @@ const EXPOSED_RESPONSE_HEADERS = [
   "x-session-id",
   "payment-required",
   "payment-response",
+  /** Lets the browser tell a Fortytwo 500 (relayed) from a Vercel/runtime crash. */
+  "x-upstream-status",
 ];
 
 function corsHeaders(origin: string | null): HeadersInit {
@@ -137,6 +139,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
   outHeaders.delete("content-encoding");
   outHeaders.delete("content-length");
+  outHeaders.set("x-upstream-status", String(upstream.status));
 
   return new Response(upstream.body, {
     status: upstream.status,
