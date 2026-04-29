@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { PrivyProvider } from "@privy-io/react-auth";
+import { Analytics } from "@vercel/analytics/react";
 import LegacyApp from "./LegacyApp";
 import PrimeApp from "./PrimeApp";
 import { PRIVY_APP_ID, privyConfig } from "./lib/privy";
@@ -23,6 +24,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/test" element={<LegacyApp />} />
       </Routes>
     </BrowserRouter>
+    <Analytics />
   </React.StrictMode>
 );
 
