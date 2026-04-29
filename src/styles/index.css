@@ -1235,6 +1235,12 @@ kbd {
   font-family: var(--font-mono);
 }
 
+.msg-usage-prime {
+  font-size: 10.5px;
+  margin-top: 6px;
+  opacity: 0.92;
+}
+
 .dotSep {
   opacity: 0.6;
 }
@@ -2082,26 +2088,38 @@ kbd {
 
 .session-history-totals {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 8px;
-  padding: 10px 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 100px), 1fr));
+  gap: 10px 12px;
+  padding: 12px 14px;
   background: var(--bg-elev-2);
   border-radius: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+  align-items: start;
+}
+
+.session-history-totals-note {
+  margin: 0 0 12px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
 }
 
 .session-history-total {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  min-width: 0;
 }
 
 .session-history-total-label {
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 600;
+  line-height: 1.25;
+  min-height: 2.5em;
+  display: block;
 }
 
 .session-history-total-value {
@@ -2120,20 +2138,33 @@ kbd {
 }
 
 .session-history-tokens {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 11.5px;
-  color: var(--text-dim);
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
   font-family: var(--font-mono);
-  margin-bottom: 6px;
+  color: var(--text-dim);
+}
+
+.session-history-tokens-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.session-history-tokens-inout {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .session-history-tokens-total {
+  color: var(--text);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.session-history-tokens-msgs {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .session-history-pending {
@@ -2220,10 +2251,11 @@ kbd {
 }
 
 .session-history-tokens-meta {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px 12px;
+  font-size: 11.5px;
 }
 
 .session-history-detail-grid {
@@ -2308,15 +2340,27 @@ kbd {
   border-top: 1px solid var(--border);
 }
 
-.session-history-id-full {
-  flex: 1;
-  min-width: 0;
-  font-size: 10px;
+.session-history-id-code {
+  flex: 0 1 auto;
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.3;
   color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-family: var(--font-mono);
   background: transparent;
+  padding: 2px 0;
+}
+
+.session-history-close-btn {
+  background: color-mix(in srgb, var(--accent, #d0ff00) 45%, var(--bg-elev-3));
+  color: var(--text);
+  border: 1px solid var(--border-strong, var(--border));
+  box-shadow: none;
+}
+
+.session-history-close-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent, #d0ff00) 58%, var(--bg-elev-3));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
 .session-history-copy-id {

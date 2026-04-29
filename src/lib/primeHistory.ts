@@ -300,19 +300,23 @@ export function findRefundTargetRecord(
   )[0];
 }
 
-/** Format token base units (USDC = 6 dp) → "X.XX". */
+/** Format token base units (USDC = 6 dp) for display. */
 export function formatTokenAmount(
   baseUnits: string | undefined,
-  decimals = 6
+  decimals = 6,
+  maxFractionDigits = 2
 ): string {
   if (!baseUnits) return "—";
   try {
     const big = BigInt(baseUnits);
-    const factor = 10n ** BigInt(decimals);
-    const whole = big / factor;
-    const frac = big % factor;
-    const fracStr = frac.toString().padStart(decimals, "0").slice(0, 2);
-    return `${whole.toString()}.${fracStr}`;
+    const n = Number(big) / 10 ** decimals;
+    if (!Number.isFinite(n)) return "—";
+    const maxF = Math.max(0, Math.min(maxFractionDigits, decimals));
+    const minF = maxF >= 2 ? 2 : 0;
+    return n.toLocaleString("en-US", {
+      minimumFractionDigits: minF,
+      maximumFractionDigits: maxF,
+    });
   } catch {
     return "—";
   }

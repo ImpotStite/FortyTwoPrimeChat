@@ -161,8 +161,8 @@ export function Composer({
         </div>
       </div>
       <div className="composer-hint">
-        Fortytwo Prime can't be wrong. But double-check important information
-        anyway.
+        Fortytwo Prime can't be wrong but double-check important information
+        anyways.
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { CodePre } from "./CodeBlock";
 import { formatCost, formatTokens, shortModelName } from "../lib/format";
+import { estimatePrimeUsdCost } from "../lib/primePricing";
 import type { ChatMessage } from "../types";
 
 interface Props {
@@ -198,25 +199,87 @@ export function Message({
           )}
         </div>
 
-        {!isUser && message.usage?.total_tokens != null && !isStreaming && (
-          <div className="msg-usage" title="OpenRouter usage">
-            {message.usage.prompt_tokens != null &&
-              message.usage.completion_tokens != null && (
+        {!isUser && !isStreaming && message.usage && (() => {
+          const u = message.usage;
+          const isPrime = message.model === "fortytwo-prime";
+          const hasIn = u.prompt_tokens != null;
+          const hasOut = u.completion_tokens != null;
+          const hasTotal = u.total_tokens != null;
+          const hasCost = u.cost != null;
+
+          if (isPrime) {
+            const tin = u.prompt_tokens;
+            const tout = u.completion_tokens;
+            if (tin == null && tout == null) {
+              if (!hasTotal) return null;
+              return (
+                <div
+                  className="msg-usage msg-usage-prime"
+                  title="Token usage for this reply"
+                >
+                  <span>{formatTokens(u.total_tokens!)} tokens</span>
+                </div>
+              );
+            }
+            const nIn = tin ?? 0;
+            const nOut = tout ?? 0;
+            const total =
+              hasTotal && u.total_tokens != null ? u.total_tokens : nIn + nOut;
+            const usd = estimatePrimeUsdCost(nIn, nOut);
+            return (
+              <div
+                className="msg-usage msg-usage-prime"
+                title="Estimated cost from list rates: $10 / 1M input, $30 / 1M output"
+              >
                 <span>
-                  ↑ {formatTokens(message.usage.prompt_tokens)} ↓{" "}
-                  {formatTokens(message.usage.completion_tokens)}
+                  {tin != null && <>↑ {formatTokens(tin)}</>}
+                  {tin != null && tout != null && " "}
+                  {tout != null && <>↓ {formatTokens(tout)}</>}
+                </span>
+                <span className="dotSep">·</span>
+                <span>{formatTokens(total)} tokens</span>
+                <span className="dotSep">·</span>
+                <span>{formatCost(usd)}</span>
+              </div>
+            );
+          }
+
+          const showInOut = hasIn || hasOut;
+          const showOpenRouterExtras = hasTotal || hasCost;
+          if (!showInOut && !showOpenRouterExtras) return null;
+          return (
+            <div className="msg-usage" title="OpenRouter usage">
+              {hasIn && hasOut && (
+                <span>
+                  ↑ {formatTokens(u.prompt_tokens!)} ↓{" "}
+                  {formatTokens(u.completion_tokens!)}
                 </span>
               )}
-            <span className="dotSep">·</span>
-            <span>{formatTokens(message.usage.total_tokens)} tokens</span>
-            {message.usage.cost != null && (
-              <>
-                <span className="dotSep">·</span>
-                <span>{formatCost(message.usage.cost)}</span>
-              </>
-            )}
-          </div>
-        )}
+              {hasIn && !hasOut && (
+                <span>↑ {formatTokens(u.prompt_tokens!)}</span>
+              )}
+              {!hasIn && hasOut && (
+                <span>↓ {formatTokens(u.completion_tokens!)}</span>
+              )}
+              {showOpenRouterExtras && (
+                <>
+                  {showInOut && (hasTotal || hasCost) && (
+                    <span className="dotSep">·</span>
+                  )}
+                  {hasTotal && (
+                    <span>{formatTokens(u.total_tokens!)} tokens</span>
+                  )}
+                  {hasCost && (
+                    <>
+                      {hasTotal && <span className="dotSep">·</span>}
+                      <span>{formatCost(u.cost!)}</span>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

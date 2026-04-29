@@ -556,10 +556,28 @@ export default function PrimeApp() {
             },
           });
           // Final-shot fallback: if streaming didn't emit chunks, drop the full text now.
-          updateAssistant((m) => ({
-            ...m,
-            content: m.content && m.content.length > 0 ? m.content : result.text,
-          }));
+          // Surface per-reply token usage (Fortytwo _meta) for the assistant bubble.
+          updateAssistant((m) => {
+            const u = result.usage;
+            const usage: ChatMessage["usage"] | undefined =
+              u && (u.tokensIn != null || u.tokensOut != null)
+                ? {
+                    ...(u.tokensIn != null
+                      ? { prompt_tokens: u.tokensIn }
+                      : {}),
+                    ...(u.tokensOut != null
+                      ? { completion_tokens: u.tokensOut }
+                      : {}),
+                    total_tokens: (u.tokensIn ?? 0) + (u.tokensOut ?? 0),
+                  }
+                : undefined;
+            return {
+              ...m,
+              content:
+                m.content && m.content.length > 0 ? m.content : result.text,
+              ...(usage ? { usage } : {}),
+            };
+          });
           const now = Date.now();
           setLastActivityAt(now);
           if (address && result.session) {

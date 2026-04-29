@@ -40,12 +40,18 @@ function shortHash(h?: string): string {
   return `${clean.slice(0, 8)}…${clean.slice(-6)}`;
 }
 
+/** Truncate Fortytwo session id (UUID) for display; full id in `title`. */
+function shortSessionId(id: string): string {
+  if (id.length <= 18) return id;
+  return `${id.slice(0, 8)}…${id.slice(-6)}`;
+}
+
 function fmtTime(ts: number): string {
   const d = new Date(ts);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString("en-US", {
     year: "numeric",
     month: "short",
-    day: "2-digit",
+    day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -91,7 +97,7 @@ function SessionDetailRow({
   const tokTotal = tokIn + tokOut;
   const msgs = r.messageCount ?? 0;
   const avgTok =
-    msgs > 0 && tokTotal > 0 ? Math.round(tokTotal / msgs) : null;
+    msgs > 1 && tokTotal > 0 ? Math.round(tokTotal / msgs) : null;
 
   const linkAddr = (addr: string, label: string) =>
     addressHref ? (
@@ -170,29 +176,32 @@ function SessionDetailRow({
             <span className="session-history-detail-value">
               <UsdcMark size={12} />{" "}
               {r.authorizedAmountDisplay ||
-                `${formatTokenAmount(r.authorizedAmount)} USDC`}
+                `${formatTokenAmount(r.authorizedAmount, 6, 4)} USDC`}
             </span>
           </div>
         </div>
 
         {(tokIn > 0 || tokOut > 0 || msgs > 0) && (
           <div className="session-history-tokens">
-            <span title="Cumulative tokens from MCP _meta.usage for this session">
-              ↑ {tokIn.toLocaleString()} in · ↓ {tokOut.toLocaleString()} out
-            </span>
-            <span className="session-history-tokens-meta">
-              <span className="session-history-tokens-total">
-                {tokTotal.toLocaleString()} total
+            <div className="session-history-tokens-flow" title="Cumulative tokens from MCP usage metadata for this session">
+              <span className="session-history-tokens-inout">
+                ↑ {tokIn.toLocaleString("en-US")} in · ↓{" "}
+                {tokOut.toLocaleString("en-US")} out
               </span>
-              <span>
-                {msgs} {msgs === 1 ? "msg" : "msgs"}
-              </span>
-              {avgTok != null && (
-                <span title="Average total tokens per successful tools/call">
-                  ~{avgTok.toLocaleString()} avg / msg
+              <span className="session-history-tokens-meta">
+                <span className="session-history-tokens-total">
+                  {tokTotal.toLocaleString("en-US")} tokens total
                 </span>
-              )}
-            </span>
+                <span className="session-history-tokens-msgs">
+                  {msgs} {msgs === 1 ? "message" : "messages"}
+                </span>
+                {avgTok != null && (
+                  <span title="Average tokens per message (this session)">
+                    ~{avgTok.toLocaleString("en-US")} avg / message
+                  </span>
+                )}
+              </span>
+            </div>
           </div>
         )}
 
@@ -200,18 +209,18 @@ function SessionDetailRow({
           {r.apiReportedSpentBaseUnits &&
             BigInt(r.apiReportedSpentBaseUnits) > 0n && (
               <span title="If the MCP payload includes USDC fields in usage metadata">
-                ≈ {formatTokenAmount(r.apiReportedSpentBaseUnits)} API est.
+                ≈ {formatTokenAmount(r.apiReportedSpentBaseUnits, 6, 4)} API est.
                 spent
               </span>
             )}
           {r.spentAmount && BigInt(r.spentAmount) > 0n && (
             <span title="On-chain: authorized − refunded">
-              ↦ {formatTokenAmount(r.spentAmount)} spent
+              ↦ {formatTokenAmount(r.spentAmount, 6, 4)} spent
             </span>
           )}
           {r.refundedAmount && BigInt(r.refundedAmount) > 0n && (
             <span title="Refunded" className="session-history-pos">
-              + {formatTokenAmount(r.refundedAmount)} refunded
+              + {formatTokenAmount(r.refundedAmount, 6, 4)} refunded
             </span>
           )}
           {r.closedAt &&
@@ -271,8 +280,8 @@ function SessionDetailRow({
         </div>
 
         <div className="session-history-session-id">
-          <code className="session-history-id-full" title={r.id}>
-            {r.id}
+          <code className="session-history-id-code" title={r.id}>
+            {shortSessionId(r.id)}
           </code>
           <button
             type="button"
@@ -334,26 +343,30 @@ export function SessionHistory({
       messages,
       tokens,
       awaitingRefundCount,
+      remainder: auth - spent - refunded,
     };
   }, [records]);
 
+  const absRemainder =
+    totals.remainder < 0n ? -totals.remainder : totals.remainder;
+
   const spentOnChainLabel =
     totals.spent > 0n
-      ? formatTokenAmount(totals.spent.toString())
+      ? formatTokenAmount(totals.spent.toString(), 6, 4)
       : totals.awaitingRefundCount > 0
         ? "Pending"
         : "—";
 
   const refundedLabel =
     totals.refunded > 0n
-      ? formatTokenAmount(totals.refunded.toString())
+      ? formatTokenAmount(totals.refunded.toString(), 6, 4)
       : totals.awaitingRefundCount > 0
         ? "Pending"
         : "—";
 
   const apiSpentLabel =
     totals.apiSpent > 0n
-      ? formatTokenAmount(totals.apiSpent.toString())
+      ? formatTokenAmount(totals.apiSpent.toString(), 6, 4)
       : null;
 
   if (!open) return null;
@@ -395,9 +408,15 @@ export function SessionHistory({
           <>
             <div className="session-history-totals">
               <div className="session-history-total">
-                <span className="session-history-total-label">Total authorized</span>
+                <span
+                  className="session-history-total-label"
+                  title="Sum of USDC authorized across listed sessions."
+                >
+                  Total authorized
+                </span>
                 <span className="session-history-total-value">
-                  <UsdcMark size={12} /> {formatTokenAmount(totals.auth.toString())}
+                  <UsdcMark size={12} />{" "}
+                  {formatTokenAmount(totals.auth.toString(), 6, 4)}
                 </span>
               </div>
               <div className="session-history-total">
@@ -405,7 +424,7 @@ export function SessionHistory({
                   className="session-history-total-label"
                   title="USDC kept by the network after escrow release (authorized − refunded on-chain)."
                 >
-                  Spent (on-chain)
+                  Spent
                 </span>
                 <span
                   className={`session-history-total-value${
@@ -421,7 +440,7 @@ export function SessionHistory({
                     className="session-history-total-label"
                     title="Sum of per-call charges if the MCP response includes USDC fields in _meta.usage."
                   >
-                    Spent (API est.)
+                    Spent (est.)
                   </span>
                   <span className="session-history-total-value">
                     <UsdcMark size={12} /> {apiSpentLabel}
@@ -433,7 +452,7 @@ export function SessionHistory({
                   className="session-history-total-label"
                   title="USDC returned to your wallet after the session closed."
                 >
-                  Refunded (on-chain)
+                  Refunded
                 </span>
                 <span
                   className={`session-history-total-value${
@@ -446,18 +465,33 @@ export function SessionHistory({
               <div className="session-history-total">
                 <span className="session-history-total-label">Messages</span>
                 <span className="session-history-total-value">
-                  {totals.messages.toLocaleString()}
+                  {totals.messages.toLocaleString("en-US")}
                 </span>
               </div>
               {totals.tokens > 0 && (
                 <div className="session-history-total">
                   <span className="session-history-total-label">Tokens</span>
                   <span className="session-history-total-value">
-                    {totals.tokens.toLocaleString()}
+                    {totals.tokens.toLocaleString("en-US")}
                   </span>
                 </div>
               )}
             </div>
+            {totals.auth > 0n &&
+              totals.remainder !== 0n &&
+              absRemainder <= 50_000n && (
+                <p
+                  className="session-history-totals-note"
+                  title={`Exact remainder: ${formatTokenAmount(
+                    absRemainder.toString(),
+                    6,
+                    6
+                  )} USDC (base units).`}
+                >
+                  Authorized versus spent + refunded can differ by a fraction of a
+                  USDC due to rounding in the UI or minimal on-chain dust.
+                </p>
+              )}
 
             <div className="session-history-list">
               {records.map((r) => (
@@ -484,7 +518,11 @@ export function SessionHistory({
               Clear history
             </button>
           )}
-          <button type="button" className="primary-btn" onClick={onClose}>
+          <button
+            type="button"
+            className="primary-btn session-history-close-btn"
+            onClick={onClose}
+          >
             Close
           </button>
         </div>
