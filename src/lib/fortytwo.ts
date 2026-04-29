@@ -118,9 +118,14 @@ export interface TokenUsage {
 
 /**
  * Fortytwo session hard cap (see docs/mcp-integration).
- * The 10min idle timeout is enforced by the UI from last-activity timestamps.
+ * The 10min idle timeout is enforced locally and must match `loadSession` /
+ * `PrimeApp` so we never send `x-session-id` after the server dropped the
+ * session (otherwise Fortytwo can error before the payment step).
  */
 const SESSION_HARD_CAP_MS = 60 * 60 * 1000;
+
+/** Idle timeout — keep in sync with docs/mcp-integration and PrimeApp. */
+export const PRIME_SESSION_IDLE_MS = 10 * 60 * 1000;
 
 export interface AskPrimeOptions {
   query: string;
@@ -217,14 +222,32 @@ function uuidV4(): string {
 // --------------------------------------------------------------------------
 
 export function loadSession(address: string): PrimeSession | null {
+  const key = SESSION_KEY_PREFIX + address.toLowerCase();
   try {
-    const raw = localStorage.getItem(SESSION_KEY_PREFIX + address.toLowerCase());
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const s = JSON.parse(raw) as PrimeSession;
-    if (!s.sessionId || typeof s.expiresAt !== "number") return null;
-    if (s.expiresAt < Date.now()) return null;
+    if (!s.sessionId || typeof s.expiresAt !== "number") {
+      localStorage.removeItem(key);
+      return null;
+    }
+    const now = Date.now();
+    if (s.expiresAt < now) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    const last = s.lastActivityAt ?? s.openedAt ?? 0;
+    if (last + PRIME_SESSION_IDLE_MS < now) {
+      localStorage.removeItem(key);
+      return null;
+    }
     return s;
   } catch {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* ignore */
+    }
     return null;
   }
 }
@@ -824,7 +847,7 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
 
   let currentSession = session ?? null;
 
-  // Up to 2 attempts: one with cached session, one fresh after 402/410.
+  // Up to 2 attempts: e.g. cached session rejected → retry without x-session-id.
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await makeToolsCallRequest({
       query,
@@ -844,9 +867,25 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
       return { text: consumed.text, session: currentSession, usage: consumed.usage };
     }
 
-    // Session expired/unknown → drop it and retry without sessionId in the next loop step.
-    if (res.status === 410 && currentSession) {
+    async function dropSessionAndRetry(): Promise<void> {
+      try {
+        await res.text();
+      } catch {
+        /* ignore */
+      }
       currentSession = null;
+      clearSession(address);
+    }
+
+    // Session expired / unknown (Fortytwo uses 410 or 404 "session not found").
+    if ((res.status === 410 || res.status === 404) && currentSession) {
+      await dropSessionAndRetry();
+      continue;
+    }
+
+    // Some deployments return 500 for bad session state; retry once without it.
+    if (res.status === 500 && currentSession) {
+      await dropSessionAndRetry();
       continue;
     }
 

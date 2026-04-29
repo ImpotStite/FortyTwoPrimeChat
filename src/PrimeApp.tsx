@@ -22,6 +22,7 @@ import {
   askPrime,
   clearSession,
   loadSession,
+  PRIME_SESSION_IDLE_MS,
   saveSession,
   type PrimeSession,
 } from "./lib/fortytwo";
@@ -223,8 +224,7 @@ export default function PrimeApp() {
   // ---- Detect local session expiry (idle 10min or hard cap 60min) ----
   useEffect(() => {
     if (!address || !session) return;
-    const IDLE_MS = 10 * 60 * 1000;
-    const idleAt = lastActivityAt + IDLE_MS;
+    const idleAt = lastActivityAt + PRIME_SESSION_IDLE_MS;
     const effective = Math.min(session.expiresAt, idleAt);
     if (Date.now() < effective) return;
     const reason: CloseReason =
@@ -779,8 +779,7 @@ export default function PrimeApp() {
       };
     // Fortytwo closes a session on the *earlier* of the 60min hard cap or
     // 10min idle timeout — mirror that locally so the pill matches reality.
-    const IDLE_MS = 10 * 60 * 1000;
-    const idleExpiry = lastActivityAt + IDLE_MS;
+    const idleExpiry = lastActivityAt + PRIME_SESSION_IDLE_MS;
     const effectiveExpiry = Math.min(session.expiresAt, idleExpiry);
     const reason: "idle" | "cap" =
       idleExpiry < session.expiresAt ? "idle" : "cap";
