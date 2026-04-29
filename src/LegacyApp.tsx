@@ -13,7 +13,6 @@ import {
   modelSupportsImages,
   streamChatCompletion,
 } from "./lib/openrouter";
-import { exportAllJson, parseImport } from "./lib/exportImport";
 import type {
   ChatMessage,
   Conversation,
@@ -69,7 +68,6 @@ export default function LegacyApp() {
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const stored = loadConversations();
@@ -170,13 +168,6 @@ export default function LegacyApp() {
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c))
     );
-  };
-
-  const handleClearAll = () => {
-    if (!confirm("Delete all conversations?")) return;
-    const c = newConversation(defaultModel);
-    setConversations([c]);
-    setActiveId(c.id);
   };
 
   const handleStop = () => {
@@ -408,39 +399,6 @@ export default function LegacyApp() {
     setDefaultModel(id);
   };
 
-  // ---- Import / Export ----
-
-  const handleExportAll = () => {
-    if (conversations.length === 0) return;
-    exportAllJson(conversations);
-  };
-
-  const handleImportClick = () => importRef.current?.click();
-
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const incoming = parseImport(text);
-      const valid = incoming.filter(
-        (c) => c && c.id && Array.isArray(c.messages)
-      );
-      if (valid.length === 0) throw new Error("Empty or invalid import file");
-      setConversations((prev) => {
-        const existing = new Map(prev.map((c) => [c.id, c] as const));
-        for (const c of valid) existing.set(c.id, c);
-        return [...existing.values()].sort(
-          (a, b) => b.updatedAt - a.updatedAt
-        );
-      });
-      alert(`Import complete: ${valid.length} conversation(s) merged.`);
-    } catch (err) {
-      alert(`Import failed: ${(err as Error).message}`);
-    }
-  };
-
   // ---- Keyboard shortcuts ----
 
   useEffect(() => {
@@ -465,14 +423,6 @@ export default function LegacyApp() {
       className={`app ${sidebarOpen ? "sidebar-open" : ""}`}
       data-theme={theme}
     >
-      <input
-        ref={importRef}
-        type="file"
-        accept="application/json,.json"
-        onChange={handleImportFile}
-        hidden
-      />
-
       <Sidebar
         conversations={conversations}
         activeId={activeId}
@@ -481,9 +431,6 @@ export default function LegacyApp() {
         onDelete={handleDelete}
         onRename={handleRename}
         onTogglePin={handleTogglePin}
-        onClearAll={handleClearAll}
-        onExportAll={handleExportAll}
-        onImport={handleImportClick}
         modelLabel={activeModel}
       />
 

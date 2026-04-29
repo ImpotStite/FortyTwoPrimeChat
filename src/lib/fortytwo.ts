@@ -29,13 +29,12 @@
 import {
   createPublicClient,
   hashTypedData,
-  http,
   parseSignature,
   type Address,
   type Hex,
   type TypedDataDomain,
 } from "viem";
-import { monad } from "./privy";
+import { monad, monadHttpTransport } from "./privy";
 
 /**
  * Default endpoint: same-origin `/api/mcp` (Vercel Function proxy in `api/mcp.ts`).
@@ -98,6 +97,23 @@ export interface PrimeSession {
   paymentTxHash?: string;
   /** Timestamp (ms) when the session was opened — used to enforce the 60min hard cap. */
   openedAt?: number;
+  /** ERC-20 asset signed against (USDC contract address). */
+  asset?: Address;
+  /** Recipient of the EIP-3009 transfer (FortyTwo escrow address). */
+  payTo?: Address;
+  /**
+   * Last tools/call completion time (ms) — persisted so idle timeout survives
+   * reload and matches server-side session rules.
+   */
+  lastActivityAt?: number;
+}
+
+/** Token usage for one tools/call, parsed from `_meta.usage`. */
+export interface TokenUsage {
+  tokensIn?: number;
+  tokensOut?: number;
+  /** USDC charged this call in base units (6 dp), if present in `_meta.usage`. */
+  usdcChargedBaseUnits?: string;
 }
 
 /**
@@ -122,6 +138,8 @@ export interface AskPrimeOptions {
   onChunk?: (text: string) => void;
   /** Called when a session is created/refreshed (after a successful payment). */
   onSession?: (session: PrimeSession) => void;
+  /** Called once per successful tools/call with token usage from `_meta.usage`. */
+  onUsage?: (usage: TokenUsage) => void;
   /**
    * Called right before signing — UI can show a confirmation modal and gate
    * the actual signTypedData call. Resolve the returned promise to proceed,
@@ -133,6 +151,8 @@ export interface AskPrimeOptions {
 export interface AskPrimeResult {
   text: string;
   session: PrimeSession | null;
+  /** Token usage parsed from `_meta.usage` if present (cumulative for the call). */
+  usage?: TokenUsage;
 }
 
 // --------------------------------------------------------------------------
@@ -306,6 +326,64 @@ async function makeToolsCallRequest(args: MakeRequestArgs): Promise<Response> {
   });
 }
 
+interface ConsumedResponse {
+  text: string;
+  usage?: TokenUsage;
+}
+
+/** Pick optional integer USDC base units from MCP usage/meta objects. */
+function pickUsdcBaseUnits(
+  usageRaw: Record<string, unknown>,
+  meta?: Record<string, unknown>
+): string | undefined {
+  const keys = [
+    "usdc_charged_base_units",
+    "charged_base_units",
+    "amount_charged_base_units",
+    "usdc_base_units",
+    "cost_usdc_base_units",
+    "x402_charged_base_units",
+    "usdc_amount",
+    "charged_usdc",
+  ];
+  for (const obj of [usageRaw, meta]) {
+    if (!obj) continue;
+    for (const k of keys) {
+      const v = obj[k];
+      if (typeof v === "string" && /^\d+$/.test(v)) return v;
+      if (typeof v === "number" && Number.isFinite(v) && v >= 0 && v === Math.floor(v)) {
+        return String(Math.trunc(v));
+      }
+    }
+  }
+  return undefined;
+}
+
+/** Parse `_meta.usage` (FortyTwo) or `usage` (OpenAI-ish) into TokenUsage. */
+function pickUsage(rpcResult: unknown): TokenUsage | undefined {
+  if (!rpcResult || typeof rpcResult !== "object") return undefined;
+  const r = rpcResult as Record<string, unknown>;
+  const meta = (r._meta ?? r.meta) as Record<string, unknown> | undefined;
+  const usageRaw = (meta?.usage ?? r.usage) as
+    | Record<string, unknown>
+    | undefined;
+  const tokensIn =
+    (usageRaw?.tokens_in as number | undefined) ??
+    (usageRaw?.prompt_tokens as number | undefined) ??
+    (usageRaw?.input_tokens as number | undefined);
+  const tokensOut =
+    (usageRaw?.tokens_out as number | undefined) ??
+    (usageRaw?.completion_tokens as number | undefined) ??
+    (usageRaw?.output_tokens as number | undefined);
+  const usdc = pickUsdcBaseUnits(usageRaw ?? {}, meta);
+  if (tokensIn == null && tokensOut == null && usdc == null) return undefined;
+  return {
+    tokensIn: typeof tokensIn === "number" ? tokensIn : undefined,
+    tokensOut: typeof tokensOut === "number" ? tokensOut : undefined,
+    usdcChargedBaseUnits: usdc,
+  };
+}
+
 /**
  * Read either an SSE stream or a single JSON body, accumulate the assistant
  * text, and emit deltas via `onChunk`.
@@ -313,7 +391,7 @@ async function makeToolsCallRequest(args: MakeRequestArgs): Promise<Response> {
 async function consumeResponse(
   res: Response,
   onChunk?: (text: string) => void
-): Promise<string> {
+): Promise<ConsumedResponse> {
   const ct = res.headers.get("content-type") || "";
 
   if (ct.includes("text/event-stream") && res.body) {
@@ -322,6 +400,7 @@ async function consumeResponse(
     let buf = "";
     let finalText = "";
     let lastEmitted = "";
+    let usage: TokenUsage | undefined;
 
     const emitFrom = (rpc: any) => {
       // Notifications: progress with partial text → stream delta.
@@ -372,6 +451,8 @@ async function consumeResponse(
             lastEmitted = text;
           }
         }
+        const u = pickUsage(rpc.result);
+        if (u) usage = u;
       }
       if (rpc?.error) {
         throw new Error(
@@ -405,7 +486,7 @@ async function consumeResponse(
       }
     }
 
-    return finalText || lastEmitted;
+    return { text: finalText || lastEmitted, usage };
   }
 
   // Non-streaming JSON reply.
@@ -421,7 +502,7 @@ async function consumeResponse(
         ? json.result.text
         : "";
   if (text && onChunk) onChunk(text);
-  return text;
+  return { text, usage: pickUsage(json?.result) };
 }
 
 function decodePaymentRequired(res: Response): PaymentRequired | null {
@@ -469,6 +550,8 @@ function buildSession(
     network: accept.network,
     openedAt,
     paymentTxHash: txHash,
+    asset: accept.asset,
+    payTo: accept.payTo,
   };
 }
 
@@ -560,7 +643,10 @@ async function resolveDomainHints(
   }
 
   try {
-    const client = createPublicClient({ chain: monad, transport: http() });
+    const client = createPublicClient({
+      chain: monad,
+      transport: monadHttpTransport,
+    });
     const [name, version] = await Promise.all([
       client.readContract({
         address: asset,
@@ -734,6 +820,7 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
     signal,
     onChunk,
     onSession,
+    onUsage,
     onPaymentRequired,
   } = opts;
 
@@ -748,14 +835,15 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
     });
 
     if (res.ok) {
-      const text = await consumeResponse(res, onChunk);
+      const consumed = await consumeResponse(res, onChunk);
       // Refresh session id if the server rotated it.
       const sid = res.headers.get("x-session-id");
       if (sid && currentSession && sid !== currentSession.sessionId) {
         currentSession = { ...currentSession, sessionId: sid };
         if (onSession) onSession(currentSession);
       }
-      return { text, session: currentSession };
+      if (consumed.usage && onUsage) onUsage(consumed.usage);
+      return { text: consumed.text, session: currentSession, usage: consumed.usage };
     }
 
     // Session expired/unknown → drop it and retry without sessionId in the next loop step.
@@ -808,13 +896,18 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
         );
       }
 
-      const text = await consumeResponse(replay, onChunk);
+      const consumed = await consumeResponse(replay, onChunk);
       const built = buildSession(replay, accept);
       if (built) {
         currentSession = built;
         if (onSession) onSession(built);
       }
-      return { text, session: currentSession };
+      if (consumed.usage && onUsage) onUsage(consumed.usage);
+      return {
+        text: consumed.text,
+        session: currentSession,
+        usage: consumed.usage,
+      };
     }
 
     // Other errors → bail out.

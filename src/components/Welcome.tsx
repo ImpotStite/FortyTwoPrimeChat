@@ -28,7 +28,15 @@ export function Welcome({ onPick, modelLabel }: Props) {
   const isPrime = modelLabel === "FortyTwo Prime";
   return (
     <div className="welcome">
-      <div className="welcome-logo">42</div>
+      <div className="welcome-logo">
+        <img
+          className="welcome-logo-img"
+          src="/fortytwo-prime-mark.png"
+          width={64}
+          height={64}
+          alt="FortyTwo Prime"
+        />
+      </div>
       <h1 className="welcome-title">How can I help you today?</h1>
       <p className="welcome-sub">
         {isPrime ? (

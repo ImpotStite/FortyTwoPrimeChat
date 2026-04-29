@@ -10,9 +10,6 @@ interface Props {
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onTogglePin: (id: string) => void;
-  onClearAll: () => void;
-  onExportAll: () => void;
-  onImport: () => void;
   modelLabel: string;
 }
 
@@ -24,9 +21,6 @@ export function Sidebar({
   onDelete,
   onRename,
   onTogglePin,
-  onClearAll,
-  onExportAll,
-  onImport,
   modelLabel,
 }: Props) {
   const [query, setQuery] = useState("");
@@ -146,7 +140,15 @@ export function Sidebar({
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="brand">
-          <div className="brand-mark">42</div>
+          <div className="brand-mark">
+            <img
+              className="brand-mark-img"
+              src="/fortytwo-prime-mark.png"
+              width={38}
+              height={38}
+              alt=""
+            />
+          </div>
           <div className="brand-text">
             <div className="brand-title">Prime Chat</div>
             <div className="brand-sub" title={modelLabel}>
@@ -196,23 +198,6 @@ export function Sidebar({
             {arr.map(renderItem)}
           </div>
         ))}
-      </div>
-
-      <div className="sidebar-footer">
-        <button type="button" className="btn btn-ghost" onClick={onImport}>
-          Import
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={onExportAll}>
-          Export
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={onClearAll}
-          title="Clear all"
-        >
-          ⌫
-        </button>
       </div>
     </aside>
   );

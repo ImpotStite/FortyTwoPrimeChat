@@ -8,15 +8,22 @@
 
 import {
   createPublicClient,
-  http,
   formatUnits,
   type Address,
   type PublicClient,
 } from "viem";
-import { monad } from "./privy";
+import { monad, monadHttpTransport } from "./privy";
 
 export const USDC_MONAD_ADDRESS: Address =
   "0x754704Bc059F8C67012fEd69BC8A327a5aafb603";
+
+/**
+ * FortyTwo x402Escrow contract on Monad (same address on Base per docs).
+ * Used when older history rows lack `payTo` so we can still match refunds.
+ * @see https://docs.fortytwo.network/docs/mcp-integration
+ */
+export const FORTYTWO_X402_ESCROW_MONAD: Address =
+  "0x9562f50f73d8eE22276F13A18D051456d8D137a0";
 
 const ERC20_ABI = [
   {
@@ -40,7 +47,7 @@ function getClient(): PublicClient {
   if (cachedClient) return cachedClient;
   cachedClient = createPublicClient({
     chain: monad,
-    transport: http(),
+    transport: monadHttpTransport,
   });
   return cachedClient;
 }

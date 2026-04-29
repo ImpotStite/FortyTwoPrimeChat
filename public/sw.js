@@ -1,6 +1,6 @@
 /* FortyTwo Prime Chat — minimal service worker (offline app shell). */
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const APP_SHELL = `app-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `assets-${CACHE_VERSION}`;
 
@@ -8,7 +8,9 @@ const APP_SHELL_URLS = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
-  "/favicon.svg",
+  "/favicon-32.png",
+  "/fortytwo-prime-mark.png",
+  "/apple-touch-icon.png",
 ];
 
 self.addEventListener("install", (event) => {

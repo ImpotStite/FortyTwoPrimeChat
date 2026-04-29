@@ -1,9 +1,9 @@
-import { defineChain } from "viem";
+import { defineChain, http } from "viem";
 import type { PrivyClientConfig } from "@privy-io/react-auth";
 
 const RPC_URL =
   (import.meta.env.VITE_MONAD_RPC_URL as string | undefined) ||
-  "https://rpc.monad.xyz";
+  "https://rpc3.monad.xyz";
 
 /** Monad mainnet (chainId 143). Native gas token is MON. */
 export const monad = defineChain({
@@ -14,6 +14,15 @@ export const monad = defineChain({
     default: { http: [RPC_URL] },
     public: { http: [RPC_URL] },
   },
+});
+
+/**
+ * Shared JSON-RPC transport. `batch: false` keeps each RPC call in its own POST —
+ * public RPCs (e.g. monad.xyz) often reject fat batch payloads with HTTP 413.
+ */
+export const monadHttpTransport = http(RPC_URL, {
+  batch: false,
+  timeout: 45_000,
 });
 
 export const PRIVY_APP_ID =

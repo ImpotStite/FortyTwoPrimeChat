@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { createWalletClient, custom, type Address, type Hex } from "viem";
 import { Sidebar } from "./components/Sidebar";
@@ -11,7 +18,6 @@ import {
   loadPrimeConversations,
   savePrimeConversations,
 } from "./lib/storage";
-import { exportAllJson, parseImport } from "./lib/exportImport";
 import {
   askPrime,
   clearSession,
@@ -20,13 +26,46 @@ import {
   type PrimeSession,
 } from "./lib/fortytwo";
 import { monad } from "./lib/privy";
-import { readUsdcBalance, type UsdcBalance } from "./lib/usdc";
+import {
+  FORTYTWO_X402_ESCROW_MONAD,
+  readUsdcBalance,
+  type UsdcBalance,
+} from "./lib/usdc";
 import { UsdcMark } from "./components/Icons";
+import { Toaster, useToasts } from "./components/Toaster";
+import { SessionInfo } from "./components/SessionInfo";
+import { SessionHistory } from "./components/SessionHistory";
+import {
+  appendSessionStarted,
+  clearSessionHistory,
+  effectivePayTo,
+  findRefundTargetRecord,
+  formatTokenAmount,
+  incrementSessionUsage,
+  loadSessionHistory,
+  markSessionClosed,
+  primeSessionChainId,
+  recordSessionRefund,
+  type CloseReason,
+  type PrimeSessionRecord,
+} from "./lib/primeHistory";
+import { watchUsdcRefunds } from "./lib/escrowEvents";
 import type {
   ChatMessage,
   Conversation,
   ImageAttachment,
 } from "./types";
+
+/** Base URL of the Monad mainnet block explorer. */
+const MONAD_EXPLORER_BASE = "https://monadvision.com";
+
+function explorerTxHref(txHash: string): string {
+  return `${MONAD_EXPLORER_BASE}/tx/${txHash}`;
+}
+
+function explorerAddrHref(addr: string): string {
+  return `${MONAD_EXPLORER_BASE}/address/${addr}`;
+}
 
 const RETRY_PATTERNS = [/upstream/i, /\b50\d\b/, /timeout/i, /network/i];
 
@@ -49,7 +88,7 @@ function shortAddress(addr?: string | null): string {
 
 export default function PrimeApp() {
   const { theme, toggle: toggleTheme } = useTheme();
-  const { ready, authenticated, login, logout, user } = usePrivy();
+  const { ready, authenticated, login, logout, user, linkWallet } = usePrivy();
   const { wallets } = useWallets();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -70,10 +109,14 @@ export default function PrimeApp() {
   const [sessionTimerTick, setSessionTimerTick] = useState(0);
   /** Last successful exchange (ms) — used for the 10min idle timeout. */
   const [lastActivityAt, setLastActivityAt] = useState<number>(() => Date.now());
+  const [sessionPopoverOpen, setSessionPopoverOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState<PrimeSessionRecord[]>([]);
+  const toasts = useToasts();
+  const sessionIdRef = useRef<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const importRef = useRef<HTMLInputElement>(null);
   const confirmResolverRef = useRef<((accept: boolean) => void) | null>(null);
 
   const wallet = useMemo(() => {
@@ -101,11 +144,19 @@ export default function PrimeApp() {
   useEffect(() => {
     if (!address) {
       setSession(null);
+      setHistoryRecords([]);
       return;
     }
     const restored = loadSession(address);
     setSession(restored);
-    if (restored) setLastActivityAt(Date.now());
+    if (restored) {
+      setLastActivityAt(
+        restored.lastActivityAt ?? restored.openedAt ?? Date.now()
+      );
+    } else {
+      setLastActivityAt(Date.now());
+    }
+    setHistoryRecords(loadSessionHistory(address));
   }, [address]);
 
   useEffect(() => {
@@ -115,6 +166,85 @@ export default function PrimeApp() {
     }, 10_000);
     return () => window.clearInterval(id);
   }, [session?.sessionId, session?.expiresAt]);
+
+  sessionIdRef.current = session?.sessionId ?? null;
+
+  const refundEscrows = useMemo((): Address[] => {
+    if (!address) return [];
+    const set = new Set<string>();
+    if (session?.payTo) set.add(session.payTo.toLowerCase());
+    for (const r of historyRecords) {
+      if (r.refundTxHash) continue;
+      const p = effectivePayTo(r);
+      if (p) set.add(p.toLowerCase());
+      // Refund always settles from x402Escrow on Monad; keep watching even if
+      // payTo was a facilitator or history row lacks payTo but chain is 143.
+      if (primeSessionChainId(r) === 143) {
+        set.add(FORTYTWO_X402_ESCROW_MONAD.toLowerCase());
+      }
+    }
+    return Array.from(set) as Address[];
+  }, [address, session?.payTo, historyRecords]);
+
+  // ---- On-chain refund watcher (USDC Transfer escrow → user) ----
+  useEffect(() => {
+    if (!address || refundEscrows.length === 0) return;
+    const stop = watchUsdcRefunds({
+      user: address,
+      escrows: refundEscrows,
+      onRefund: (log) => {
+        const list = loadSessionHistory(address);
+        const target = findRefundTargetRecord(list, {
+          sessionId: sessionIdRef.current,
+          refundFrom: log.from,
+        });
+        if (!target) return;
+        const applied = recordSessionRefund(address, target.id, {
+          txHash: log.txHash,
+          amount: log.value.toString(),
+        });
+        if (!applied) return;
+        setHistoryRecords(loadSessionHistory(address));
+        toasts.push({
+          kind: "success",
+          title: "Refund received",
+          description: "Unused USDC has been returned to your wallet.",
+          amount: formatTokenAmount(log.value.toString()),
+          txHash: log.txHash,
+        });
+        readUsdcBalance(address)
+          .then((b) => setUsdcBalance(b))
+          .catch(() => {
+            /* ignore */
+          });
+      },
+    });
+    return stop;
+  }, [address, refundEscrows, toasts.push]);
+
+  // ---- Detect local session expiry (idle 10min or hard cap 60min) ----
+  useEffect(() => {
+    if (!address || !session) return;
+    const IDLE_MS = 10 * 60 * 1000;
+    const idleAt = lastActivityAt + IDLE_MS;
+    const effective = Math.min(session.expiresAt, idleAt);
+    if (Date.now() < effective) return;
+    const reason: CloseReason =
+      idleAt < session.expiresAt ? "idle" : "hard-cap";
+    markSessionClosed(address, session.sessionId, reason);
+    clearSession(address);
+    setSession(null);
+    setHistoryRecords(loadSessionHistory(address));
+    toasts.push({
+      kind: "info",
+      title: "Session ended",
+      description:
+        reason === "idle"
+          ? "Idle timeout (10 min). Unused USDC will be refunded on-chain."
+          : "Session reached the 60-minute limit. Unused USDC will be refunded on-chain.",
+      durationMs: 9000,
+    });
+  }, [address, session, sessionTimerTick, lastActivityAt, toasts.push]);
 
   // Poll USDC balance: on connect, after each successful reply, every 30s.
   useEffect(() => {
@@ -206,13 +336,6 @@ export default function PrimeApp() {
     );
   };
 
-  const handleClearAll = () => {
-    if (!confirm("Delete all conversations?")) return;
-    const c = newConversation();
-    setConversations([c]);
-    setActiveId(c.id);
-  };
-
   const handleStop = () => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -220,10 +343,48 @@ export default function PrimeApp() {
   };
 
   const handleDisconnectWallet = useCallback(() => {
+    if (address && session) {
+      markSessionClosed(address, session.sessionId, "manual");
+    }
     if (address) clearSession(address);
     setSession(null);
     void logout();
-  }, [address, logout]);
+  }, [address, logout, session]);
+
+  /** Privy: `login()` often no-ops when already authenticated but no wallet is linked. */
+  const handleConnectWalletClick = useCallback(
+    (e: ReactMouseEvent<HTMLButtonElement>) => {
+      if (!ready) return;
+      if (authenticated && !address) {
+        linkWallet(e);
+      } else {
+        login(e);
+      }
+    },
+    [ready, authenticated, address, login, linkWallet]
+  );
+
+  const handleEndSessionLocally = useCallback(() => {
+    if (!address || !session) return;
+    markSessionClosed(address, session.sessionId, "manual");
+    clearSession(address);
+    setSession(null);
+    setSessionPopoverOpen(false);
+    setHistoryRecords(loadSessionHistory(address));
+    toasts.push({
+      kind: "info",
+      title: "Session ended",
+      description:
+        "Refund will arrive on-chain when FortyTwo settles the unused balance.",
+      durationMs: 7000,
+    });
+  }, [address, session, toasts]);
+
+  const handleClearHistory = useCallback(() => {
+    if (!address) return;
+    clearSessionHistory(address);
+    setHistoryRecords([]);
+  }, [address]);
 
   // ---- Wallet signing helper ----
 
@@ -318,6 +479,10 @@ export default function PrimeApp() {
         }
         try {
           const cachedSession = address ? loadSession(address) : null;
+          // Local session id used to attribute usage on the same call —
+          // closure-stable, unlike the React state which only updates on
+          // the next render.
+          let activeSessionId = cachedSession?.sessionId ?? null;
           const result = await askPrime({
             query: userQuery,
             address,
@@ -331,11 +496,49 @@ export default function PrimeApp() {
               }));
             },
             onSession: (s) => {
-              if (address) saveSession(address, s);
-              setSession(s);
+              activeSessionId = s.sessionId;
+              const stamped: PrimeSession = {
+                ...s,
+                lastActivityAt: Date.now(),
+              };
+              if (address) {
+                saveSession(address, stamped);
+                appendSessionStarted(address, {
+                  id: s.sessionId,
+                  network: s.network,
+                  authorizedAmount: s.authorizedAmount,
+                  authorizedAmountDisplay: s.authorizedAmountDisplay,
+                  openedAt: s.openedAt ?? Date.now(),
+                  settleTxHash: s.paymentTxHash,
+                  asset: s.asset,
+                  payTo: s.payTo,
+                });
+                setHistoryRecords(loadSessionHistory(address));
+              }
+              setSession(stamped);
               setLastActivityAt(Date.now());
               setSigningState("idle");
               setPendingAmount(null);
+              const decimals = 6;
+              const human = (Number(s.authorizedAmount) / 10 ** decimals).toString();
+              toasts.push({
+                kind: "success",
+                title: "Session opened",
+                description: s.paymentTxHash
+                  ? "Settle transaction confirmed on Monad."
+                  : "USDC authorized — awaiting on-chain confirmation.",
+                amount: human,
+                txHash: s.paymentTxHash,
+              });
+            },
+            onUsage: (usage) => {
+              if (!address || !activeSessionId) return;
+              incrementSessionUsage(address, activeSessionId, {
+                tokensIn: usage.tokensIn,
+                tokensOut: usage.tokensOut,
+                usdcChargedBaseUnits: usage.usdcChargedBaseUnits,
+              });
+              setHistoryRecords(loadSessionHistory(address));
             },
             onPaymentRequired: (accept) => {
               const decimals = 6;
@@ -360,8 +563,16 @@ export default function PrimeApp() {
             ...m,
             content: m.content && m.content.length > 0 ? m.content : result.text,
           }));
-          // Re-arm the 10-min idle timer.
-          setLastActivityAt(Date.now());
+          const now = Date.now();
+          setLastActivityAt(now);
+          if (address && result.session) {
+            const merged: PrimeSession = {
+              ...result.session,
+              lastActivityAt: now,
+            };
+            saveSession(address, merged);
+            setSession(merged);
+          }
           lastError = null;
           break;
         } catch (e) {
@@ -525,39 +736,6 @@ export default function PrimeApp() {
     }));
   };
 
-  // ---- Import / Export ----
-
-  const handleExportAll = () => {
-    if (conversations.length === 0) return;
-    exportAllJson(conversations);
-  };
-
-  const handleImportClick = () => importRef.current?.click();
-
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const incoming = parseImport(text);
-      const valid = incoming.filter(
-        (c) => c && c.id && Array.isArray(c.messages)
-      );
-      if (valid.length === 0) throw new Error("Empty or invalid import file");
-      setConversations((prev) => {
-        const existing = new Map(prev.map((c) => [c.id, c] as const));
-        for (const c of valid) existing.set(c.id, c);
-        return [...existing.values()].sort(
-          (a, b) => b.updatedAt - a.updatedAt
-        );
-      });
-      alert(`Import complete: ${valid.length} conversation(s) merged.`);
-    } catch (err) {
-      alert(`Import failed: ${(err as Error).message}`);
-    }
-  };
-
   // ---- Keyboard shortcuts ----
 
   useEffect(() => {
@@ -592,27 +770,34 @@ export default function PrimeApp() {
     active: boolean;
     label: string;
     title: string;
+    effectiveExpiresAt: number | null;
+    reason: "idle" | "cap" | null;
   }>(() => {
     if (!session)
       return {
         active: false,
         label: "No session",
         title: "First message will require a one-time signature",
+        effectiveExpiresAt: null,
+        reason: null,
       };
     // FortyTwo closes a session on the *earlier* of the 60min hard cap or
     // 10min idle timeout — mirror that locally so the pill matches reality.
     const IDLE_MS = 10 * 60 * 1000;
     const idleExpiry = lastActivityAt + IDLE_MS;
     const effectiveExpiry = Math.min(session.expiresAt, idleExpiry);
+    const reason: "idle" | "cap" =
+      idleExpiry < session.expiresAt ? "idle" : "cap";
     const ms = effectiveExpiry - Date.now();
     if (ms <= 0)
       return {
         active: false,
         label: "Session expired",
         title: "Next message will require a fresh signature",
+        effectiveExpiresAt: effectiveExpiry,
+        reason,
       };
     const mins = Math.max(1, Math.round(ms / 60000));
-    const reason = idleExpiry < session.expiresAt ? "idle" : "cap";
     return {
       active: true,
       label: `Session · ${mins}m left`,
@@ -620,22 +805,22 @@ export default function PrimeApp() {
         reason === "idle"
           ? `Idle timeout in ~${mins} min — send any message to keep the session alive (up to ${session.authorizedAmountDisplay} authorized)`
           : `Up to ${session.authorizedAmountDisplay} authorized — no further signature needed for ~${mins} min`,
+      effectiveExpiresAt: effectiveExpiry,
+      reason,
     };
   }, [session, sessionTimerTick, lastActivityAt]);
+
+  /** Active session record (for popover) — null until first reply. */
+  const activeRecord = useMemo<PrimeSessionRecord | undefined>(() => {
+    if (!session) return undefined;
+    return historyRecords.find((r) => r.id === session.sessionId);
+  }, [session, historyRecords]);
 
   return (
     <div
       className={`app ${sidebarOpen ? "sidebar-open" : ""}`}
       data-theme={theme}
     >
-      <input
-        ref={importRef}
-        type="file"
-        accept="application/json,.json"
-        onChange={handleImportFile}
-        hidden
-      />
-
       <Sidebar
         conversations={conversations}
         activeId={activeId}
@@ -644,9 +829,6 @@ export default function PrimeApp() {
         onDelete={handleDelete}
         onRename={handleRename}
         onTogglePin={handleTogglePin}
-        onClearAll={handleClearAll}
-        onExportAll={handleExportAll}
-        onImport={handleImportClick}
         modelLabel="FortyTwo Prime"
       />
 
@@ -672,19 +854,41 @@ export default function PrimeApp() {
           </div>
           <div className="topbar-tools">
             {ready && authenticated && address && (
-              <span
-                className={`session-pill ${
-                  sessionState.active ? "is-active" : "is-idle"
-                }`}
-                title={sessionState.title}
-              >
-                <span
-                  className={`session-dot ${
+              <div className="session-pill-wrap">
+                <button
+                  type="button"
+                  className={`session-pill ${
                     sessionState.active ? "is-active" : "is-idle"
                   }`}
+                  title={sessionState.title}
+                  onClick={() =>
+                    session && setSessionPopoverOpen((v) => !v)
+                  }
+                  disabled={!session}
+                  aria-haspopup="dialog"
+                  aria-expanded={sessionPopoverOpen}
+                >
+                  <span
+                    className={`session-dot ${
+                      sessionState.active ? "is-active" : "is-idle"
+                    }`}
+                  />
+                  {sessionState.label}
+                </button>
+                <SessionInfo
+                  open={sessionPopoverOpen}
+                  onClose={() => setSessionPopoverOpen(false)}
+                  session={session}
+                  record={activeRecord}
+                  effectiveExpiresAt={sessionState.effectiveExpiresAt}
+                  expiresReason={sessionState.reason}
+                  explorerHref={explorerTxHref}
+                  addressHref={explorerAddrHref}
+                  onEndSessionLocally={
+                    sessionState.active ? handleEndSessionLocally : undefined
+                  }
                 />
-                {sessionState.label}
-              </span>
+              </div>
             )}
             {ready && authenticated && address ? (
               <div
@@ -734,10 +938,21 @@ export default function PrimeApp() {
               <button
                 type="button"
                 className="primary-btn"
-                onClick={() => login()}
+                onClick={handleConnectWalletClick}
                 disabled={!ready}
               >
                 {ready ? "Connect wallet" : "Loading…"}
+              </button>
+            )}
+            {ready && authenticated && address && (
+              <button
+                type="button"
+                className="icon-btn-2"
+                onClick={() => setHistoryOpen(true)}
+                title="Session history"
+                aria-label="Session history"
+              >
+                <HistoryIcon />
               </button>
             )}
             <button
@@ -869,6 +1084,14 @@ export default function PrimeApp() {
                   Waiting for your wallet… open it to review and sign the
                   EIP-712 authorization.
                 </p>
+                <p className="modal-text modal-text-signing-gap">
+                  This step may take about a minute or several minutes.
+                </p>
+                <p className="modal-signing-warn">
+                  <strong>
+                    Do not reload this page while signing is in progress.
+                  </strong>
+                </p>
                 <div className="thinking">
                   <span /><span /><span />
                 </div>
@@ -878,9 +1101,38 @@ export default function PrimeApp() {
         </div>
       )}
 
+      <SessionHistory
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        records={historyRecords}
+        explorerHref={explorerTxHref}
+        addressHref={explorerAddrHref}
+        onClear={handleClearHistory}
+      />
+
+      <Toaster
+        toasts={toasts.toasts}
+        onDismiss={toasts.dismiss}
+        explorerHref={explorerTxHref}
+      />
+
       {/* Hidden but keeps user variable referenced so it stays in scope for future use. */}
       {user ? null : null}
     </div>
+  );
+}
+
+function HistoryIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M3 12a9 9 0 1 0 3-6.7M3 5v4h4M12 7v5l3 2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
