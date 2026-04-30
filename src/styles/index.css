@@ -635,7 +635,58 @@ kbd {
 .topbar-tools {
   display: flex;
   align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.topbar-tools-cluster {
+  display: flex;
+  align-items: center;
   gap: 6px;
+  min-width: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+.topbar-tools-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .topbar-tools-cluster .memory-toggle-name {
+    display: none;
+  }
+}
+
+.topbar-tools-cluster .session-pill-wrap {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.topbar-tools-cluster .session-pill {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.session-pill-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.topbar-tools-cluster .memory-toggle {
+  flex-shrink: 0;
+}
+
+.topbar-tools-cluster .wallet-pill {
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 /* Model picker */
@@ -1637,13 +1688,6 @@ kbd {
   .composer-wrap {
     padding: 10px 12px 12px 12px;
   }
-
-  .composer-hint {
-    margin-top: 6px;
-    font-size: 10px;
-    line-height: 1.35;
-    padding: 0 2px;
-  }
 }
 
 .suggestion-text {
@@ -1841,6 +1885,18 @@ kbd {
   font-size: 11px;
   color: var(--text-muted);
   margin-top: 8px;
+  line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+  .composer-hint {
+    font-size: 10px;
+    margin-top: 6px;
+    padding: 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 /* Error bar */
@@ -2009,6 +2065,7 @@ kbd {
   border: 1px solid var(--border);
   border-radius: 999px;
   white-space: nowrap;
+  min-width: 0;
   transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 

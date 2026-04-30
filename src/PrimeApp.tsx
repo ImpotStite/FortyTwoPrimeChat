@@ -1065,122 +1065,130 @@ export default function PrimeApp() {
             {active?.title || "New chat"}
           </div>
           <div className="topbar-tools">
-            {ready && authenticated && address && (
-              <MemoryToggle
-                enabled={memoryEnabled}
-                onChange={setMemoryEnabled}
-              />
-            )}
-            {ready && authenticated && address && (
-              <div className="session-pill-wrap">
-                <button
-                  type="button"
-                  className={`session-pill ${
-                    sessionState.active ? "is-active" : "is-idle"
-                  }`}
-                  title={sessionState.title}
-                  onClick={() =>
-                    session && setSessionPopoverOpen((v) => !v)
-                  }
-                  disabled={!session}
-                  aria-haspopup="dialog"
-                  aria-expanded={sessionPopoverOpen}
-                >
-                  <span
-                    className={`session-dot ${
+            <div className="topbar-tools-cluster">
+              {ready && authenticated && address && (
+                <MemoryToggle
+                  enabled={memoryEnabled}
+                  onChange={setMemoryEnabled}
+                />
+              )}
+              {ready && authenticated && address && (
+                <div className="session-pill-wrap">
+                  <button
+                    type="button"
+                    className={`session-pill ${
                       sessionState.active ? "is-active" : "is-idle"
                     }`}
+                    title={sessionState.title}
+                    onClick={() =>
+                      session && setSessionPopoverOpen((v) => !v)
+                    }
+                    disabled={!session}
+                    aria-haspopup="dialog"
+                    aria-expanded={sessionPopoverOpen}
+                  >
+                    <span
+                      className={`session-dot ${
+                        sessionState.active ? "is-active" : "is-idle"
+                      }`}
+                    />
+                    <span className="session-pill-label">
+                      {sessionState.label}
+                    </span>
+                  </button>
+                  <SessionInfo
+                    open={sessionPopoverOpen}
+                    onClose={() => setSessionPopoverOpen(false)}
+                    session={session}
+                    record={activeRecord}
+                    effectiveExpiresAt={sessionState.effectiveExpiresAt}
+                    expiresReason={sessionState.reason}
+                    explorerHref={explorerTxHref}
+                    addressHref={explorerAddrHref}
+                    onEndSessionLocally={
+                      sessionState.active
+                        ? handleEndSessionLocally
+                        : undefined
+                    }
                   />
-                  {sessionState.label}
-                </button>
-                <SessionInfo
-                  open={sessionPopoverOpen}
-                  onClose={() => setSessionPopoverOpen(false)}
-                  session={session}
-                  record={activeRecord}
-                  effectiveExpiresAt={sessionState.effectiveExpiresAt}
-                  expiresReason={sessionState.reason}
-                  explorerHref={explorerTxHref}
-                  addressHref={explorerAddrHref}
-                  onEndSessionLocally={
-                    sessionState.active ? handleEndSessionLocally : undefined
-                  }
-                />
-              </div>
-            )}
-            {ready && authenticated && address ? (
-              <div
-                className="wallet-pill"
-                title={`${address} · Monad`}
-              >
-                <span
-                  className="wallet-balance"
-                  title={
-                    usdcBalance
-                      ? `${usdcBalance.formatted} USDC on Monad`
-                      : "Reading USDC balance…"
-                  }
+                </div>
+              )}
+              {ready && authenticated && address ? (
+                <div
+                  className="wallet-pill"
+                  title={`${address} · Monad`}
                 >
-                  <UsdcMark size={14} />
-                  {usdcBalance
-                    ? usdcBalance.display
-                    : usdcLoading
-                      ? "…"
-                      : "—"}
-                </span>
-                <span className="wallet-addr">{shortAddress(address)}</span>
+                  <span
+                    className="wallet-balance"
+                    title={
+                      usdcBalance
+                        ? `${usdcBalance.formatted} USDC on Monad`
+                        : "Reading USDC balance…"
+                    }
+                  >
+                    <UsdcMark size={14} />
+                    {usdcBalance
+                      ? usdcBalance.display
+                      : usdcLoading
+                        ? "…"
+                        : "—"}
+                  </span>
+                  <span className="wallet-addr">{shortAddress(address)}</span>
+                  <button
+                    type="button"
+                    className="wallet-disconnect"
+                    onClick={handleDisconnectWallet}
+                    aria-label="Disconnect wallet"
+                    title="Disconnect"
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden
+                    >
+                      <path
+                        d="M6 6l12 12M18 6L6 18"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  className="wallet-disconnect"
-                  onClick={handleDisconnectWallet}
-                  aria-label="Disconnect wallet"
-                  title="Disconnect"
+                  className="primary-btn"
+                  onClick={handleConnectWalletClick}
+                  disabled={!ready}
                 >
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    aria-hidden
-                  >
-                    <path
-                      d="M6 6l12 12M18 6L6 18"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  {ready ? "Connect wallet" : "Loading…"}
                 </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="primary-btn"
-                onClick={handleConnectWalletClick}
-                disabled={!ready}
-              >
-                {ready ? "Connect wallet" : "Loading…"}
-              </button>
-            )}
-            {ready && authenticated && address && (
+              )}
+            </div>
+            <div className="topbar-tools-actions">
+              {ready && authenticated && address && (
+                <button
+                  type="button"
+                  className="icon-btn-2"
+                  onClick={() => setHistoryOpen(true)}
+                  title="Session history"
+                  aria-label="Session history"
+                >
+                  <HistoryIcon />
+                </button>
+              )}
               <button
                 type="button"
                 className="icon-btn-2"
-                onClick={() => setHistoryOpen(true)}
-                title="Session history"
-                aria-label="Session history"
+                onClick={toggleTheme}
+                title={theme === "dark" ? "Light theme" : "Dark theme"}
               >
-                <HistoryIcon />
+                {theme === "dark" ? <SunIcon /> : <MoonIcon />}
               </button>
-            )}
-            <button
-              type="button"
-              className="icon-btn-2"
-              onClick={toggleTheme}
-              title={theme === "dark" ? "Light theme" : "Dark theme"}
-            >
-              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-            </button>
+            </div>
           </div>
         </header>
 

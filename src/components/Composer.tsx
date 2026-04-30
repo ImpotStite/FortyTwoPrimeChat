@@ -14,10 +14,14 @@ const COMPOSER_PLACEHOLDER_WIDE =
 const COMPOSER_PLACEHOLDER_NARROW = "Type a message…";
 const COMPOSER_INPUT_HINT =
   "Enter sends the message. Shift+Enter adds a new line.";
+const COMPOSER_HINT_FULL =
+  "Fortytwo Prime can't be wrong but double-check important information anyways.";
+const COMPOSER_HINT_NARROW =
+  "Double-check important information yourself.";
 
 const NARROW_MQ = "(max-width: 640px)";
 
-function useNarrowComposerPlaceholder(): boolean {
+function useNarrowViewport640(): boolean {
   const [narrow, setNarrow] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia(NARROW_MQ).matches
@@ -65,7 +69,7 @@ export function Composer({
 }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const narrowPlaceholder = useNarrowComposerPlaceholder();
+  const narrowViewport = useNarrowViewport640();
 
   useEffect(() => {
     const el = ref.current;
@@ -172,7 +176,7 @@ export function Composer({
             onKeyDown={onKeyDown}
             onPaste={onPaste}
             placeholder={
-              narrowPlaceholder
+              narrowViewport
                 ? COMPOSER_PLACEHOLDER_NARROW
                 : COMPOSER_PLACEHOLDER_WIDE
             }
@@ -207,9 +211,11 @@ export function Composer({
           {statusLine}
         </div>
       ) : null}
-      <div className="composer-hint">
-        Fortytwo Prime can't be wrong but double-check important information
-        anyways.
+      <div
+        className="composer-hint"
+        title={COMPOSER_HINT_FULL}
+      >
+        {narrowViewport ? COMPOSER_HINT_NARROW : COMPOSER_HINT_FULL}
       </div>
     </div>
   );
