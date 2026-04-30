@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeHighlight from "rehype-highlight";
+import rehypeKatex from "rehype-katex";
 import { CodePre } from "./CodeBlock";
 import {
   formatApproximateCost,
@@ -200,8 +202,8 @@ export function Message({
                 </div>
               ) : (
                 <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeHighlight]}
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex, rehypeHighlight]}
                   components={{ pre: CodePre }}
                 >
                   {message.content ?? ""}

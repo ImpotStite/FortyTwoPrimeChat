@@ -1278,7 +1278,7 @@ export default function PrimeApp() {
                   );
                 })}
                 {showPrimeNetworkLoader ? (
-                  <PrimeNetworkLoader subtitle={composerStatusLine} />
+                  <PrimeNetworkLoader />
                 ) : null}
               </div>
             )}

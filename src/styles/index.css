@@ -894,25 +894,6 @@ kbd {
   text-align: left;
 }
 
-.prime-loader-subtitle {
-  position: absolute;
-  top: 76px;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 0 16px;
-  max-width: 90%;
-  text-align: center;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--text-dim);
-  z-index: 10;
-}
-
-.prime-loader-subtitle--placeholder {
-  opacity: 0.85;
-}
-
 .prime-loader-canvas {
   position: absolute;
   inset: 0;
@@ -1248,6 +1229,22 @@ kbd {
 
 .markdown {
   position: relative;
+}
+
+/* KaTeX math (remark-math + rehype-katex) */
+.markdown .katex {
+  font-size: 1.06em;
+}
+
+.markdown .katex-display {
+  margin: 14px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 0;
+}
+
+:root[data-theme="dark"] .markdown .katex {
+  color: var(--text);
 }
 
 .markdown-error {

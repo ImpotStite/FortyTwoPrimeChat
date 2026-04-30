@@ -83,12 +83,7 @@ function FallbackSprite({ color }: { color: string }) {
   );
 }
 
-type Props = {
-  /** Phase line from parent (matches composer / thinking hint). */
-  subtitle: string | null;
-};
-
-export function PrimeNetworkLoader({ subtitle }: Props) {
+export function PrimeNetworkLoader() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef(0);
@@ -134,7 +129,11 @@ export function PrimeNetworkLoader({ subtitle }: Props) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
+      const isDark =
+        document.documentElement.getAttribute("data-theme") === "dark";
+      ctx.strokeStyle = isDark
+        ? "rgba(255, 255, 255, 0.34)"
+        : "rgba(0, 0, 0, 0.3)";
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 6]);
       ctx.lineDashOffset = motion ? 0 : -dashOffsetRef.current;
@@ -212,18 +211,6 @@ export function PrimeNetworkLoader({ subtitle }: Props) {
             {".".repeat(dots)}
           </span>
         </h2>
-        {subtitle ? (
-          <p className="prime-loader-subtitle" aria-live="polite">
-            {subtitle}
-          </p>
-        ) : (
-          <p
-            className="prime-loader-subtitle prime-loader-subtitle--placeholder"
-            aria-live="polite"
-          >
-            Preparing your reply…
-          </p>
-        )}
         <canvas ref={canvasRef} className="prime-loader-canvas" aria-hidden />
         <div className="prime-loader-nodes">
           {NODES.map((node, index) => (
