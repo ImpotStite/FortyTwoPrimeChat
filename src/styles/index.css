@@ -1018,6 +1018,50 @@ kbd {
   scroll-behavior: smooth;
 }
 
+@media (max-width: 640px) {
+  .messages {
+    padding: 18px 12px 140px 12px;
+  }
+
+  .messages.messages--empty-chat {
+    padding-top: 10px;
+    padding-bottom: 72px;
+  }
+
+  .messages.messages--empty-chat .welcome {
+    margin-top: 4px;
+  }
+
+  .messages.messages--empty-chat .welcome-logo {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 10px;
+  }
+
+  .messages.messages--empty-chat .welcome-title {
+    font-size: clamp(1.22rem, 5vw, 1.55rem);
+    margin-bottom: 4px;
+  }
+
+  .messages.messages--empty-chat .welcome-sub {
+    margin-bottom: 12px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .messages.messages--empty-chat .suggestions {
+    gap: 8px;
+  }
+
+  .messages.messages--empty-chat .suggestion-title {
+    font-size: 13px;
+  }
+
+  .messages.messages--empty-chat .suggestion-text {
+    font-size: 12px;
+  }
+}
+
 .jump-latest-btn {
   position: absolute;
   bottom: 28px;
@@ -1574,6 +1618,32 @@ kbd {
 .suggestion-title {
   font-weight: 600;
   font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .welcome {
+    margin-top: 8px;
+    margin-bottom: 0;
+  }
+
+  .welcome-sub {
+    margin-bottom: 16px;
+  }
+
+  .suggestion {
+    padding: 11px 12px;
+  }
+
+  .composer-wrap {
+    padding: 10px 12px 12px 12px;
+  }
+
+  .composer-hint {
+    margin-top: 6px;
+    font-size: 10px;
+    line-height: 1.35;
+    padding: 0 2px;
+  }
 }
 
 .suggestion-text {
@@ -2416,16 +2486,40 @@ kbd {
   white-space: nowrap;
 }
 
-.memory-toggle-tooltip {
-  position: absolute;
-  z-index: 50;
-  top: calc(100% + 8px);
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-  width: min(276px, calc(100vw - 24px));
-  max-width: 276px;
+.memory-toggle-help {
+  display: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 0 0 2px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1;
+  color: var(--text-dim);
+  background: var(--bg-elev-3);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .memory-toggle-help {
+    display: grid;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .memory-toggle-help {
+    display: none;
+  }
+}
+
+.memory-toggle-tooltip-portal {
+  box-sizing: border-box;
   padding: 12px 14px;
   background: var(--bg-elev-1);
   border: 1px solid var(--border-strong);
@@ -2438,26 +2532,13 @@ kbd {
   line-height: 1.5;
   color: var(--text);
   text-align: left;
-  white-space: normal;
   pointer-events: none;
-  visibility: hidden;
-  opacity: 0;
-  transition:
-    opacity 0.14s ease,
-    visibility 0.14s ease,
-    transform 0.14s ease;
 }
 
-:root[data-theme="dark"] .memory-toggle-tooltip {
+:root[data-theme="dark"] .memory-toggle-tooltip-portal {
   box-shadow:
     0 4px 6px rgba(0, 0, 0, 0.25),
     0 16px 40px rgba(0, 0, 0, 0.45);
-}
-
-.memory-toggle:hover .memory-toggle-tooltip,
-.memory-toggle:focus-within .memory-toggle-tooltip {
-  visibility: visible;
-  opacity: 1;
 }
 
 .memory-toggle-tooltip-title {
@@ -2477,8 +2558,7 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
   .memory-toggle-track,
-  .memory-toggle-thumb,
-  .memory-toggle-tooltip {
+  .memory-toggle-thumb {
     transition: none;
   }
 }

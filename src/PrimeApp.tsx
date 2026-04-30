@@ -61,6 +61,7 @@ import {
 } from "./lib/appSurfaceError";
 import { ErrorActionBar } from "./components/ErrorActionBar";
 import { PrimeNetworkLoader } from "./components/PrimeNetworkLoader";
+import { MemoryToggle } from "./components/MemoryToggle";
 import type {
   ChatMessage,
   Conversation,
@@ -81,13 +82,6 @@ const RETRY_PATTERNS = [/upstream/i, /\b50\d\b/, /timeout/i, /network/i];
 
 /** Persist Memory toggle in localStorage (key). */
 const PRIME_MEMORY_STORAGE_KEY = "fortytwo-prime-memory-enabled";
-
-/** Tooltip copy for the Memory help popover (English UI). */
-const MEMORY_TOOLTIP = {
-  title: "What Memory does",
-  body:
-    "Prior messages in this chat are sent with each Fortytwo request so replies can use context. That increases input tokens, so cost may be higher—especially on long threads.",
-} as const;
 const PRIME_PROGRESS_MESSAGES: Record<PrimeRequestPhase, string> = {
   initializing: "Connecting to Fortytwo…",
   calling_tool: "Sending your request to Fortytwo…",
@@ -1072,35 +1066,10 @@ export default function PrimeApp() {
           </div>
           <div className="topbar-tools">
             {ready && authenticated && address && (
-              <div className="memory-toggle">
-                <p id="memory-help-desc" className="memory-toggle-sr-desc">
-                  {MEMORY_TOOLTIP.title}. {MEMORY_TOOLTIP.body}
-                </p>
-                <button
-                  type="button"
-                  className="memory-toggle-switch"
-                  role="switch"
-                  aria-checked={memoryEnabled}
-                  aria-labelledby="memory-toggle-name"
-                  aria-describedby="memory-help-desc"
-                  onClick={() => setMemoryEnabled((v) => !v)}
-                >
-                  <span className="memory-toggle-track" aria-hidden>
-                    <span className="memory-toggle-thumb" />
-                  </span>
-                </button>
-                <span className="memory-toggle-name" id="memory-toggle-name">
-                  Memory
-                </span>
-                <div className="memory-toggle-tooltip" role="tooltip" aria-hidden="true">
-                  <span className="memory-toggle-tooltip-title">
-                    {MEMORY_TOOLTIP.title}
-                  </span>
-                  <span className="memory-toggle-tooltip-body">
-                    {MEMORY_TOOLTIP.body}
-                  </span>
-                </div>
-              </div>
+              <MemoryToggle
+                enabled={memoryEnabled}
+                onChange={setMemoryEnabled}
+              />
             )}
             {ready && authenticated && address && (
               <div className="session-pill-wrap">
@@ -1217,7 +1186,11 @@ export default function PrimeApp() {
 
         <div className="messages-wrap">
           <div
-            className="messages"
+            className={`messages${
+              !active || active.messages.length === 0
+                ? " messages--empty-chat"
+                : ""
+            }`}
             ref={scrollRef}
             onScroll={onScroll}
           >
