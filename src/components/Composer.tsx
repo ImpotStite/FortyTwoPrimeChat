@@ -11,6 +11,8 @@ interface Props {
   onSubmit: () => void;
   onStop: () => void;
   isLoading: boolean;
+  /** Short status when a request is in flight (e.g. Fortytwo progress). */
+  statusLine?: string | null;
   disabled?: boolean;
   visionAllowed: boolean;
   onError?: (msg: string) => void;
@@ -24,6 +26,7 @@ export function Composer({
   onSubmit,
   onStop,
   isLoading,
+  statusLine,
   disabled,
   visionAllowed,
   onError,
@@ -160,6 +163,12 @@ export function Composer({
           )}
         </div>
       </div>
+      {isLoading && statusLine ? (
+        <div className="composer-status" role="status">
+          <span className="composer-status-pulse" aria-hidden />
+          {statusLine}
+        </div>
+      ) : null}
       <div className="composer-hint">
         Fortytwo Prime can't be wrong but double-check important information
         anyways.

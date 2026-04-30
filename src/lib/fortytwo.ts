@@ -127,6 +127,16 @@ const SESSION_HARD_CAP_MS = 60 * 60 * 1000;
 /** Idle timeout — keep in sync with docs/mcp-integration and PrimeApp. */
 export const PRIME_SESSION_IDLE_MS = 10 * 60 * 1000;
 
+/** Human-driven progress for Fortytwo `askPrime` (optional UI). */
+export type PrimeRequestPhase =
+  | "initializing"
+  | "calling_tool"
+  | "needs_payment"
+  | "wallet_payment"
+  | "confirming_payment"
+  | "starting_reply"
+  | "streaming";
+
 export interface AskPrimeOptions {
   query: string;
   address: Address;
@@ -151,6 +161,10 @@ export interface AskPrimeOptions {
    * reject (or throw) to abort.
    */
   onPaymentRequired?: (accept: PaymentAccept) => void | Promise<void>;
+  /**
+   * Fired as the paid `tools/call` flow advances so the UI can explain long waits.
+   */
+  onRequestPhase?: (phase: PrimeRequestPhase) => void;
 }
 
 export interface AskPrimeResult {
@@ -158,6 +172,21 @@ export interface AskPrimeResult {
   session: PrimeSession | null;
   /** Token usage parsed from `_meta.usage` if present (cumulative for the call). */
   usage?: TokenUsage;
+}
+
+function wrapOnChunkWithPhase(
+  onChunk: ((text: string) => void) | undefined,
+  onRequestPhase: ((phase: PrimeRequestPhase) => void) | undefined
+): ((text: string) => void) | undefined {
+  if (!onChunk && !onRequestPhase) return undefined;
+  let beforeFirstChunk = true;
+  return (delta: string) => {
+    if (beforeFirstChunk && delta.length > 0) {
+      beforeFirstChunk = false;
+      onRequestPhase?.("streaming");
+    }
+    onChunk?.(delta);
+  };
 }
 
 // --------------------------------------------------------------------------
@@ -878,14 +907,17 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
     onSession,
     onUsage,
     onPaymentRequired,
+    onRequestPhase,
   } = opts;
 
   let currentSession = session ?? null;
 
+  onRequestPhase?.("initializing");
   await ensureMcpInitialized(signal);
 
   // Up to 2 attempts: e.g. cached session rejected → retry without x-session-id.
   for (let attempt = 0; attempt < 2; attempt++) {
+    onRequestPhase?.("calling_tool");
     const res = await makeToolsCallRequest({
       query,
       sessionId: currentSession?.sessionId,
@@ -893,7 +925,9 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
     });
 
     if (res.ok) {
-      const consumed = await consumeResponse(res, onChunk);
+      onRequestPhase?.("starting_reply");
+      const wrapped = wrapOnChunkWithPhase(onChunk, onRequestPhase);
+      const consumed = await consumeResponse(res, wrapped);
       // Refresh session id if the server rotated it.
       const sid = res.headers.get("x-session-id");
       if (sid && currentSession && sid !== currentSession.sessionId) {
@@ -953,16 +987,19 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
           "No accepted payment route for Monad (eip155:143). Check your network or try later."
         );
       }
+      onRequestPhase?.("needs_payment");
       if (onPaymentRequired) {
         await onPaymentRequired(accept);
       }
 
+      onRequestPhase?.("wallet_payment");
       const signatureB64 = await buildPaymentSignature(
         accept,
         address,
         signTypedDataAsync
       );
 
+      onRequestPhase?.("confirming_payment");
       const replay = await makeToolsCallRequest({
         query,
         paymentSignatureB64: signatureB64,
@@ -978,7 +1015,9 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
         );
       }
 
-      const consumed = await consumeResponse(replay, onChunk);
+      onRequestPhase?.("starting_reply");
+      const wrappedReplay = wrapOnChunkWithPhase(onChunk, onRequestPhase);
+      const consumed = await consumeResponse(replay, wrappedReplay);
       const built = buildSession(replay, accept);
       if (built) {
         currentSession = built;

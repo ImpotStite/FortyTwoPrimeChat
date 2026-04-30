@@ -25,6 +25,7 @@ import {
   loadSession,
   PRIME_SESSION_IDLE_MS,
   saveSession,
+  type PrimeRequestPhase,
   type PrimeSession,
 } from "./lib/fortytwo";
 import { monad } from "./lib/privy";
@@ -58,6 +59,7 @@ import {
   type AppSurfaceError,
 } from "./lib/appSurfaceError";
 import { ErrorActionBar } from "./components/ErrorActionBar";
+import { PrimeNetworkLoader } from "./components/PrimeNetworkLoader";
 import type {
   ChatMessage,
   Conversation,
@@ -75,6 +77,18 @@ function explorerAddrHref(addr: string): string {
 }
 
 const RETRY_PATTERNS = [/upstream/i, /\b50\d\b/, /timeout/i, /network/i];
+
+/** User-visible step while a Fortytwo request is in flight (English UI). */
+const PRIME_PROGRESS_MESSAGES: Record<PrimeRequestPhase, string> = {
+  initializing: "Connecting to Fortytwo…",
+  calling_tool: "Sending your request to Fortytwo…",
+  needs_payment: "Confirm payment in the dialog above.",
+  wallet_payment: "Sign the USDC authorization in your wallet…",
+  confirming_payment:
+    "Confirming payment with Fortytwo and opening your session…",
+  starting_reply: "Fortytwo is generating your reply…",
+  streaming: "Receiving the response…",
+};
 
 function newConversation(): Conversation {
   const now = Date.now();
@@ -105,6 +119,8 @@ export default function PrimeApp() {
   const [surfaceError, setSurfaceError] = useState<AppSurfaceError | null>(
     null
   );
+  const [primeProgressPhase, setPrimeProgressPhase] =
+    useState<PrimeRequestPhase | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [session, setSession] = useState<PrimeSession | null>(null);
   const [signingState, setSigningState] = useState<
@@ -300,6 +316,28 @@ export default function PrimeApp() {
     }
   );
 
+  const composerStatusLine = useMemo(() => {
+    if (!isLoading || !primeProgressPhase) return null;
+    const last = active?.messages[active.messages.length - 1];
+    if (
+      primeProgressPhase === "streaming" &&
+      last?.role === "assistant" &&
+      (last.content?.length ?? 0) > 0
+    ) {
+      return null;
+    }
+    return PRIME_PROGRESS_MESSAGES[primeProgressPhase];
+  }, [isLoading, primeProgressPhase, active?.messages]);
+
+  const showPrimeNetworkLoader = useMemo(() => {
+    if (!isLoading || !active?.messages.length) return false;
+    const last = active.messages[active.messages.length - 1];
+    return (
+      last?.role === "assistant" &&
+      (last.content?.trim() ?? "").length === 0
+    );
+  }, [isLoading, active?.messages]);
+
   const updateActive = useCallback(
     (updater: (c: Conversation) => Conversation) => {
       setConversations((prev) =>
@@ -354,6 +392,7 @@ export default function PrimeApp() {
     abortRef.current?.abort();
     abortRef.current = null;
     lastFailedPrimeRef.current = null;
+    setPrimeProgressPhase(null);
     setIsLoading(false);
   };
 
@@ -468,6 +507,7 @@ export default function PrimeApp() {
           showReconnect: a.showReconnect,
           showRetry: false,
         });
+        setPrimeProgressPhase(null);
         setIsLoading(false);
         return;
       }
@@ -505,10 +545,14 @@ export default function PrimeApp() {
           showReconnect: a.showReconnect,
           showRetry: false,
         });
+        setPrimeProgressPhase(null);
         setIsLoading(false);
         return null;
       });
-      if (!signer) return;
+      if (!signer) {
+        setPrimeProgressPhase(null);
+        return;
+      }
 
       lastFailedPrimeRef.current = {
         conversationId,
@@ -516,174 +560,177 @@ export default function PrimeApp() {
         userQuery,
       };
 
-      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-        if (attempt > 0) {
-          await new Promise((r) => setTimeout(r, 600));
-          updateAssistant((m) => ({ ...m, content: "", error: false }));
-        }
-        try {
-          const cachedSession = address ? loadSession(address) : null;
-          // Local session id used to attribute usage on the same call —
-          // closure-stable, unlike the React state which only updates on
-          // the next render.
-          let activeSessionId = cachedSession?.sessionId ?? null;
-          const result = await askPrime({
-            query: userQuery,
-            address,
-            signTypedDataAsync: signer,
-            session: cachedSession,
-            signal: ctrl.signal,
-            onChunk: (delta) => {
-              updateAssistant((m) => ({
-                ...m,
-                content: (m.content ?? "") + delta,
-              }));
-            },
-            onSession: (s) => {
-              activeSessionId = s.sessionId;
-              const stamped: PrimeSession = {
-                ...s,
-                lastActivityAt: Date.now(),
-              };
-              if (address) {
-                saveSession(address, stamped);
-                appendSessionStarted(address, {
-                  id: s.sessionId,
-                  network: s.network,
-                  authorizedAmount: s.authorizedAmount,
-                  authorizedAmountDisplay: s.authorizedAmountDisplay,
-                  openedAt: s.openedAt ?? Date.now(),
-                  settleTxHash: s.paymentTxHash,
-                  asset: s.asset,
-                  payTo: s.payTo,
+      try {
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+          if (attempt > 0) {
+            await new Promise((r) => setTimeout(r, 600));
+            updateAssistant((m) => ({ ...m, content: "", error: false }));
+          }
+          try {
+            const cachedSession = address ? loadSession(address) : null;
+            // Local session id used to attribute usage on the same call —
+            // closure-stable, unlike the React state which only updates on
+            // the next render.
+            let activeSessionId = cachedSession?.sessionId ?? null;
+            const result = await askPrime({
+              query: userQuery,
+              address,
+              signTypedDataAsync: signer,
+              session: cachedSession,
+              signal: ctrl.signal,
+              onRequestPhase: setPrimeProgressPhase,
+              onChunk: (delta) => {
+                updateAssistant((m) => ({
+                  ...m,
+                  content: (m.content ?? "") + delta,
+                }));
+              },
+              onSession: (s) => {
+                activeSessionId = s.sessionId;
+                const stamped: PrimeSession = {
+                  ...s,
+                  lastActivityAt: Date.now(),
+                };
+                if (address) {
+                  saveSession(address, stamped);
+                  appendSessionStarted(address, {
+                    id: s.sessionId,
+                    network: s.network,
+                    authorizedAmount: s.authorizedAmount,
+                    authorizedAmountDisplay: s.authorizedAmountDisplay,
+                    openedAt: s.openedAt ?? Date.now(),
+                    settleTxHash: s.paymentTxHash,
+                    asset: s.asset,
+                    payTo: s.payTo,
+                  });
+                  setHistoryRecords(loadSessionHistory(address));
+                }
+                setSession(stamped);
+                setLastActivityAt(Date.now());
+                setSigningState("idle");
+                setPendingAmount(null);
+                const decimals = 6;
+                const human = (Number(s.authorizedAmount) / 10 ** decimals).toString();
+                toasts.push({
+                  kind: "success",
+                  title: "Session opened",
+                  description: s.paymentTxHash
+                    ? "Settle transaction confirmed on Monad."
+                    : "USDC authorized — awaiting on-chain confirmation.",
+                  amount: human,
+                  txHash: s.paymentTxHash,
+                });
+              },
+              onUsage: (usage) => {
+                if (!address || !activeSessionId) return;
+                incrementSessionUsage(address, activeSessionId, {
+                  tokensIn: usage.tokensIn,
+                  tokensOut: usage.tokensOut,
+                  usdcChargedBaseUnits: usage.usdcChargedBaseUnits,
                 });
                 setHistoryRecords(loadSessionHistory(address));
-              }
-              setSession(stamped);
-              setLastActivityAt(Date.now());
-              setSigningState("idle");
-              setPendingAmount(null);
-              const decimals = 6;
-              const human = (Number(s.authorizedAmount) / 10 ** decimals).toString();
-              toasts.push({
-                kind: "success",
-                title: "Session opened",
-                description: s.paymentTxHash
-                  ? "Settle transaction confirmed on Monad."
-                  : "USDC authorized — awaiting on-chain confirmation.",
-                amount: human,
-                txHash: s.paymentTxHash,
-              });
-            },
-            onUsage: (usage) => {
-              if (!address || !activeSessionId) return;
-              incrementSessionUsage(address, activeSessionId, {
-                tokensIn: usage.tokensIn,
-                tokensOut: usage.tokensOut,
-                usdcChargedBaseUnits: usage.usdcChargedBaseUnits,
-              });
-              setHistoryRecords(loadSessionHistory(address));
-            },
-            onPaymentRequired: (accept) => {
-              const decimals = 6;
-              const human = (Number(accept.amount) / 10 ** decimals).toString();
-              setPendingAmount(`${human} USDC`);
-              setSigningState("awaiting-confirm");
-              return new Promise<void>((resolve, reject) => {
-                confirmResolverRef.current = (ok) => {
-                  if (ok) {
-                    setSigningState("waiting-wallet");
-                    resolve();
-                  } else {
-                    ctrl.abort();
-                    reject(new Error("Authorization cancelled"));
-                  }
-                };
-              });
-            },
-          });
-          // Final-shot fallback: if streaming didn't emit chunks, drop the full text now.
-          // Surface per-reply token usage (Fortytwo _meta) for the assistant bubble.
-          updateAssistant((m) => {
-            const u = result.usage;
-            const usage: ChatMessage["usage"] | undefined =
-              u && (u.tokensIn != null || u.tokensOut != null)
-                ? {
-                    ...(u.tokensIn != null
-                      ? { prompt_tokens: u.tokensIn }
-                      : {}),
-                    ...(u.tokensOut != null
-                      ? { completion_tokens: u.tokensOut }
-                      : {}),
-                    total_tokens: (u.tokensIn ?? 0) + (u.tokensOut ?? 0),
-                  }
-                : undefined;
-            return {
-              ...m,
-              content:
-                m.content && m.content.length > 0 ? m.content : result.text,
-              ...(usage ? { usage } : {}),
-            };
-          });
-          const now = Date.now();
-          setLastActivityAt(now);
-          if (address && result.session) {
-            const merged: PrimeSession = {
-              ...result.session,
-              lastActivityAt: now,
-            };
-            saveSession(address, merged);
-            setSession(merged);
-          }
-          lastError = null;
-          lastFailedPrimeRef.current = null;
-          break;
-        } catch (e) {
-          if (ctrl.signal.aborted) {
+              },
+              onPaymentRequired: (accept) => {
+                const decimals = 6;
+                const human = (Number(accept.amount) / 10 ** decimals).toString();
+                setPendingAmount(`${human} USDC`);
+                setSigningState("awaiting-confirm");
+                return new Promise<void>((resolve, reject) => {
+                  confirmResolverRef.current = (ok) => {
+                    if (ok) {
+                      setSigningState("waiting-wallet");
+                      resolve();
+                    } else {
+                      ctrl.abort();
+                      reject(new Error("Authorization cancelled"));
+                    }
+                  };
+                });
+              },
+            });
+            // Final-shot fallback: if streaming didn't emit chunks, drop the full text now.
+            // Surface per-reply token usage (Fortytwo _meta) for the assistant bubble.
+            updateAssistant((m) => {
+              const u = result.usage;
+              const usage: ChatMessage["usage"] | undefined =
+                u && (u.tokensIn != null || u.tokensOut != null)
+                  ? {
+                      ...(u.tokensIn != null
+                        ? { prompt_tokens: u.tokensIn }
+                        : {}),
+                      ...(u.tokensOut != null
+                        ? { completion_tokens: u.tokensOut }
+                        : {}),
+                      total_tokens: (u.tokensIn ?? 0) + (u.tokensOut ?? 0),
+                    }
+                  : undefined;
+              return {
+                ...m,
+                content:
+                  m.content && m.content.length > 0 ? m.content : result.text,
+                ...(usage ? { usage } : {}),
+              };
+            });
+            const now = Date.now();
+            setLastActivityAt(now);
+            if (address && result.session) {
+              const merged: PrimeSession = {
+                ...result.session,
+                lastActivityAt: now,
+              };
+              saveSession(address, merged);
+              setSession(merged);
+            }
             lastError = null;
             lastFailedPrimeRef.current = null;
             break;
+          } catch (e) {
+            if (ctrl.signal.aborted) {
+              lastError = null;
+              lastFailedPrimeRef.current = null;
+              break;
+            }
+            const err = e as Error;
+            lastError = err;
+            const transient = RETRY_PATTERNS.some((re) =>
+              re.test(err.message || "")
+            );
+            if (!transient || attempt === MAX_ATTEMPTS - 1) break;
           }
-          const err = e as Error;
-          lastError = err;
-          const transient = RETRY_PATTERNS.some((re) =>
-            re.test(err.message || "")
-          );
-          if (!transient || attempt === MAX_ATTEMPTS - 1) break;
         }
-      }
 
-      if (lastError) {
-        const msg = lastError.message || "Unknown error";
-        const a = primeErrorActions(msg);
-        setSurfaceError({
-          message: msg,
-          correlationId: newErrorCorrelationId(),
-          showReconnect: a.showReconnect,
-          showRetry:
-            a.showRetry && lastFailedPrimeRef.current != null,
-        });
-        updateAssistant((m) => ({
-          ...m,
-          content: m.content
-            ? `${m.content}\n\n---\n**Error:** ${msg}`
-            : `**Error:** ${msg}`,
-          error: true,
-        }));
-      }
-
-      setSigningState("idle");
-      setPendingAmount(null);
-      setIsLoading(false);
-      abortRef.current = null;
-
-      // Refresh on-chain USDC balance after settlement (best-effort).
-      if (address) {
-        readUsdcBalance(address)
-          .then((b) => setUsdcBalance(b))
-          .catch(() => {
-            /* ignore */
+        if (lastError) {
+          const msg = lastError.message || "Unknown error";
+          const a = primeErrorActions(msg);
+          setSurfaceError({
+            message: msg,
+            correlationId: newErrorCorrelationId(),
+            showReconnect: a.showReconnect,
+            showRetry:
+              a.showRetry && lastFailedPrimeRef.current != null,
           });
+          updateAssistant((m) => ({
+            ...m,
+            content: m.content
+              ? `${m.content}\n\n---\n**Error:** ${msg}`
+              : `**Error:** ${msg}`,
+            error: true,
+          }));
+        }
+      } finally {
+        setPrimeProgressPhase(null);
+        setSigningState("idle");
+        setPendingAmount(null);
+        setIsLoading(false);
+        abortRef.current = null;
+
+        if (address) {
+          readUsdcBalance(address)
+            .then((b) => setUsdcBalance(b))
+            .catch(() => {
+              /* ignore */
+            });
+        }
       }
     },
     [address, buildSigner]
@@ -1064,6 +1111,9 @@ export default function PrimeApp() {
         </header>
 
         <div className="messages-wrap">
+          {showPrimeNetworkLoader ? (
+            <PrimeNetworkLoader subtitle={composerStatusLine} />
+          ) : null}
           <div
             className="messages"
             ref={scrollRef}
@@ -1085,6 +1135,10 @@ export default function PrimeApp() {
                     isLoading && isLast && m.role === "assistant";
                   const thinking =
                     streaming && (m.content ?? "").trim().length === 0;
+                  const progressHint =
+                    thinking && primeProgressPhase
+                      ? PRIME_PROGRESS_MESSAGES[primeProgressPhase]
+                      : undefined;
                   const prevUserExists =
                     active.messages
                       .slice(0, i)
@@ -1095,6 +1149,7 @@ export default function PrimeApp() {
                       message={m}
                       isStreaming={streaming}
                       isThinking={thinking}
+                      progressHint={progressHint}
                       isLast={isLast}
                       canRegenerate={
                         m.role === "assistant" && prevUserExists
@@ -1169,6 +1224,7 @@ export default function PrimeApp() {
           onSubmit={() => handleSubmit()}
           onStop={handleStop}
           isLoading={isLoading}
+          statusLine={composerStatusLine}
           disabled={!active || !authenticated}
           visionAllowed={false}
           onError={(msg) =>
@@ -1201,6 +1257,11 @@ export default function PrimeApp() {
                 <p className="modal-sub">
                   No tokens move until Fortytwo settles your reply on-chain.
                 </p>
+                {primeProgressPhase === "needs_payment" ? (
+                  <p className="modal-phase-hint" role="status">
+                    {PRIME_PROGRESS_MESSAGES.needs_payment}
+                  </p>
+                ) : null}
                 <div className="modal-actions">
                   <button
                     type="button"
@@ -1227,6 +1288,11 @@ export default function PrimeApp() {
                 <p className="modal-text modal-text-signing-gap">
                   This step may take about a minute or several minutes.
                 </p>
+                {primeProgressPhase ? (
+                  <p className="modal-phase-hint" role="status">
+                    {PRIME_PROGRESS_MESSAGES[primeProgressPhase]}
+                  </p>
+                ) : null}
                 <p className="modal-signing-warn">
                   <strong>
                     Do not reload this page while signing is in progress.

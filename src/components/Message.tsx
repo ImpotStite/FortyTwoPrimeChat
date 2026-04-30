@@ -11,6 +11,8 @@ interface Props {
   message: ChatMessage;
   isStreaming?: boolean;
   isThinking?: boolean;
+  /** Shown under the thinking dots while the assistant is still empty. */
+  progressHint?: string;
   isLast?: boolean;
   canRegenerate?: boolean;
   onEdit?: (newContent: string) => void;
@@ -22,6 +24,7 @@ export function Message({
   message,
   isStreaming,
   isThinking,
+  progressHint,
   isLast,
   canRegenerate,
   onEdit,
@@ -180,8 +183,15 @@ export function Message({
           ) : (
             <div className={`markdown ${message.error ? "markdown-error" : ""}`}>
               {isThinking && (message.content ?? "").trim().length === 0 ? (
-                <div className="thinking">
-                  <span /> <span /> <span />
+                <div className="thinking-block">
+                  <div className="thinking">
+                    <span /> <span /> <span />
+                  </div>
+                  {progressHint ? (
+                    <p className="thinking-hint" role="status">
+                      {progressHint}
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <ReactMarkdown
