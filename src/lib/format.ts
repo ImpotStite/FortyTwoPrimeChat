@@ -12,6 +12,13 @@ export function formatCost(usd: number): string {
   return `$${usd.toFixed(2)}`;
 }
 
+/** Same as `formatCost` but prefixed with ~ for list-rate estimates (not an exact charge). */
+export function formatApproximateCost(usd: number): string {
+  const s = formatCost(usd);
+  if (s === "Free") return s;
+  return `~${s}`;
+}
+
 export function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;

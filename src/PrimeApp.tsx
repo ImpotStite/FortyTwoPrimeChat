@@ -53,6 +53,7 @@ import {
   type PrimeSessionRecord,
 } from "./lib/primeHistory";
 import { watchUsdcRefunds } from "./lib/escrowEvents";
+import { buildPrimeWireQuery } from "./lib/primeMemoryQuery";
 import {
   newErrorCorrelationId,
   primeErrorActions,
@@ -78,7 +79,12 @@ function explorerAddrHref(addr: string): string {
 
 const RETRY_PATTERNS = [/upstream/i, /\b50\d\b/, /timeout/i, /network/i];
 
-/** User-visible step while a Fortytwo request is in flight (English UI). */
+/** Persist Memory toggle in localStorage (key). */
+const PRIME_MEMORY_STORAGE_KEY = "fortytwo-prime-memory-enabled";
+
+/** Tooltip: Memory includes prior messages in the same chat as context for Fortytwo; costs more on long threads. */
+const MEMORY_TOGGLE_TITLE =
+  "When Memory is on, each request includes prior messages in this chat so Fortytwo can use context. That uses more tokens and may cost more; long threads can get expensive.";
 const PRIME_PROGRESS_MESSAGES: Record<PrimeRequestPhase, string> = {
   initializing: "Connecting to Fortytwo…",
   calling_tool: "Sending your request to Fortytwo…",
@@ -142,6 +148,13 @@ export default function PrimeApp() {
   const [sessionPopoverOpen, setSessionPopoverOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<PrimeSessionRecord[]>([]);
+  const [memoryEnabled, setMemoryEnabled] = useState(() => {
+    try {
+      return localStorage.getItem(PRIME_MEMORY_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const toasts = useToasts();
   const sessionIdRef = useRef<string | null>(null);
 
@@ -150,7 +163,7 @@ export default function PrimeApp() {
   const lastFailedPrimeRef = useRef<{
     conversationId: string;
     assistantId: string;
-    userQuery: string;
+    wireQuery: string;
   } | null>(null);
   const confirmResolverRef = useRef<((accept: boolean) => void) | null>(null);
 
@@ -280,7 +293,18 @@ export default function PrimeApp() {
     });
   }, [address, session, sessionTimerTick, lastActivityAt, toasts.push]);
 
-  // Poll USDC balance: on connect, after each successful reply, every 30s.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        PRIME_MEMORY_STORAGE_KEY,
+        memoryEnabled ? "1" : "0"
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [memoryEnabled]);
+
+  // Poll USDC balance: on connect, after each reply, every 30s.
   useEffect(() => {
     if (!address) {
       setUsdcBalance(null);
@@ -523,7 +547,7 @@ export default function PrimeApp() {
     async (
       conversationId: string,
       assistantId: string,
-      userQuery: string
+      wireQuery: string
     ) => {
       if (!address) {
         const msg = "Connect your wallet to continue.";
@@ -584,7 +608,7 @@ export default function PrimeApp() {
       lastFailedPrimeRef.current = {
         conversationId,
         assistantId,
-        userQuery,
+        wireQuery,
       };
 
       try {
@@ -600,7 +624,7 @@ export default function PrimeApp() {
             // the next render.
             let activeSessionId = cachedSession?.sessionId ?? null;
             const result = await askPrime({
-              query: userQuery,
+              query: wireQuery,
               address,
               signTypedDataAsync: signer,
               session: cachedSession,
@@ -781,7 +805,7 @@ export default function PrimeApp() {
         };
       })
     );
-    void runStream(ctx.conversationId, ctx.assistantId, ctx.userQuery);
+    void runStream(ctx.conversationId, ctx.assistantId, ctx.wireQuery);
   }, [runStream]);
 
   // ---- Submit / Edit / Regenerate ----
@@ -829,9 +853,15 @@ export default function PrimeApp() {
 
       setInput("");
 
-      await runStream(active.id, assistantMsg.id, text);
+      const wireQuery = buildPrimeWireQuery({
+        memoryEnabled,
+        messages: newMessages,
+        assistantMessageId: assistantMsg.id,
+        currentUserMessage: text,
+      });
+      await runStream(active.id, assistantMsg.id, wireQuery);
     },
-    [active, address, authenticated, input, isLoading, runStream, updateActive]
+    [active, address, authenticated, input, isLoading, memoryEnabled, runStream, updateActive]
   );
 
   const handleEditUser = useCallback(
@@ -863,9 +893,15 @@ export default function PrimeApp() {
         updatedAt: Date.now(),
       }));
 
-      await runStream(active.id, assistantMsg.id, newContent);
+      const wireQuery = buildPrimeWireQuery({
+        memoryEnabled,
+        messages: next,
+        assistantMessageId: assistantMsg.id,
+        currentUserMessage: newContent,
+      });
+      await runStream(active.id, assistantMsg.id, wireQuery);
     },
-    [active, runStream, updateActive]
+    [active, memoryEnabled, runStream, updateActive]
   );
 
   const handleRegenerate = useCallback(
@@ -895,9 +931,15 @@ export default function PrimeApp() {
         updatedAt: Date.now(),
       }));
 
-      await runStream(active.id, newAssistant.id, prevUser.content);
+      const wireQuery = buildPrimeWireQuery({
+        memoryEnabled,
+        messages: next,
+        assistantMessageId: newAssistant.id,
+        currentUserMessage: prevUser.content,
+      });
+      await runStream(active.id, newAssistant.id, wireQuery);
     },
-    [active, runStream, updateActive]
+    [active, memoryEnabled, runStream, updateActive]
   );
 
   const handleDeleteMessage = (messageId: string) => {
@@ -1026,6 +1068,23 @@ export default function PrimeApp() {
             {active?.title || "New chat"}
           </div>
           <div className="topbar-tools">
+            {ready && authenticated && address && (
+              <label
+                className="memory-toggle"
+                title={MEMORY_TOGGLE_TITLE}
+              >
+                <input
+                  type="checkbox"
+                  className="memory-toggle-input"
+                  role="switch"
+                  aria-checked={memoryEnabled}
+                  checked={memoryEnabled}
+                  onChange={(e) => setMemoryEnabled(e.target.checked)}
+                  aria-label="Memory: include prior messages in this chat when calling Fortytwo"
+                />
+                <span className="memory-toggle-label">Memory</span>
+              </label>
+            )}
             {ready && authenticated && address && (
               <div className="session-pill-wrap">
                 <button

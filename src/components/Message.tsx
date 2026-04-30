@@ -3,7 +3,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { CodePre } from "./CodeBlock";
-import { formatCost, formatTokens, shortModelName } from "../lib/format";
+import {
+  formatApproximateCost,
+  formatCost,
+  formatTokens,
+  shortModelName,
+} from "../lib/format";
 import { estimatePrimeUsdCost } from "../lib/primePricing";
 import type { ChatMessage } from "../types";
 
@@ -249,7 +254,7 @@ export function Message({
                 <span className="dotSep">·</span>
                 <span>{formatTokens(total)} tokens</span>
                 <span className="dotSep">·</span>
-                <span>{formatCost(usd)}</span>
+                <span>{formatApproximateCost(usd)}</span>
               </div>
             );
           }

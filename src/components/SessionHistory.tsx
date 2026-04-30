@@ -1,9 +1,8 @@
 /**
  * Modal listing past Fortytwo Prime billing sessions for the connected wallet.
  *
- * Each row shows: opened/closed timestamps, close reason, authorized vs.
- * spent USDC, message count, token totals, and explorer links to the
- * settle/refund transactions.
+ * Each row shows: opened/closed timestamps, close reason, in/out token
+ * tallies, message count, spent/refunded USDC, addresses/TX links, session id.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -68,18 +67,6 @@ function fmtDuration(open: number, close?: number): string {
   return `${h}h ${m}m`;
 }
 
-function networkLine(r: PrimeSessionRecord): string {
-  const fromNet = r.network
-    ? /eip155:(\d+)/i.exec(r.network)?.[1]
-    : undefined;
-  const cid =
-    r.chainId ?? (fromNet != null ? Number(fromNet) : undefined);
-  if (r.network && cid != null) return `${r.network} · ${cid}`;
-  if (r.network) return r.network;
-  if (cid != null) return `Chain ${cid}`;
-  return "—";
-}
-
 function SessionDetailRow({
   r,
   explorerHref,
@@ -94,10 +81,7 @@ function SessionDetailRow({
   const payTo = effectivePayTo(r);
   const tokIn = r.tokensIn ?? 0;
   const tokOut = r.tokensOut ?? 0;
-  const tokTotal = tokIn + tokOut;
   const msgs = r.messageCount ?? 0;
-  const avgTok =
-    msgs > 1 && tokTotal > 0 ? Math.round(tokTotal / msgs) : null;
 
   const linkAddr = (addr: string, label: string) =>
     addressHref ? (
@@ -149,7 +133,7 @@ function SessionDetailRow({
       </div>
 
       <div className="session-history-row-body">
-        <div className="session-history-detail-grid">
+        <div className="session-history-detail-grid session-history-detail-grid--pair">
           <div className="session-history-detail-block">
             <span className="session-history-detail-label">Opened</span>
             <span className="session-history-detail-value">
@@ -162,45 +146,25 @@ function SessionDetailRow({
               {r.closedAt ? fmtTime(r.closedAt) : "—"}
             </span>
           </div>
-          <div className="session-history-detail-block">
-            <span className="session-history-detail-label">Network</span>
-            <span
-              className="session-history-detail-value session-history-mono"
-              title={networkLine(r)}
-            >
-              {networkLine(r)}
-            </span>
-          </div>
-          <div className="session-history-detail-block">
-            <span className="session-history-detail-label">Authorized</span>
-            <span className="session-history-detail-value">
-              <UsdcMark size={12} />{" "}
-              {r.authorizedAmountDisplay ||
-                `${formatTokenAmount(r.authorizedAmount, 6, 4)} USDC`}
-            </span>
-          </div>
         </div>
 
         {(tokIn > 0 || tokOut > 0 || msgs > 0) && (
-          <div className="session-history-tokens">
-            <div className="session-history-tokens-flow" title="Cumulative tokens from MCP usage metadata for this session">
-              <span className="session-history-tokens-inout">
-                ↑ {tokIn.toLocaleString("en-US")} in · ↓{" "}
-                {tokOut.toLocaleString("en-US")} out
-              </span>
-              <span className="session-history-tokens-meta">
-                <span className="session-history-tokens-total">
-                  {tokTotal.toLocaleString("en-US")} tokens total
+          <div
+            className="session-history-tokens"
+            title="Token counts from MCP usage for this session."
+          >
+            <div className="session-history-tokens-row">
+              {(tokIn > 0 || tokOut > 0) && (
+                <span className="session-history-tokens-inout">
+                  ↑ {tokIn.toLocaleString("en-US")} in · ↓{" "}
+                  {tokOut.toLocaleString("en-US")} out
                 </span>
+              )}
+              {msgs > 0 && (
                 <span className="session-history-tokens-msgs">
                   {msgs} {msgs === 1 ? "message" : "messages"}
                 </span>
-                {avgTok != null && (
-                  <span title="Average tokens per message (this session)">
-                    ~{avgTok.toLocaleString("en-US")} avg / message
-                  </span>
-                )}
-              </span>
+              )}
             </div>
           </div>
         )}
@@ -319,7 +283,6 @@ export function SessionHistory({
     let spent = 0n;
     let apiSpent = 0n;
     let messages = 0;
-    let tokens = 0;
     let awaitingRefundCount = 0;
     try {
       for (const r of records) {
@@ -329,7 +292,6 @@ export function SessionHistory({
         if (r.apiReportedSpentBaseUnits)
           apiSpent += BigInt(r.apiReportedSpentBaseUnits);
         messages += r.messageCount ?? 0;
-        tokens += (r.tokensIn ?? 0) + (r.tokensOut ?? 0);
         if (r.closedAt && !r.refundTxHash && r.settleTxHash) awaitingRefundCount += 1;
       }
     } catch {
@@ -341,7 +303,6 @@ export function SessionHistory({
       spent,
       apiSpent,
       messages,
-      tokens,
       awaitingRefundCount,
       remainder: auth - spent - refunded,
     };
@@ -410,18 +371,6 @@ export function SessionHistory({
               <div className="session-history-total">
                 <span
                   className="session-history-total-label"
-                  title="Sum of USDC authorized across listed sessions."
-                >
-                  Total authorized
-                </span>
-                <span className="session-history-total-value">
-                  <UsdcMark size={12} />{" "}
-                  {formatTokenAmount(totals.auth.toString(), 6, 4)}
-                </span>
-              </div>
-              <div className="session-history-total">
-                <span
-                  className="session-history-total-label"
                   title="USDC kept by the network after escrow release (authorized − refunded on-chain)."
                 >
                   Spent
@@ -468,14 +417,6 @@ export function SessionHistory({
                   {totals.messages.toLocaleString("en-US")}
                 </span>
               </div>
-              {totals.tokens > 0 && (
-                <div className="session-history-total">
-                  <span className="session-history-total-label">Tokens</span>
-                  <span className="session-history-total-value">
-                    {totals.tokens.toLocaleString("en-US")}
-                  </span>
-                </div>
-              )}
             </div>
             {totals.auth > 0n &&
               totals.remainder !== 0n &&
@@ -488,8 +429,8 @@ export function SessionHistory({
                     6
                   )} USDC (base units).`}
                 >
-                  Authorized versus spent + refunded can differ by a fraction of a
-                  USDC due to rounding in the UI or minimal on-chain dust.
+                  Session totals may differ from on-chain figures by a fraction of
+                  a USDC due to rounding or minimal dust.
                 </p>
               )}
 
