@@ -1,7 +1,39 @@
-import { useEffect, useRef, type ChangeEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react";
 import { fileToImageAttachment } from "../lib/image";
 import { formatBytes } from "../lib/format";
 import type { ImageAttachment } from "../types";
+
+const COMPOSER_PLACEHOLDER_WIDE =
+  "Type a message… (Enter to send, Shift+Enter for newline)";
+const COMPOSER_PLACEHOLDER_NARROW = "Type a message…";
+const COMPOSER_INPUT_HINT =
+  "Enter sends the message. Shift+Enter adds a new line.";
+
+const NARROW_MQ = "(max-width: 640px)";
+
+function useNarrowComposerPlaceholder(): boolean {
+  const [narrow, setNarrow] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(NARROW_MQ).matches
+      : false
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW_MQ);
+    const sync = () => setNarrow(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  return narrow;
+}
 
 interface Props {
   value: string;
@@ -33,6 +65,7 @@ export function Composer({
 }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const narrowPlaceholder = useNarrowComposerPlaceholder();
 
   useEffect(() => {
     const el = ref.current;
@@ -138,7 +171,12 @@ export function Composer({
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={onKeyDown}
             onPaste={onPaste}
-            placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
+            placeholder={
+              narrowPlaceholder
+                ? COMPOSER_PLACEHOLDER_NARROW
+                : COMPOSER_PLACEHOLDER_WIDE
+            }
+            title={COMPOSER_INPUT_HINT}
             disabled={disabled}
           />
           {isLoading ? (
