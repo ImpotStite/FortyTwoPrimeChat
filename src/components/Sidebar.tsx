@@ -11,6 +11,10 @@ interface Props {
   onRename: (id: string, title: string) => void;
   onTogglePin: (id: string) => void;
   modelLabel: string;
+  /** When true, switching chats / new chat is blocked (e.g. Fortytwo reply in flight). */
+  navLocked?: boolean;
+  /** Tooltip / `aria-label` detail while `navLocked`. */
+  navLockTitle?: string;
 }
 
 export function Sidebar({
@@ -22,6 +26,8 @@ export function Sidebar({
   onRename,
   onTogglePin,
   modelLabel,
+  navLocked = false,
+  navLockTitle = "Navigation is temporarily disabled.",
 }: Props) {
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -65,13 +71,17 @@ export function Sidebar({
     setEditingId(null);
   };
 
-  const renderItem = (c: Conversation) => (
+  const renderItem = (c: Conversation) => {
+    const inactiveLocked = navLocked && c.id !== activeId;
+    return (
     <div
       key={c.id}
       className={`conv-item ${c.id === activeId ? "active" : ""} ${
         c.pinned ? "pinned" : ""
-      }`}
+      } ${inactiveLocked ? "conv-item-nav-locked" : ""}`}
       onClick={() => editingId !== c.id && onSelect(c.id)}
+      title={inactiveLocked ? navLockTitle : undefined}
+      aria-disabled={inactiveLocked ? true : undefined}
     >
       {c.pinned && <PinIcon className="conv-pin" />}
       {editingId === c.id ? (
@@ -134,7 +144,8 @@ export function Sidebar({
         </button>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <aside className="sidebar">
@@ -156,7 +167,13 @@ export function Sidebar({
             </div>
           </div>
         </div>
-        <button type="button" className="btn btn-primary new-chat" onClick={onNew}>
+        <button
+          type="button"
+          className="btn btn-primary new-chat"
+          onClick={onNew}
+          disabled={navLocked}
+          title={navLocked ? navLockTitle : undefined}
+        >
           <PlusIcon /> New chat
         </button>
         <div className="search-wrap">

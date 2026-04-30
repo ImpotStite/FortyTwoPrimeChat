@@ -90,6 +90,12 @@ const PRIME_PROGRESS_MESSAGES: Record<PrimeRequestPhase, string> = {
   streaming: "Receiving the response…",
 };
 
+const PENDING_REPLY_TOAST = {
+  title: "Reply in progress",
+  description:
+    "Wait for Fortytwo to finish the current reply before switching chats or starting a new one.",
+} as const;
+
 function newConversation(): Conversation {
   const now = Date.now();
   return {
@@ -350,18 +356,39 @@ export default function PrimeApp() {
   // ---- Conversation management ----
 
   const handleNew = useCallback(() => {
+    if (isLoading) {
+      toasts.push({
+        kind: "warning",
+        title: PENDING_REPLY_TOAST.title,
+        description: PENDING_REPLY_TOAST.description,
+        durationMs: 7000,
+      });
+      return;
+    }
     const c = newConversation();
     setConversations((prev) => [c, ...prev]);
     setActiveId(c.id);
     setInput("");
     setSurfaceError(null);
-  }, []);
+  }, [isLoading, toasts]);
 
-  const handleSelect = (id: string) => {
-    setActiveId(id);
-    setSurfaceError(null);
-    setSidebarOpen(false);
-  };
+  const handleSelect = useCallback(
+    (id: string) => {
+      if (isLoading && id !== activeId) {
+        toasts.push({
+          kind: "warning",
+          title: PENDING_REPLY_TOAST.title,
+          description: PENDING_REPLY_TOAST.description,
+          durationMs: 7000,
+        });
+        return;
+      }
+      setActiveId(id);
+      setSurfaceError(null);
+      setSidebarOpen(false);
+    },
+    [activeId, isLoading, toasts]
+  );
 
   const handleDelete = (id: string) => {
     setConversations((prev) => {
@@ -974,6 +1001,8 @@ export default function PrimeApp() {
         onRename={handleRename}
         onTogglePin={handleTogglePin}
         modelLabel="Fortytwo Prime"
+        navLocked={isLoading}
+        navLockTitle={PENDING_REPLY_TOAST.description}
       />
 
       {sidebarOpen && (
@@ -1111,9 +1140,6 @@ export default function PrimeApp() {
         </header>
 
         <div className="messages-wrap">
-          {showPrimeNetworkLoader ? (
-            <PrimeNetworkLoader subtitle={composerStatusLine} />
-          ) : null}
           <div
             className="messages"
             ref={scrollRef}
@@ -1137,7 +1163,9 @@ export default function PrimeApp() {
                     streaming && (m.content ?? "").trim().length === 0;
                   const progressHint =
                     thinking && primeProgressPhase
-                      ? PRIME_PROGRESS_MESSAGES[primeProgressPhase]
+                      ? isLast && showPrimeNetworkLoader
+                        ? undefined
+                        : PRIME_PROGRESS_MESSAGES[primeProgressPhase]
                       : undefined;
                   const prevUserExists =
                     active.messages
@@ -1168,6 +1196,9 @@ export default function PrimeApp() {
                     />
                   );
                 })}
+                {showPrimeNetworkLoader ? (
+                  <PrimeNetworkLoader subtitle={composerStatusLine} />
+                ) : null}
               </div>
             )}
           </div>
