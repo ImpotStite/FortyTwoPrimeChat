@@ -14,11 +14,23 @@ function readBody(req: IncomingMessage): Promise<Uint8Array> {
   });
 }
 
+const DEFAULT_PRODUCTION_SITE = "https://forty-two-prime-chat.vercel.app";
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const siteUrl = (
+    env.VITE_SITE_URL?.trim() ||
+    (mode === "production" ? DEFAULT_PRODUCTION_SITE : "http://localhost:5173")
+  ).replace(/\/$/, "");
 
   return {
     plugins: [
+      {
+        name: "inject-site-url-html",
+        transformIndexHtml(html) {
+          return html.replaceAll("__SITE_URL__", siteUrl);
+        },
+      },
       react(),
       {
         name: "openrouter-dev-proxy",
