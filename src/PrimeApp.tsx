@@ -1073,12 +1073,16 @@ export default function PrimeApp() {
           <div className="topbar-tools">
             {ready && authenticated && address && (
               <div className="memory-toggle">
+                <p id="memory-help-desc" className="memory-toggle-sr-desc">
+                  {MEMORY_TOOLTIP.title}. {MEMORY_TOOLTIP.body}
+                </p>
                 <button
                   type="button"
                   className="memory-toggle-switch"
                   role="switch"
                   aria-checked={memoryEnabled}
                   aria-labelledby="memory-toggle-name"
+                  aria-describedby="memory-help-desc"
                   onClick={() => setMemoryEnabled((v) => !v)}
                 >
                   <span className="memory-toggle-track" aria-hidden>
@@ -1088,22 +1092,13 @@ export default function PrimeApp() {
                 <span className="memory-toggle-name" id="memory-toggle-name">
                   Memory
                 </span>
-                <div className="memory-toggle-help-anchor">
-                  <button
-                    type="button"
-                    className="memory-toggle-help"
-                    aria-label="About Memory"
-                  >
-                    <MemoryInfoIcon />
-                    <span className="memory-toggle-tooltip" role="tooltip">
-                      <span className="memory-toggle-tooltip-title">
-                        {MEMORY_TOOLTIP.title}
-                      </span>
-                      <span className="memory-toggle-tooltip-body">
-                        {MEMORY_TOOLTIP.body}
-                      </span>
-                    </span>
-                  </button>
+                <div className="memory-toggle-tooltip" role="tooltip" aria-hidden="true">
+                  <span className="memory-toggle-tooltip-title">
+                    {MEMORY_TOOLTIP.title}
+                  </span>
+                  <span className="memory-toggle-tooltip-body">
+                    {MEMORY_TOOLTIP.body}
+                  </span>
                 </div>
               </div>
             )}
@@ -1437,24 +1432,6 @@ export default function PrimeApp() {
       {/* Hidden but keeps user variable referenced so it stays in scope for future use. */}
       {user ? null : null}
     </div>
-  );
-}
-
-function MemoryInfoIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 16v-4M12 8h.01" />
-    </svg>
   );
 }
 
