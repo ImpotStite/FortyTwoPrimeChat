@@ -13,6 +13,7 @@ import { Message } from "./components/Message";
 import { Composer } from "./components/Composer";
 import { Welcome } from "./components/Welcome";
 import { useTheme } from "./hooks/useTheme";
+import { useChatAutoScroll } from "./hooks/useChatAutoScroll";
 import { uid } from "./lib/id";
 import {
   loadPrimeConversations,
@@ -51,6 +52,12 @@ import {
   type PrimeSessionRecord,
 } from "./lib/primeHistory";
 import { watchUsdcRefunds } from "./lib/escrowEvents";
+import {
+  newErrorCorrelationId,
+  primeErrorActions,
+  type AppSurfaceError,
+} from "./lib/appSurfaceError";
+import { ErrorActionBar } from "./components/ErrorActionBar";
 import type {
   ChatMessage,
   Conversation,
@@ -95,7 +102,9 @@ export default function PrimeApp() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [surfaceError, setSurfaceError] = useState<AppSurfaceError | null>(
+    null
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [session, setSession] = useState<PrimeSession | null>(null);
   const [signingState, setSigningState] = useState<
@@ -116,6 +125,11 @@ export default function PrimeApp() {
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastFailedPrimeRef = useRef<{
+    conversationId: string;
+    assistantId: string;
+    userQuery: string;
+  } | null>(null);
   const confirmResolverRef = useRef<((accept: boolean) => void) | null>(null);
 
   const wallet = useMemo(() => {
@@ -277,11 +291,14 @@ export default function PrimeApp() {
     [conversations, activeId]
   );
 
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [active?.messages]);
+  const { onScroll, jumpToLatest, showJumpToLatest } = useChatAutoScroll(
+    scrollRef,
+    {
+      messages: active?.messages,
+      activeConversationId: activeId,
+      isLoading,
+    }
+  );
 
   const updateActive = useCallback(
     (updater: (c: Conversation) => Conversation) => {
@@ -299,12 +316,12 @@ export default function PrimeApp() {
     setConversations((prev) => [c, ...prev]);
     setActiveId(c.id);
     setInput("");
-    setError(null);
+    setSurfaceError(null);
   }, []);
 
   const handleSelect = (id: string) => {
     setActiveId(id);
-    setError(null);
+    setSurfaceError(null);
     setSidebarOpen(false);
   };
 
@@ -336,6 +353,7 @@ export default function PrimeApp() {
   const handleStop = () => {
     abortRef.current?.abort();
     abortRef.current = null;
+    lastFailedPrimeRef.current = null;
     setIsLoading(false);
   };
 
@@ -360,6 +378,15 @@ export default function PrimeApp() {
     },
     [ready, authenticated, address, login, linkWallet]
   );
+
+  const openWalletConnection = useCallback(() => {
+    if (!ready) return;
+    if (authenticated && !address) {
+      void linkWallet();
+    } else {
+      void login();
+    }
+  }, [ready, authenticated, address, login, linkWallet]);
 
   const handleEndSessionLocally = useCallback(() => {
     if (!address || !session) return;
@@ -433,14 +460,21 @@ export default function PrimeApp() {
       userQuery: string
     ) => {
       if (!address) {
-        setError("Connect your wallet to continue.");
+        const msg = "Connect your wallet to continue.";
+        const a = primeErrorActions(msg);
+        setSurfaceError({
+          message: msg,
+          correlationId: newErrorCorrelationId(),
+          showReconnect: a.showReconnect,
+          showRetry: false,
+        });
         setIsLoading(false);
         return;
       }
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       setIsLoading(true);
-      setError(null);
+      setSurfaceError(null);
 
       const updateAssistant = (
         patch: (m: ChatMessage) => ChatMessage
@@ -463,11 +497,24 @@ export default function PrimeApp() {
       let lastError: Error | null = null;
 
       const signer = await buildSigner().catch((e) => {
-        setError((e as Error).message);
+        const msg = (e as Error).message;
+        const a = primeErrorActions(msg);
+        setSurfaceError({
+          message: msg,
+          correlationId: newErrorCorrelationId(),
+          showReconnect: a.showReconnect,
+          showRetry: false,
+        });
         setIsLoading(false);
         return null;
       });
       if (!signer) return;
+
+      lastFailedPrimeRef.current = {
+        conversationId,
+        assistantId,
+        userQuery,
+      };
 
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (attempt > 0) {
@@ -589,10 +636,12 @@ export default function PrimeApp() {
             setSession(merged);
           }
           lastError = null;
+          lastFailedPrimeRef.current = null;
           break;
         } catch (e) {
           if (ctrl.signal.aborted) {
             lastError = null;
+            lastFailedPrimeRef.current = null;
             break;
           }
           const err = e as Error;
@@ -606,7 +655,14 @@ export default function PrimeApp() {
 
       if (lastError) {
         const msg = lastError.message || "Unknown error";
-        setError(msg);
+        const a = primeErrorActions(msg);
+        setSurfaceError({
+          message: msg,
+          correlationId: newErrorCorrelationId(),
+          showReconnect: a.showReconnect,
+          showRetry:
+            a.showRetry && lastFailedPrimeRef.current != null,
+        });
         updateAssistant((m) => ({
           ...m,
           content: m.content
@@ -633,6 +689,27 @@ export default function PrimeApp() {
     [address, buildSigner]
   );
 
+  const retryLastPrimeRequest = useCallback(() => {
+    const ctx = lastFailedPrimeRef.current;
+    if (!ctx) return;
+    setSurfaceError(null);
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id !== ctx.conversationId) return c;
+        return {
+          ...c,
+          messages: c.messages.map((m) =>
+            m.id === ctx.assistantId
+              ? { ...m, content: "", error: false }
+              : m
+          ),
+          updatedAt: Date.now(),
+        };
+      })
+    );
+    void runStream(ctx.conversationId, ctx.assistantId, ctx.userQuery);
+  }, [runStream]);
+
   // ---- Submit / Edit / Regenerate ----
 
   const handleSubmit = useCallback(
@@ -640,7 +717,14 @@ export default function PrimeApp() {
       const text = (overrideText ?? input).trim();
       if (!text || isLoading || !active) return;
       if (!authenticated || !address) {
-        setError("Connect your wallet first.");
+        const msg = "Connect your wallet first.";
+        const a = primeErrorActions(msg);
+        setSurfaceError({
+          message: msg,
+          correlationId: newErrorCorrelationId(),
+          showReconnect: a.showReconnect,
+          showRetry: false,
+        });
         return;
       }
 
@@ -979,66 +1063,100 @@ export default function PrimeApp() {
           </div>
         </header>
 
-        <div className="messages" ref={scrollRef}>
-          {!active || active.messages.length === 0 ? (
-            <Welcome
-              modelLabel="Fortytwo Prime"
-              onPick={(p) => {
-                setInput(p);
-                if (authenticated) void handleSubmit(p);
-              }}
-            />
-          ) : (
-            <div className="messages-inner">
-              {active.messages.map((m, i) => {
-                const isLast = i === active.messages.length - 1;
-                const streaming =
-                  isLoading && isLast && m.role === "assistant";
-                const thinking =
-                  streaming && (m.content ?? "").trim().length === 0;
-                const prevUserExists =
-                  active.messages
-                    .slice(0, i)
-                    .some((x) => x.role === "user");
-                return (
-                  <Message
-                    key={m.id}
-                    message={m}
-                    isStreaming={streaming}
-                    isThinking={thinking}
-                    isLast={isLast}
-                    canRegenerate={
-                      m.role === "assistant" && prevUserExists
-                    }
-                    onEdit={
-                      m.role === "user"
-                        ? (newContent) => handleEditUser(m.id, newContent)
-                        : undefined
-                    }
-                    onRegenerate={
-                      m.role === "assistant"
-                        ? () => handleRegenerate(m.id)
-                        : undefined
-                    }
-                    onDelete={() => handleDeleteMessage(m.id)}
-                  />
-                );
-              })}
-            </div>
+        <div className="messages-wrap">
+          <div
+            className="messages"
+            ref={scrollRef}
+            onScroll={onScroll}
+          >
+            {!active || active.messages.length === 0 ? (
+              <Welcome
+                modelLabel="Fortytwo Prime"
+                onPick={(p) => {
+                  setInput(p);
+                  if (authenticated) void handleSubmit(p);
+                }}
+              />
+            ) : (
+              <div className="messages-inner">
+                {active.messages.map((m, i) => {
+                  const isLast = i === active.messages.length - 1;
+                  const streaming =
+                    isLoading && isLast && m.role === "assistant";
+                  const thinking =
+                    streaming && (m.content ?? "").trim().length === 0;
+                  const prevUserExists =
+                    active.messages
+                      .slice(0, i)
+                      .some((x) => x.role === "user");
+                  return (
+                    <Message
+                      key={m.id}
+                      message={m}
+                      isStreaming={streaming}
+                      isThinking={thinking}
+                      isLast={isLast}
+                      canRegenerate={
+                        m.role === "assistant" && prevUserExists
+                      }
+                      onEdit={
+                        m.role === "user"
+                          ? (newContent) => handleEditUser(m.id, newContent)
+                          : undefined
+                      }
+                      onRegenerate={
+                        m.role === "assistant"
+                          ? () => handleRegenerate(m.id)
+                          : undefined
+                      }
+                      onDelete={() => handleDeleteMessage(m.id)}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {showJumpToLatest && (
+            <button
+              type="button"
+              className="jump-latest-btn"
+              onClick={jumpToLatest}
+              aria-label="Jump to latest messages"
+            >
+              ↓ Latest
+            </button>
           )}
         </div>
 
         {!authenticated && (
-          <div className="error-bar" role="status">
-            Connect your wallet (MetaMask, Rabby, WalletConnect…) to start chatting.
-            You'll need USDC on Monad.
+          <div className="wallet-hint-bar" role="status">
+            <p>
+              Connect your wallet (MetaMask, Rabby, WalletConnect…) to start
+              chatting. You'll need USDC on Monad.
+            </p>
+            <div className="wallet-hint-actions">
+              <button
+                type="button"
+                className="error-action-btn error-action-btn-primary"
+                onClick={openWalletConnection}
+                disabled={!ready}
+              >
+                Connect wallet
+              </button>
+            </div>
           </div>
         )}
 
-        {error && (
-          <div className="error-bar" role="alert">
-            {error}
-          </div>
+        {surfaceError && (
+          <ErrorActionBar
+            message={surfaceError.message}
+            correlationId={surfaceError.correlationId}
+            showReconnect={surfaceError.showReconnect}
+            showRetry={surfaceError.showRetry}
+            onReconnect={openWalletConnection}
+            onRetry={retryLastPrimeRequest}
+            onDismiss={() => setSurfaceError(null)}
+          />
         )}
 
         <Composer
@@ -1053,7 +1171,14 @@ export default function PrimeApp() {
           isLoading={isLoading}
           disabled={!active || !authenticated}
           visionAllowed={false}
-          onError={setError}
+          onError={(msg) =>
+            setSurfaceError({
+              message: msg,
+              correlationId: newErrorCorrelationId(),
+              showReconnect: false,
+              showRetry: false,
+            })
+          }
         />
       </main>
 

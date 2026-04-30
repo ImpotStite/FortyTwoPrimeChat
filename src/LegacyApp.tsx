@@ -5,6 +5,7 @@ import { Composer } from "./components/Composer";
 import { Welcome } from "./components/Welcome";
 import { ModelPicker } from "./components/ModelPicker";
 import { useTheme } from "./hooks/useTheme";
+import { useChatAutoScroll } from "./hooks/useChatAutoScroll";
 import { uid } from "./lib/id";
 import { loadConversations, saveConversations } from "./lib/storage";
 import {
@@ -13,6 +14,12 @@ import {
   modelSupportsImages,
   streamChatCompletion,
 } from "./lib/openrouter";
+import {
+  legacyErrorActions,
+  newErrorCorrelationId,
+  type AppSurfaceError,
+} from "./lib/appSurfaceError";
+import { ErrorActionBar } from "./components/ErrorActionBar";
 import type {
   ChatMessage,
   Conversation,
@@ -54,7 +61,9 @@ export default function LegacyApp() {
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [surfaceError, setSurfaceError] = useState<AppSurfaceError | null>(
+    null
+  );
   const [defaultModel, setDefaultModel] = useState<string>(() => {
     try {
       return localStorage.getItem(PREF_MODEL_KEY) || ENV_MODEL;
@@ -67,6 +76,12 @@ export default function LegacyApp() {
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastFailedLegacyRef = useRef<{
+    conversationId: string;
+    assistantId: string;
+    history: ChatMessage[];
+    modelId: string;
+  } | null>(null);
 
   useEffect(() => {
     const stored = loadConversations();
@@ -108,17 +123,20 @@ export default function LegacyApp() {
 
   const activeModel = active?.model || defaultModel;
 
+  const { onScroll, jumpToLatest, showJumpToLatest } = useChatAutoScroll(
+    scrollRef,
+    {
+      messages: active?.messages,
+      activeConversationId: activeId,
+      isLoading,
+    }
+  );
+
   const visionAllowed = useMemo(() => {
     const m = knownModels.find((mm) => mm.id === activeModel);
     if (!m) return true; // by default, allow attempt; OpenRouter will error if not supported
     return modelSupportsImages(m);
   }, [knownModels, activeModel]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [active?.messages]);
 
   const updateActive = useCallback(
     (updater: (c: Conversation) => Conversation) => {
@@ -135,12 +153,12 @@ export default function LegacyApp() {
     setActiveId(c.id);
     setInput("");
     setAttachments([]);
-    setError(null);
+    setSurfaceError(null);
   }, [defaultModel]);
 
   const handleSelect = (id: string) => {
     setActiveId(id);
-    setError(null);
+    setSurfaceError(null);
     setSidebarOpen(false);
   };
 
@@ -172,6 +190,7 @@ export default function LegacyApp() {
   const handleStop = () => {
     abortRef.current?.abort();
     abortRef.current = null;
+    lastFailedLegacyRef.current = null;
     setIsLoading(false);
   };
 
@@ -189,7 +208,7 @@ export default function LegacyApp() {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       setIsLoading(true);
-      setError(null);
+      setSurfaceError(null);
 
       const updateAssistant = (
         patch: (m: ChatMessage) => ChatMessage
@@ -210,6 +229,13 @@ export default function LegacyApp() {
 
       const MAX_ATTEMPTS = 2;
       let lastError: Error | null = null;
+
+      lastFailedLegacyRef.current = {
+        conversationId,
+        assistantId,
+        history: history.map((m) => ({ ...m })),
+        modelId,
+      };
 
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (attempt > 0) await new Promise((r) => setTimeout(r, 600));
@@ -238,10 +264,12 @@ export default function LegacyApp() {
             },
           });
           lastError = null;
+          lastFailedLegacyRef.current = null;
           break;
         } catch (e) {
           if (ctrl.signal.aborted) {
             lastError = null;
+            lastFailedLegacyRef.current = null;
             break;
           }
           const err = e as Error;
@@ -255,7 +283,14 @@ export default function LegacyApp() {
 
       if (lastError) {
         const msg = lastError.message || "Unknown error";
-        setError(msg);
+        const a = legacyErrorActions(msg);
+        setSurfaceError({
+          message: msg,
+          correlationId: newErrorCorrelationId(),
+          showReconnect: false,
+          showRetry:
+            a.showRetry && lastFailedLegacyRef.current != null,
+        });
         updateAssistant((m) => ({
           ...m,
           content: m.content
@@ -270,6 +305,32 @@ export default function LegacyApp() {
     },
     []
   );
+
+  const retryLastLegacyRequest = useCallback(() => {
+    const ctx = lastFailedLegacyRef.current;
+    if (!ctx) return;
+    setSurfaceError(null);
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id !== ctx.conversationId) return c;
+        return {
+          ...c,
+          messages: c.messages.map((m) =>
+            m.id === ctx.assistantId
+              ? { ...m, content: "", error: false }
+              : m
+          ),
+          updatedAt: Date.now(),
+        };
+      })
+    );
+    void runStream(
+      ctx.conversationId,
+      ctx.assistantId,
+      ctx.history,
+      ctx.modelId
+    );
+  }, [runStream]);
 
   const handleSubmit = useCallback(
     async (overrideText?: string) => {
@@ -459,59 +520,80 @@ export default function LegacyApp() {
           </div>
         </header>
 
-        <div className="messages" ref={scrollRef}>
-          {!active || active.messages.length === 0 ? (
-            <Welcome
-              modelLabel={activeModel}
-              onPick={(p) => {
-                setInput(p);
-                void handleSubmit(p);
-              }}
-            />
-          ) : (
-            <div className="messages-inner">
-              {active.messages.map((m, i) => {
-                const isLast = i === active.messages.length - 1;
-                const streaming =
-                  isLoading && isLast && m.role === "assistant";
-                const thinking =
-                  streaming && (m.content ?? "").trim().length === 0;
-                const prevUserExists =
-                  active.messages
-                    .slice(0, i)
-                    .some((x) => x.role === "user");
-                return (
-                  <Message
-                    key={m.id}
-                    message={m}
-                    isStreaming={streaming}
-                    isThinking={thinking}
-                    isLast={isLast}
-                    canRegenerate={
-                      m.role === "assistant" && prevUserExists
-                    }
-                    onEdit={
-                      m.role === "user"
-                        ? (newContent) => handleEditUser(m.id, newContent)
-                        : undefined
-                    }
-                    onRegenerate={
-                      m.role === "assistant"
-                        ? () => handleRegenerate(m.id)
-                        : undefined
-                    }
-                    onDelete={() => handleDeleteMessage(m.id)}
-                  />
-                );
-              })}
-            </div>
+        <div className="messages-wrap">
+          <div
+            className="messages"
+            ref={scrollRef}
+            onScroll={onScroll}
+          >
+            {!active || active.messages.length === 0 ? (
+              <Welcome
+                modelLabel={activeModel}
+                onPick={(p) => {
+                  setInput(p);
+                  void handleSubmit(p);
+                }}
+              />
+            ) : (
+              <div className="messages-inner">
+                {active.messages.map((m, i) => {
+                  const isLast = i === active.messages.length - 1;
+                  const streaming =
+                    isLoading && isLast && m.role === "assistant";
+                  const thinking =
+                    streaming && (m.content ?? "").trim().length === 0;
+                  const prevUserExists =
+                    active.messages
+                      .slice(0, i)
+                      .some((x) => x.role === "user");
+                  return (
+                    <Message
+                      key={m.id}
+                      message={m}
+                      isStreaming={streaming}
+                      isThinking={thinking}
+                      isLast={isLast}
+                      canRegenerate={
+                        m.role === "assistant" && prevUserExists
+                      }
+                      onEdit={
+                        m.role === "user"
+                          ? (newContent) => handleEditUser(m.id, newContent)
+                          : undefined
+                      }
+                      onRegenerate={
+                        m.role === "assistant"
+                          ? () => handleRegenerate(m.id)
+                          : undefined
+                      }
+                      onDelete={() => handleDeleteMessage(m.id)}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {showJumpToLatest && (
+            <button
+              type="button"
+              className="jump-latest-btn"
+              onClick={jumpToLatest}
+              aria-label="Jump to latest messages"
+            >
+              ↓ Latest
+            </button>
           )}
         </div>
 
-        {error && (
-          <div className="error-bar" role="alert">
-            {error}
-          </div>
+        {surfaceError && (
+          <ErrorActionBar
+            message={surfaceError.message}
+            correlationId={surfaceError.correlationId}
+            showReconnect={surfaceError.showReconnect}
+            showRetry={surfaceError.showRetry}
+            onRetry={retryLastLegacyRequest}
+            onDismiss={() => setSurfaceError(null)}
+          />
         )}
 
         <Composer
@@ -524,7 +606,14 @@ export default function LegacyApp() {
           isLoading={isLoading}
           disabled={!active}
           visionAllowed={visionAllowed}
-          onError={setError}
+          onError={(msg) =>
+            setSurfaceError({
+              message: msg,
+              correlationId: newErrorCorrelationId(),
+              showReconnect: false,
+              showRetry: false,
+            })
+          }
         />
       </main>
     </div>

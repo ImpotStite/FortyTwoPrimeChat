@@ -368,6 +368,18 @@ interface ConsumedResponse {
   usage?: TokenUsage;
 }
 
+/**
+ * After each streamed chunk, yield so the UI can paint. React 18 batches
+ * multiple `setState` calls in the same synchronous turn; without this, SSE
+ * frames parsed in one loop appear as a single jump.
+ */
+function yieldForStreamingUi(): Promise<void> {
+  if (typeof requestAnimationFrame === "function") {
+    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 /** Pick optional integer USDC base units from MCP usage/meta objects. */
 function pickUsdcBaseUnits(
   usageRaw: Record<string, unknown>,
@@ -439,7 +451,13 @@ async function consumeResponse(
     let lastEmitted = "";
     let usage: TokenUsage | undefined;
 
-    const emitFrom = (rpc: any) => {
+    const pushUiChunk = async (text: string) => {
+      if (!onChunk || !text) return;
+      onChunk(text);
+      await yieldForStreamingUi();
+    };
+
+    const emitFrom = async (rpc: any) => {
       // Notifications: progress with partial text → stream delta.
       // Final: result.content[0].text → full text.
       const params = rpc?.params;
@@ -457,15 +475,15 @@ async function consumeResponse(
             // Cumulative: emit the diff with what we already saw.
             if (partial.startsWith(lastEmitted)) {
               const delta = partial.slice(lastEmitted.length);
-              if (delta && onChunk) onChunk(delta);
+              if (delta) await pushUiChunk(delta);
               lastEmitted = partial;
             } else {
-              if (onChunk) onChunk(partial);
+              await pushUiChunk(partial);
               lastEmitted = partial;
             }
           } else {
             // Pure delta.
-            if (onChunk) onChunk(partial);
+            await pushUiChunk(partial);
             lastEmitted += partial;
           }
         }
@@ -484,7 +502,7 @@ async function consumeResponse(
             const delta = text.startsWith(lastEmitted)
               ? text.slice(lastEmitted.length)
               : text;
-            if (delta && onChunk) onChunk(delta);
+            if (delta) await pushUiChunk(delta);
             lastEmitted = text;
           }
         }
@@ -514,12 +532,13 @@ async function consumeResponse(
           }
         }
         if (!dataPayload || dataPayload === "[DONE]") continue;
+        let rpc: unknown;
         try {
-          const rpc = JSON.parse(dataPayload);
-          emitFrom(rpc);
+          rpc = JSON.parse(dataPayload);
         } catch {
-          /* skip malformed frame */
+          continue;
         }
+        await emitFrom(rpc);
       }
     }
 
