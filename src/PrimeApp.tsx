@@ -82,9 +82,12 @@ const RETRY_PATTERNS = [/upstream/i, /\b50\d\b/, /timeout/i, /network/i];
 /** Persist Memory toggle in localStorage (key). */
 const PRIME_MEMORY_STORAGE_KEY = "fortytwo-prime-memory-enabled";
 
-/** Tooltip: Memory includes prior messages in the same chat as context for Fortytwo; costs more on long threads. */
-const MEMORY_TOGGLE_TITLE =
-  "When Memory is on, each request includes prior messages in this chat so Fortytwo can use context. That uses more tokens and may cost more; long threads can get expensive.";
+/** Tooltip copy for the Memory help popover (English UI). */
+const MEMORY_TOOLTIP = {
+  title: "What Memory does",
+  body:
+    "Prior messages in this chat are sent with each Fortytwo request so replies can use context. That increases input tokens, so cost may be higher—especially on long threads.",
+} as const;
 const PRIME_PROGRESS_MESSAGES: Record<PrimeRequestPhase, string> = {
   initializing: "Connecting to Fortytwo…",
   calling_tool: "Sending your request to Fortytwo…",
@@ -1069,21 +1072,40 @@ export default function PrimeApp() {
           </div>
           <div className="topbar-tools">
             {ready && authenticated && address && (
-              <label
-                className="memory-toggle"
-                title={MEMORY_TOGGLE_TITLE}
-              >
-                <input
-                  type="checkbox"
-                  className="memory-toggle-input"
+              <div className="memory-toggle">
+                <button
+                  type="button"
+                  className="memory-toggle-switch"
                   role="switch"
                   aria-checked={memoryEnabled}
-                  checked={memoryEnabled}
-                  onChange={(e) => setMemoryEnabled(e.target.checked)}
-                  aria-label="Memory: include prior messages in this chat when calling Fortytwo"
-                />
-                <span className="memory-toggle-label">Memory</span>
-              </label>
+                  aria-labelledby="memory-toggle-name"
+                  onClick={() => setMemoryEnabled((v) => !v)}
+                >
+                  <span className="memory-toggle-track" aria-hidden>
+                    <span className="memory-toggle-thumb" />
+                  </span>
+                </button>
+                <span className="memory-toggle-name" id="memory-toggle-name">
+                  Memory
+                </span>
+                <div className="memory-toggle-help-anchor">
+                  <button
+                    type="button"
+                    className="memory-toggle-help"
+                    aria-label="About Memory"
+                  >
+                    <MemoryInfoIcon />
+                    <span className="memory-toggle-tooltip" role="tooltip">
+                      <span className="memory-toggle-tooltip-title">
+                        {MEMORY_TOOLTIP.title}
+                      </span>
+                      <span className="memory-toggle-tooltip-body">
+                        {MEMORY_TOOLTIP.body}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              </div>
             )}
             {ready && authenticated && address && (
               <div className="session-pill-wrap">
@@ -1415,6 +1437,24 @@ export default function PrimeApp() {
       {/* Hidden but keeps user variable referenced so it stays in scope for future use. */}
       {user ? null : null}
     </div>
+  );
+}
+
+function MemoryInfoIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4M12 8h.01" />
+    </svg>
   );
 }
 
