@@ -13,6 +13,84 @@ import { FloatingRewardBubble } from "./FloatingRewardBubble";
 
 const DONATION_WALLET = "0xC1F112Cd1D2A6B60B13514602fD0156BA910D488";
 
+function RewardsStreakTrack({
+  current,
+  required,
+  bestRun,
+  claimed,
+}: {
+  current: number;
+  required: number;
+  bestRun: number;
+  claimed: boolean;
+}) {
+  const filled = Math.min(Math.max(current, 0), required);
+  const pct = required > 0 ? Math.min(100, (filled / required) * 100) : 0;
+  const ariaLabel = claimed
+    ? `Launch streak ${current} of ${required} days, streak bonus claimed`
+    : `Launch streak ${current} of ${required} days toward the bonus`;
+
+  return (
+    <div className="rewards-streak-track">
+      <div className="rewards-streak-track-head">
+        <span className="rewards-streak-track-title">Progress</span>
+        <span className="rewards-streak-track-count" aria-live="polite">
+          <strong>{current}</strong>
+          <span className="rewards-streak-track-of"> / {required}</span>
+          <span className="rewards-streak-track-suffix"> days</span>
+        </span>
+      </div>
+      <div
+        className={`rewards-streak-track-visual${
+          claimed ? " rewards-streak-track-visual--claimed" : ""
+        }`}
+        role="img"
+        aria-label={ariaLabel}
+      >
+        <div className="rewards-streak-track-bar" aria-hidden>
+          <div
+            className="rewards-streak-track-bar-fill"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="rewards-streak-dots" aria-hidden>
+          {Array.from({ length: required }, (_, i) => (
+            <span
+              key={i}
+              className={`rewards-streak-dot${
+                i < filled ? " rewards-streak-dot--on" : ""
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+      {bestRun > current ? (
+        <p className="rewards-streak-track-best">Best run: {bestRun} days</p>
+      ) : null}
+      {claimed ? (
+        <div className="rewards-streak-claimed-badge" role="status">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden
+          >
+            <path
+              d="M20 6L9 17l-5-5"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Streak bonus claimed
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function shortEthAddress(addr: string): string {
   if (addr.length < 14) return addr;
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -410,51 +488,88 @@ export function Sidebar({
                   </form>
                 </header>
                 <div className="rewards-detail-dialog-body">
-                  <p className="sidebar-rewards-doc">
-                    1,000 FOR base per MCP request; early adopters may earn 2× or
-                    3× for 30 days. Streak: {STREAK_REQUIRED_DAYS}+ consecutive
-                    calendar days, each with at least one billing session launched;
-                    multiple launches on the same calendar day count once →{" "}
-                    {FOR_STREAK_BONUS.toLocaleString("en-US")} FOR once (
+                  <section
+                    className="rewards-detail-section"
+                    aria-labelledby="rewards-section-earnings"
+                  >
+                    <h3 id="rewards-section-earnings" className="rewards-detail-section-title">
+                      MCP earnings
+                    </h3>
+                    <ul className="rewards-detail-list">
+                      <li>
+                        <strong>1,000 FOR</strong> base per successful MCP call
+                        (Fortytwo program).
+                      </li>
+                      <li>
+                        Early adopters may earn <strong>2× or 3×</strong> for 30
+                        days — tier is set by Fortytwo.
+                      </li>
+                    </ul>
                     <a
                       href={REWARDS_DOCS_URL}
                       target="_blank"
                       rel="noopener noreferrer"
+                      className="rewards-detail-text-link"
                     >
-                      MCP Rewards program
+                      Official MCP Rewards program →
                     </a>
-                    ).
-                  </p>
-                  <div className="sidebar-rewards-streak" role="status">
-                    <span className="sidebar-rewards-streak-label">Day streak</span>
-                    <span className="sidebar-rewards-streak-value">
-                      {rewardsPrime.snapshot.currentStreakDays} /{" "}
-                      {STREAK_REQUIRED_DAYS} days
-                    </span>
-                    {rewardsPrime.snapshot.streakBonusClaimed ? (
-                      <span className="sidebar-rewards-streak-badge">
-                        Streak bonus claimed
+                  </section>
+
+                  <section
+                    className="rewards-detail-section rewards-detail-section--streak"
+                    aria-labelledby="rewards-section-streak"
+                  >
+                    <h3 id="rewards-section-streak" className="rewards-detail-section-title">
+                      Launch streak
+                    </h3>
+                    <p className="rewards-detail-section-desc">
+                      One step per calendar day when you start a Prime billing
+                      session. Multiple launches on the same day still count as
+                      one step.
+                    </p>
+                    <RewardsStreakTrack
+                      current={rewardsPrime.snapshot.currentStreakDays}
+                      required={STREAK_REQUIRED_DAYS}
+                      bestRun={rewardsPrime.snapshot.maxConsecutiveDays}
+                      claimed={rewardsPrime.snapshot.streakBonusClaimed}
+                    />
+                    <p className="rewards-detail-bonus-line">
+                      <span className="rewards-detail-bonus-label">Streak bonus</span>
+                      <span className="rewards-detail-bonus-value">
+                        {FOR_STREAK_BONUS.toLocaleString("en-US")} FOR
                       </span>
-                    ) : null}
-                  </div>
-                  <div className="sidebar-rewards-links">
-                    <a
-                      href={REWARDS_DOCS_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="sidebar-rewards-link"
-                    >
-                      Program rules
-                    </a>
-                    <a
-                      href={REWARDS_ACCOUNT_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="sidebar-rewards-link"
-                    >
-                      Fortytwo account
-                    </a>
-                  </div>
+                      <span className="rewards-detail-bonus-meta">
+                        one-time · {STREAK_REQUIRED_DAYS} consecutive days
+                      </span>
+                    </p>
+                  </section>
+
+                  <section
+                    className="rewards-detail-section rewards-detail-section--links"
+                    aria-labelledby="rewards-section-links"
+                  >
+                    <h3 id="rewards-section-links" className="rewards-detail-section-title">
+                      {"Account & rules"}
+                    </h3>
+                    <div className="rewards-detail-link-grid">
+                      <a
+                        href={REWARDS_DOCS_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rewards-detail-action-link"
+                      >
+                        Program rules
+                      </a>
+                      <a
+                        href={REWARDS_ACCOUNT_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rewards-detail-action-link rewards-detail-action-link--accent"
+                      >
+                        Fortytwo account
+                      </a>
+                    </div>
+                  </section>
                 </div>
               </div>
             </dialog>
