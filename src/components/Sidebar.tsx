@@ -436,7 +436,7 @@ export function Sidebar({
               >
                 <header className="rewards-detail-dialog-header">
                   <h2 id="rewards-detail-title" className="rewards-detail-dialog-title">
-                    Rewards & streak
+                    Rewards & Streak
                   </h2>
                   <form method="dialog">
                     <button
@@ -456,21 +456,6 @@ export function Sidebar({
                     <h3 id="rewards-section-earnings" className="rewards-detail-section-title">
                       MCP earnings
                     </h3>
-                    <p className="rewards-detail-earnings-lead">
-                      Early adopters may receive a <strong>2× or 3×</strong>{" "}
-                      multiplier on the base rate for <strong>30 days</strong>.
-                      Fortytwo assigns the tier to your account. Your live FOR
-                      balance is on your{" "}
-                      <a
-                        href={REWARDS_ACCOUNT_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rewards-detail-text-link"
-                      >
-                        Fortytwo account
-                      </a>
-                      .
-                    </p>
                     <div
                       className="rewards-detail-tier-grid"
                       role="list"
@@ -488,8 +473,7 @@ export function Sidebar({
                           {FOR_BASE_PER_REQUEST.toLocaleString("en-US")} FOR
                         </p>
                         <p className="rewards-detail-tier-card-desc">
-                          Documented rate per successful MCP call in the Fortytwo
-                          MCP Rewards program before any early-adopter multiplier.
+                          Base rate — no early bonus.
                         </p>
                       </article>
                       <article
@@ -498,7 +482,7 @@ export function Sidebar({
                         aria-current="true"
                       >
                         <span className="rewards-detail-tier-card-flag">
-                          Tier used in this UI
+                          You are Here
                         </span>
                         <h4 className="rewards-detail-tier-card-title">
                           First 500 agents
@@ -510,10 +494,7 @@ export function Sidebar({
                           {FOR_PER_MCP_3X.toLocaleString("en-US")} FOR
                         </p>
                         <p className="rewards-detail-tier-card-desc">
-                          Highest early-adopter band. This app{" "}
-                          <strong>displays</strong> each MCP call as{" "}
-                          {FOR_PER_MCP_3X.toLocaleString("en-US")} FOR so you can
-                          preview rewards; it does not change your on-chain tier.
+                          Best early bonus. This app uses it only to preview FOR.
                         </p>
                       </article>
                       <article
@@ -530,9 +511,7 @@ export function Sidebar({
                           {FOR_PER_MCP_501_2000.toLocaleString("en-US")} FOR
                         </p>
                         <p className="rewards-detail-tier-card-desc">
-                          Illustrative second band many programs use after the first
-                          500. Fortytwo defines the real rule—see the official
-                          program below.
+                          Another early tier with a smaller bonus.
                         </p>
                       </article>
                     </div>
