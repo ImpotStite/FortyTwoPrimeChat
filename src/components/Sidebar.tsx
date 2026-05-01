@@ -41,9 +41,7 @@ function RewardsStreakTrack({
         </span>
       </div>
       <div
-        className={`rewards-streak-track-visual${
-          claimed ? " rewards-streak-track-visual--claimed" : ""
-        }`}
+        className="rewards-streak-track-visual"
         role="img"
         aria-label={ariaLabel}
       >
@@ -66,26 +64,6 @@ function RewardsStreakTrack({
       </div>
       {bestRun > current ? (
         <p className="rewards-streak-track-best">Best run: {bestRun} days</p>
-      ) : null}
-      {claimed ? (
-        <div className="rewards-streak-claimed-badge" role="status">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden
-          >
-            <path
-              d="M20 6L9 17l-5-5"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          Streak bonus claimed
-        </div>
       ) : null}
     </div>
   );
@@ -403,13 +381,7 @@ export function Sidebar({
           }`}
           aria-live="polite"
         >
-          <div
-            className={
-              rewardsPrime?.walletConnected
-                ? "sidebar-rewards-tier-wrap"
-                : "sidebar-rewards-tier-wrap sidebar-rewards-tier-wrap--plain"
-            }
-          >
+          <div className="sidebar-rewards-tier-wrap sidebar-rewards-tier-wrap--plain">
             <div className="sidebar-rewards-head">
               <img
                 className="sidebar-rewards-mark"
@@ -429,12 +401,6 @@ export function Sidebar({
                 </div>
               </div>
             </div>
-            {rewardsPrime?.walletConnected ? (
-              <p className="sidebar-rewards-tier-pill" title="Assumed tier for this demo UI">
-                First 500 agents · 3× — {FOR_PER_MCP_3X.toLocaleString("en-US")}{" "}
-                FOR per MCP call
-              </p>
-            ) : null}
             {rewardsPrime ? (
               <div className="sidebar-rewards-compact">
                 <div className="sidebar-rewards-compact-streak" role="status">
@@ -504,6 +470,12 @@ export function Sidebar({
                         Early adopters may earn <strong>2× or 3×</strong> for 30
                         days — tier is set by Fortytwo.
                       </li>
+                      <li>
+                        <strong>Demo UI tier:</strong> we assume{" "}
+                        <strong>First 500 · 3×</strong>, so each MCP call is shown
+                        as <strong>{FOR_PER_MCP_3X.toLocaleString("en-US")} FOR</strong>{" "}
+                        here. Your real balance is on your Fortytwo account.
+                      </li>
                     </ul>
                     <a
                       href={REWARDS_DOCS_URL}
@@ -516,32 +488,61 @@ export function Sidebar({
                   </section>
 
                   <section
-                    className="rewards-detail-section rewards-detail-section--streak"
+                    className={`rewards-detail-section rewards-detail-section--streak${
+                      rewardsPrime.snapshot.streakBonusClaimed
+                        ? " rewards-detail-section--streak-claimed"
+                        : ""
+                    }`}
                     aria-labelledby="rewards-section-streak"
                   >
-                    <h3 id="rewards-section-streak" className="rewards-detail-section-title">
-                      Launch streak
-                    </h3>
-                    <p className="rewards-detail-section-desc">
-                      One step per calendar day when you start a Prime billing
-                      session. Multiple launches on the same day still count as
-                      one step.
-                    </p>
-                    <RewardsStreakTrack
-                      current={rewardsPrime.snapshot.currentStreakDays}
-                      required={STREAK_REQUIRED_DAYS}
-                      bestRun={rewardsPrime.snapshot.maxConsecutiveDays}
-                      claimed={rewardsPrime.snapshot.streakBonusClaimed}
-                    />
-                    <p className="rewards-detail-bonus-line">
-                      <span className="rewards-detail-bonus-label">Streak bonus</span>
-                      <span className="rewards-detail-bonus-value">
-                        {FOR_STREAK_BONUS.toLocaleString("en-US")} FOR
-                      </span>
-                      <span className="rewards-detail-bonus-meta">
-                        one-time · {STREAK_REQUIRED_DAYS} consecutive days
-                      </span>
-                    </p>
+                    <div className="rewards-streak-blur-shell">
+                      <div
+                        className={`rewards-streak-blur-inner${
+                          rewardsPrime.snapshot.streakBonusClaimed
+                            ? " rewards-streak-blur-inner--muted"
+                            : ""
+                        }`}
+                      >
+                        <h3
+                          id="rewards-section-streak"
+                          className="rewards-detail-section-title"
+                        >
+                          Launch streak
+                        </h3>
+                        <p className="rewards-detail-section-desc">
+                          One step per calendar day when you start a Prime billing
+                          session. Multiple launches on the same day still count as
+                          one step.
+                        </p>
+                        <RewardsStreakTrack
+                          current={rewardsPrime.snapshot.currentStreakDays}
+                          required={STREAK_REQUIRED_DAYS}
+                          bestRun={rewardsPrime.snapshot.maxConsecutiveDays}
+                          claimed={rewardsPrime.snapshot.streakBonusClaimed}
+                        />
+                        <p className="rewards-detail-bonus-line">
+                          <span className="rewards-detail-bonus-label">
+                            Streak bonus
+                          </span>
+                          <span className="rewards-detail-bonus-value">
+                            {FOR_STREAK_BONUS.toLocaleString("en-US")} FOR
+                          </span>
+                          <span className="rewards-detail-bonus-meta">
+                            one-time · {STREAK_REQUIRED_DAYS} consecutive days
+                          </span>
+                        </p>
+                      </div>
+                      {rewardsPrime.snapshot.streakBonusClaimed ? (
+                        <div
+                          className="rewards-streak-claimed-overlay"
+                          role="status"
+                        >
+                          <span className="rewards-streak-claimed-ribbon">
+                            Streak bonus claimed
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
                   </section>
 
                   <section
