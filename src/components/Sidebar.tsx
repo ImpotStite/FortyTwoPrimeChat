@@ -91,7 +91,9 @@ export function Sidebar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [donationCopied, setDonationCopied] = useState(false);
+  const [rewardsDetailOpen, setRewardsDetailOpen] = useState(false);
   const donationCopiedTimerRef = useRef<number | null>(null);
+  const rewardsDetailDialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     return () => {
@@ -106,6 +108,17 @@ export function Sidebar({
   const rewardsRef = useRef<HTMLDivElement>(null);
 
   const forPointsDisplay = forPoints.toLocaleString("en-US");
+
+  const openRewardsDetail = () => {
+    const d = rewardsDetailDialogRef.current;
+    if (!d) return;
+    d.showModal();
+    setRewardsDetailOpen(true);
+  };
+
+  const closeRewardsDetail = () => {
+    rewardsDetailDialogRef.current?.close();
+  };
 
   const handleDonationClick = async () => {
     const ok = await copyToClipboard(DONATION_WALLET);
@@ -344,56 +357,107 @@ export function Sidebar({
                 FOR per MCP call
               </p>
             ) : null}
+            {rewardsPrime ? (
+              <div className="sidebar-rewards-compact">
+                <div className="sidebar-rewards-compact-streak" role="status">
+                  <span className="sidebar-rewards-streak-label">Day streak</span>
+                  <span className="sidebar-rewards-streak-value">
+                    {rewardsPrime.snapshot.currentStreakDays} /{" "}
+                    {STREAK_REQUIRED_DAYS}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="sidebar-rewards-details-btn"
+                  onClick={openRewardsDetail}
+                  aria-expanded={rewardsDetailOpen}
+                  aria-haspopup="dialog"
+                  aria-controls="rewards-detail-dialog"
+                >
+                  Details
+                </button>
+              </div>
+            ) : null}
           </div>
 
           {rewardsPrime ? (
-            <div className="sidebar-rewards-detail">
-              <p className="sidebar-rewards-doc">
-                1,000 FOR base per MCP request; early adopters may earn 2× or 3×
-                for 30 days. Streak: {STREAK_REQUIRED_DAYS}+ consecutive calendar
-                days, each with at least one billing session launched; multiple
-                launches on the same calendar day count once →{" "}
-                {FOR_STREAK_BONUS.toLocaleString("en-US")} FOR once (
-                <a
-                  href={REWARDS_DOCS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  MCP Rewards program
-                </a>
-                ).
-              </p>
-              <div className="sidebar-rewards-streak" role="status">
-                <span className="sidebar-rewards-streak-label">Day streak</span>
-                <span className="sidebar-rewards-streak-value">
-                  {rewardsPrime.snapshot.currentStreakDays} / {STREAK_REQUIRED_DAYS}{" "}
-                  days
-                </span>
-                {rewardsPrime.snapshot.streakBonusClaimed ? (
-                  <span className="sidebar-rewards-streak-badge">
-                    Streak bonus claimed
-                  </span>
-                ) : null}
+            <dialog
+              ref={rewardsDetailDialogRef}
+              id="rewards-detail-dialog"
+              className="rewards-detail-dialog"
+              aria-labelledby="rewards-detail-title"
+              onClose={() => setRewardsDetailOpen(false)}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeRewardsDetail();
+              }}
+            >
+              <div
+                className="rewards-detail-dialog-panel"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <header className="rewards-detail-dialog-header">
+                  <h2 id="rewards-detail-title" className="rewards-detail-dialog-title">
+                    Rewards & streak
+                  </h2>
+                  <form method="dialog">
+                    <button
+                      type="submit"
+                      className="rewards-detail-dialog-close"
+                      aria-label="Close"
+                    >
+                      ×
+                    </button>
+                  </form>
+                </header>
+                <div className="rewards-detail-dialog-body">
+                  <p className="sidebar-rewards-doc">
+                    1,000 FOR base per MCP request; early adopters may earn 2× or
+                    3× for 30 days. Streak: {STREAK_REQUIRED_DAYS}+ consecutive
+                    calendar days, each with at least one billing session launched;
+                    multiple launches on the same calendar day count once →{" "}
+                    {FOR_STREAK_BONUS.toLocaleString("en-US")} FOR once (
+                    <a
+                      href={REWARDS_DOCS_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      MCP Rewards program
+                    </a>
+                    ).
+                  </p>
+                  <div className="sidebar-rewards-streak" role="status">
+                    <span className="sidebar-rewards-streak-label">Day streak</span>
+                    <span className="sidebar-rewards-streak-value">
+                      {rewardsPrime.snapshot.currentStreakDays} /{" "}
+                      {STREAK_REQUIRED_DAYS} days
+                    </span>
+                    {rewardsPrime.snapshot.streakBonusClaimed ? (
+                      <span className="sidebar-rewards-streak-badge">
+                        Streak bonus claimed
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="sidebar-rewards-links">
+                    <a
+                      href={REWARDS_DOCS_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="sidebar-rewards-link"
+                    >
+                      Program rules
+                    </a>
+                    <a
+                      href={REWARDS_ACCOUNT_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="sidebar-rewards-link"
+                    >
+                      Fortytwo account
+                    </a>
+                  </div>
+                </div>
               </div>
-              <div className="sidebar-rewards-links">
-                <a
-                  href={REWARDS_DOCS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="sidebar-rewards-link"
-                >
-                  Program rules
-                </a>
-                <a
-                  href={REWARDS_ACCOUNT_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="sidebar-rewards-link"
-                >
-                  Fortytwo account
-                </a>
-              </div>
-            </div>
+            </dialog>
           ) : null}
         </div>
 
