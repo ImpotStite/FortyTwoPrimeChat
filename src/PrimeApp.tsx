@@ -452,9 +452,13 @@ export default function PrimeApp() {
   };
 
   const handleStop = () => {
+    // Reject the payment gate if open (Escape during modal); same as Cancel.
+    confirmSign(false);
     abortRef.current?.abort();
     abortRef.current = null;
     lastFailedPrimeRef.current = null;
+    deferPrimeStreamLoaderRef.current = false;
+    setAllowPrimeStreamVisual(true);
     setPrimeProgressPhase(null);
     setIsLoading(false);
   };
