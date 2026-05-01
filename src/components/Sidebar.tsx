@@ -1,6 +1,38 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { compareGroups, groupLabel } from "../lib/format";
 import type { Conversation } from "../types";
+
+const DONATION_WALLET = "0xC1F112Cd1D2A6B60B13514602fD0156BA910D488";
+
+function shortEthAddress(addr: string): string {
+  if (addr.length < 14) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 interface Props {
   conversations: Conversation[];
@@ -32,6 +64,31 @@ export function Sidebar({
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [donationCopied, setDonationCopied] = useState(false);
+  const donationCopiedTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (donationCopiedTimerRef.current != null) {
+        window.clearTimeout(donationCopiedTimerRef.current);
+      }
+    };
+  }, []);
+
+  const donationDisplay = shortEthAddress(DONATION_WALLET);
+
+  const handleDonationClick = async () => {
+    const ok = await copyToClipboard(DONATION_WALLET);
+    if (!ok) return;
+    if (donationCopiedTimerRef.current != null) {
+      window.clearTimeout(donationCopiedTimerRef.current);
+    }
+    setDonationCopied(true);
+    donationCopiedTimerRef.current = window.setTimeout(() => {
+      donationCopiedTimerRef.current = null;
+      setDonationCopied(false);
+    }, 2000);
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -215,6 +272,24 @@ export function Sidebar({
             {arr.map(renderItem)}
           </div>
         ))}
+      </div>
+
+      <div className="sidebar-footer">
+        <button
+          type="button"
+          className="sidebar-donation"
+          onClick={() => void handleDonationClick()}
+          title={`Copy ${DONATION_WALLET}`}
+          aria-label={`Copy donation wallet ${DONATION_WALLET}`}
+        >
+          <span className="sidebar-donation-label">Donation wallet:</span>
+          <span className="sidebar-donation-addr">{donationDisplay}</span>
+          {donationCopied ? (
+            <span className="sidebar-donation-copied" role="status">
+              Copied
+            </span>
+          ) : null}
+        </button>
       </div>
     </aside>
   );

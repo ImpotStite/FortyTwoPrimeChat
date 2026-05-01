@@ -417,6 +417,73 @@ kbd {
   gap: 2px;
 }
 
+.sidebar-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 8px 8px 12px 8px;
+}
+
+.sidebar-donation {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  padding: 8px 10px;
+  margin: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sidebar-donation:hover {
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+}
+
+.sidebar-donation:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ft-lime) 65%, var(--border));
+  outline-offset: 2px;
+}
+
+.sidebar-donation-label {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+}
+
+.sidebar-donation-addr {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--prime);
+  font-weight: 500;
+}
+
+.sidebar-donation:hover .sidebar-donation-addr {
+  color: var(--prime-deep);
+}
+
+.sidebar-donation-copied {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--success);
+  margin-top: 2px;
+}
+
+:root[data-theme="light"] .sidebar-donation-addr {
+  color: var(--prime-deep);
+}
+
+:root[data-theme="light"] .sidebar-donation:hover .sidebar-donation-addr {
+  color: color-mix(in srgb, var(--prime-deep) 85%, #000);
+}
+
 .conv-group {
   display: flex;
   flex-direction: column;
