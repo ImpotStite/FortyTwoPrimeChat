@@ -18,6 +18,10 @@ export const FOR_MULTIPLIER_FIRST500 = 3;
 /** FOR granted per successful MCP call under the 3× tier. */
 export const FOR_PER_MCP_3X =
   FOR_BASE_PER_REQUEST * FOR_MULTIPLIER_FIRST500;
+/** Illustrative 2× tier for agents 501–2,000 (UI copy; confirm with Fortytwo docs). */
+export const FOR_MULTIPLIER_501_2000 = 2;
+export const FOR_PER_MCP_501_2000 =
+  FOR_BASE_PER_REQUEST * FOR_MULTIPLIER_501_2000;
 /** One-time streak bonus (7+ consecutive calendar days with ≥1 launch day). */
 export const FOR_STREAK_BONUS = 10_000;
 export const STREAK_REQUIRED_DAYS = 7;

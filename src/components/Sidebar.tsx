@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { compareGroups, groupLabel } from "../lib/format";
 import {
+  FOR_BASE_PER_REQUEST,
   FOR_PER_MCP_3X,
+  FOR_PER_MCP_501_2000,
   FOR_STREAK_BONUS,
   REWARDS_ACCOUNT_URL,
   REWARDS_DOCS_URL,
@@ -25,7 +27,6 @@ function RewardsStreakTrack({
   claimed: boolean;
 }) {
   const filled = Math.min(Math.max(current, 0), required);
-  const pct = required > 0 ? Math.min(100, (filled / required) * 100) : 0;
   const ariaLabel = claimed
     ? `Launch streak ${current} of ${required} days, streak bonus claimed`
     : `Launch streak ${current} of ${required} days toward the bonus`;
@@ -45,12 +46,6 @@ function RewardsStreakTrack({
         role="img"
         aria-label={ariaLabel}
       >
-        <div className="rewards-streak-track-bar" aria-hidden>
-          <div
-            className="rewards-streak-track-bar-fill"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
         <div className="rewards-streak-dots" aria-hidden>
           {Array.from({ length: required }, (_, i) => (
             <span
@@ -461,22 +456,86 @@ export function Sidebar({
                     <h3 id="rewards-section-earnings" className="rewards-detail-section-title">
                       MCP earnings
                     </h3>
-                    <ul className="rewards-detail-list">
-                      <li>
-                        <strong>1,000 FOR</strong> base per successful MCP call
-                        (Fortytwo program).
-                      </li>
-                      <li>
-                        Early adopters may earn <strong>2× or 3×</strong> for 30
-                        days — tier is set by Fortytwo.
-                      </li>
-                      <li>
-                        <strong>Demo UI tier:</strong> we assume{" "}
-                        <strong>First 500 · 3×</strong>, so each MCP call is shown
-                        as <strong>{FOR_PER_MCP_3X.toLocaleString("en-US")} FOR</strong>{" "}
-                        here. Your real balance is on your Fortytwo account.
-                      </li>
-                    </ul>
+                    <p className="rewards-detail-earnings-lead">
+                      Early adopters may receive a <strong>2× or 3×</strong>{" "}
+                      multiplier on the base rate for <strong>30 days</strong>.
+                      Fortytwo assigns the tier to your account. Your live FOR
+                      balance is on your{" "}
+                      <a
+                        href={REWARDS_ACCOUNT_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rewards-detail-text-link"
+                      >
+                        Fortytwo account
+                      </a>
+                      .
+                    </p>
+                    <div
+                      className="rewards-detail-tier-grid"
+                      role="list"
+                      aria-label="FOR tiers overview"
+                    >
+                      <article
+                        className="rewards-detail-tier-card"
+                        role="listitem"
+                      >
+                        <h4 className="rewards-detail-tier-card-title">
+                          Base program
+                        </h4>
+                        <p className="rewards-detail-tier-card-sub">Default</p>
+                        <p className="rewards-detail-tier-card-for">
+                          {FOR_BASE_PER_REQUEST.toLocaleString("en-US")} FOR
+                        </p>
+                        <p className="rewards-detail-tier-card-desc">
+                          Documented rate per successful MCP call in the Fortytwo
+                          MCP Rewards program before any early-adopter multiplier.
+                        </p>
+                      </article>
+                      <article
+                        className="rewards-detail-tier-card rewards-detail-tier-card--active"
+                        role="listitem"
+                        aria-current="true"
+                      >
+                        <span className="rewards-detail-tier-card-flag">
+                          Tier used in this UI
+                        </span>
+                        <h4 className="rewards-detail-tier-card-title">
+                          First 500 agents
+                        </h4>
+                        <p className="rewards-detail-tier-card-sub">
+                          3× for 30 days · early cohort
+                        </p>
+                        <p className="rewards-detail-tier-card-for rewards-detail-tier-card-for--xl">
+                          {FOR_PER_MCP_3X.toLocaleString("en-US")} FOR
+                        </p>
+                        <p className="rewards-detail-tier-card-desc">
+                          Highest early-adopter band. This app{" "}
+                          <strong>displays</strong> each MCP call as{" "}
+                          {FOR_PER_MCP_3X.toLocaleString("en-US")} FOR so you can
+                          preview rewards; it does not change your on-chain tier.
+                        </p>
+                      </article>
+                      <article
+                        className="rewards-detail-tier-card"
+                        role="listitem"
+                      >
+                        <h4 className="rewards-detail-tier-card-title">
+                          Agents 501–2,000
+                        </h4>
+                        <p className="rewards-detail-tier-card-sub">
+                          2× for 30 days · example next wave
+                        </p>
+                        <p className="rewards-detail-tier-card-for">
+                          {FOR_PER_MCP_501_2000.toLocaleString("en-US")} FOR
+                        </p>
+                        <p className="rewards-detail-tier-card-desc">
+                          Illustrative second band many programs use after the first
+                          500. Fortytwo defines the real rule—see the official
+                          program below.
+                        </p>
+                      </article>
+                    </div>
                     <a
                       href={REWARDS_DOCS_URL}
                       target="_blank"
