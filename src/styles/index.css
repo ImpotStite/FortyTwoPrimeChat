@@ -2057,8 +2057,9 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
-  padding: 0 10px 0 8px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 12px 0 8px;
   font-size: 11px;
   font-weight: 500;
   background: var(--bg-elev-2);
@@ -2146,6 +2147,7 @@ kbd {
   align-items: center;
   gap: 4px;
   height: 32px;
+  box-sizing: border-box;
   padding: 2px 4px 2px 4px;
   background: var(--bg-elev-2);
   border: 1px solid var(--border);
@@ -2470,7 +2472,9 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 5px 4px 6px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 11px 0 7px;
   margin-right: 6px;
   background: var(--bg-elev-2);
   border: 1px solid var(--border);
@@ -3040,10 +3044,11 @@ kbd {
   min-width: 0;
 }
 
-.session-history-chain-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 24px;
+.session-history-chain-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 16px;
+  row-gap: 12px;
   width: 100%;
   padding-top: 8px;
   border-top: 1px solid var(--border);
@@ -3054,7 +3059,23 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  min-width: min(140px, 100%);
+  min-width: 0;
+}
+
+.session-history-chain-item--spacer {
+  pointer-events: none;
+}
+
+.session-history-chain-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.session-history-chain-value .session-history-mono-link,
+.session-history-chain-value > .session-history-mono {
+  min-width: 0;
 }
 
 .session-history-mono,
@@ -3068,14 +3089,27 @@ kbd {
   white-space: nowrap;
 }
 
-.session-history-mono-link {
-  color: var(--accent-2);
+.session-history-mono-link,
+.session-history-tx-link {
+  color: var(--prime);
   text-decoration: none;
 }
 
-.session-history-mono-link:hover {
+.session-history-mono-link:hover,
+.session-history-tx-link:hover {
+  color: var(--prime-deep);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+:root[data-theme="light"] .session-history-mono-link,
+:root[data-theme="light"] .session-history-tx-link {
+  color: var(--prime-deep);
+}
+
+:root[data-theme="light"] .session-history-mono-link:hover,
+:root[data-theme="light"] .session-history-tx-link:hover {
+  color: #5a6f00;
 }
 
 .session-history-session-id {
@@ -3172,23 +3206,6 @@ kbd {
   display: inline-flex;
   gap: 10px;
   color: var(--text-dim);
-}
-
-.session-history-txs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  width: 100%;
-}
-
-.session-history-txs a {
-  color: var(--accent-2);
-  text-decoration: none;
-}
-
-.session-history-txs a:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .session-history-id {

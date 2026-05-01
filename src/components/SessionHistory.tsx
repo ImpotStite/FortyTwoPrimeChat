@@ -173,18 +173,21 @@ function SessionDetailRow({
           {r.apiReportedSpentBaseUnits &&
             BigInt(r.apiReportedSpentBaseUnits) > 0n && (
               <span title="If the MCP payload includes USDC fields in usage metadata">
-                ≈ {formatTokenAmount(r.apiReportedSpentBaseUnits, 6, 4)} API est.
+                ≈ <UsdcMark size={12} />{" "}
+                {formatTokenAmount(r.apiReportedSpentBaseUnits, 6, 4)} API est.
                 spent
               </span>
             )}
           {r.spentAmount && BigInt(r.spentAmount) > 0n && (
             <span title="On-chain: authorized − refunded">
-              ↦ {formatTokenAmount(r.spentAmount, 6, 4)} spent
+              ↦ <UsdcMark size={12} /> {formatTokenAmount(r.spentAmount, 6, 4)}{" "}
+              spent
             </span>
           )}
           {r.refundedAmount && BigInt(r.refundedAmount) > 0n && (
             <span title="Refunded" className="session-history-pos">
-              + {formatTokenAmount(r.refundedAmount, 6, 4)} refunded
+              + <UsdcMark size={12} />{" "}
+              {formatTokenAmount(r.refundedAmount, 6, 4)} refunded
             </span>
           )}
           {r.closedAt &&
@@ -197,18 +200,23 @@ function SessionDetailRow({
             )}
         </div>
 
-        <div className="session-history-chain-row">
+        <div className="session-history-chain-grid">
           <div className="session-history-chain-item">
             <span className="session-history-detail-label">Wallet</span>
             {linkAddr(r.walletAddress, shortHash(r.walletAddress))}
           </div>
           <div className="session-history-chain-item">
             <span className="session-history-detail-label">USDC</span>
-            {r.asset ? (
-              linkAddr(r.asset, shortHash(r.asset))
-            ) : (
-              <span className="session-history-mono">—</span>
-            )}
+            <span className="session-history-chain-value">
+              {r.asset ? (
+                <>
+                  <UsdcMark size={12} aria-hidden />
+                  {linkAddr(r.asset, shortHash(r.asset))}
+                </>
+              ) : (
+                <span className="session-history-mono">—</span>
+              )}
+            </span>
           </div>
           <div className="session-history-chain-item">
             <span className="session-history-detail-label">Escrow</span>
@@ -218,29 +226,43 @@ function SessionDetailRow({
               <span className="session-history-mono">—</span>
             )}
           </div>
-        </div>
 
-        <div className="session-history-txs">
-          {r.settleTxHash && (
-            <a
-              href={explorerHref(r.settleTxHash)}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={r.settleTxHash}
-            >
-              Settle {shortHash(r.settleTxHash)}
-            </a>
-          )}
-          {r.refundTxHash && (
-            <a
-              href={explorerHref(r.refundTxHash)}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={r.refundTxHash}
-            >
-              Refund {shortHash(r.refundTxHash)}
-            </a>
-          )}
+          <div className="session-history-chain-item">
+            <span className="session-history-detail-label">Settle TX</span>
+            {r.settleTxHash ? (
+              <a
+                href={explorerHref(r.settleTxHash)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="session-history-mono-link session-history-tx-link"
+                title={r.settleTxHash}
+              >
+                {shortHash(r.settleTxHash)}
+              </a>
+            ) : (
+              <span className="session-history-mono">—</span>
+            )}
+          </div>
+          <div
+            className="session-history-chain-item session-history-chain-item--spacer"
+            aria-hidden
+          />
+          <div className="session-history-chain-item">
+            <span className="session-history-detail-label">Refund TX</span>
+            {r.refundTxHash ? (
+              <a
+                href={explorerHref(r.refundTxHash)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="session-history-mono-link session-history-tx-link"
+                title={r.refundTxHash}
+              >
+                {shortHash(r.refundTxHash)}
+              </a>
+            ) : (
+              <span className="session-history-mono">—</span>
+            )}
+          </div>
         </div>
 
         <div className="session-history-session-id">
