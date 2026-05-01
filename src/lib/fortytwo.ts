@@ -133,7 +133,11 @@ export type PrimeRequestPhase =
   | "calling_tool"
   | "needs_payment"
   | "wallet_payment"
-  /** After wallet signature; brief pause before the payment replay is sent. */
+  /**
+   * Right after the wallet signature succeeds; brief pause before the payment
+   * replay is sent. UIs often dismiss the signing modal here and show the
+   * main request loader instead.
+   */
   | "session_pending"
   | "confirming_payment"
   | "starting_reply"

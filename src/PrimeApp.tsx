@@ -87,10 +87,11 @@ const PRIME_PROGRESS_MESSAGES: Record<PrimeRequestPhase, string> = {
   calling_tool: "Sending your request to Fortytwo…",
   needs_payment: "Confirm payment in the dialog above.",
   wallet_payment: "Sign the USDC authorization in your wallet…",
-  session_pending: "Opening your session…",
+  session_pending:
+    "You're all set — finishing session setup, then your reply will stream here.",
   confirming_payment:
-    "Confirming payment with Fortytwo and opening your session…",
-  starting_reply: "Fortytwo is generating your reply…",
+    "You're all set — confirming with Fortytwo and opening your session…",
+  starting_reply: "You're all set — Fortytwo is generating your reply…",
   streaming: "Receiving the response…",
 };
 
@@ -169,6 +170,12 @@ export default function PrimeApp() {
     wireQuery: string;
   } | null>(null);
   const confirmResolverRef = useRef<((accept: boolean) => void) | null>(null);
+  /**
+   * When this run started without a cached x-session-id, skip the assistant
+   * loader until payment UI is done or the stream actually starts — avoids a
+   * brief loader flash before the session authorization modal.
+   */
+  const deferPrimeStreamLoaderRef = useRef(false);
 
   const wallet = useMemo(() => {
     return wallets.find((w) => w.connectorType !== "embedded") ?? wallets[0] ?? null;
@@ -569,8 +576,10 @@ export default function PrimeApp() {
       }
       const ctrl = new AbortController();
       abortRef.current = ctrl;
+      const seedSession = loadSession(address);
+      deferPrimeStreamLoaderRef.current = !seedSession?.sessionId;
       setIsLoading(true);
-      setAllowPrimeStreamVisual(true);
+      setAllowPrimeStreamVisual(!deferPrimeStreamLoaderRef.current);
       setSurfaceError(null);
 
       const updateAssistant = (
@@ -607,6 +616,8 @@ export default function PrimeApp() {
         return null;
       });
       if (!signer) {
+        deferPrimeStreamLoaderRef.current = false;
+        setAllowPrimeStreamVisual(true);
         setPrimeProgressPhase(null);
         return;
       }
@@ -629,13 +640,28 @@ export default function PrimeApp() {
             // closure-stable, unlike the React state which only updates on
             // the next render.
             let activeSessionId = cachedSession?.sessionId ?? null;
+            const onRequestPhase = (phase: PrimeRequestPhase) => {
+              if (phase === "session_pending") {
+                setSigningState("idle");
+                setPendingAmount(null);
+                setAllowPrimeStreamVisual(true);
+                deferPrimeStreamLoaderRef.current = false;
+              } else if (
+                phase === "starting_reply" &&
+                deferPrimeStreamLoaderRef.current
+              ) {
+                deferPrimeStreamLoaderRef.current = false;
+                setAllowPrimeStreamVisual(true);
+              }
+              setPrimeProgressPhase(phase);
+            };
             const result = await askPrime({
               query: wireQuery,
               address,
               signTypedDataAsync: signer,
               session: cachedSession,
               signal: ctrl.signal,
-              onRequestPhase: setPrimeProgressPhase,
+              onRequestPhase,
               onChunk: (delta) => {
                 updateAssistant((m) => ({
                   ...m,
@@ -783,6 +809,7 @@ export default function PrimeApp() {
           }));
         }
       } finally {
+        deferPrimeStreamLoaderRef.current = false;
         setPrimeProgressPhase(null);
         setSigningState("idle");
         setPendingAmount(null);
@@ -1235,7 +1262,10 @@ export default function PrimeApp() {
                   const streaming =
                     isLoading && isLast && m.role === "assistant";
                   const thinking =
-                    streaming && (m.content ?? "").trim().length === 0;
+                    streaming &&
+                    (m.content ?? "").trim().length === 0 &&
+                    signingState === "idle" &&
+                    allowPrimeStreamVisual;
                   const progressHint =
                     thinking &&
                     allowPrimeStreamVisual &&
