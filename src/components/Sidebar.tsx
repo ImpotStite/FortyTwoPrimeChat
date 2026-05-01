@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { compareGroups, groupLabel } from "../lib/format";
+import {
+  FOR_PER_MCP_3X,
+  FOR_STREAK_BONUS,
+  REWARDS_ACCOUNT_URL,
+  REWARDS_DOCS_URL,
+  STREAK_REQUIRED_DAYS,
+  type RewardsSnapshot,
+} from "../lib/rewardsProgram";
 import type { Conversation } from "../types";
 import { FloatingRewardBubble } from "./FloatingRewardBubble";
 
@@ -52,10 +60,14 @@ interface Props {
   forPoints?: number;
   /** When true, briefly pulse the Rewards row (after a fly animation lands). */
   rewardsHighlight?: boolean;
-  /** Pending fly-to-rewards animations (stable ids from parent). */
-  rewardFlyIds?: string[];
-  rewardAmountLabel?: string;
+  /** Pending fly-to-rewards chips (`id` + label shown on the bubble). */
+  rewardFlights?: { id: string; amountLabel: string }[];
   onRewardFlyComplete?: (id: string) => void;
+  /**
+   * When set (Prime route), show MCP program copy, streak, and official links.
+   * Omit on /test (Legacy) for a compact card only.
+   */
+  rewardsPrime?: { walletConnected: boolean; snapshot: RewardsSnapshot } | null;
 }
 
 export function Sidebar({
@@ -71,9 +83,9 @@ export function Sidebar({
   navLockTitle = "Navigation is temporarily disabled.",
   forPoints = 0,
   rewardsHighlight = false,
-  rewardFlyIds = [],
-  rewardAmountLabel = "+ 3,000 FOR",
+  rewardFlights = [],
   onRewardFlyComplete,
+  rewardsPrime = null,
 }: Props) {
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -300,23 +312,88 @@ export function Sidebar({
           }`}
           aria-live="polite"
         >
-          <img
-            className="sidebar-rewards-mark"
-            src="/fortytwo-prime-mark.png"
-            width={32}
-            height={32}
-            alt=""
-          />
-          <div className="sidebar-rewards-text">
-            <div className="sidebar-rewards-label">Rewards</div>
-            <div
-              className={`sidebar-rewards-value${
-                rewardsHighlight ? " sidebar-rewards-value--hot" : ""
-              }`}
-            >
-              {forPointsDisplay} FOR
+          <div
+            className={
+              rewardsPrime?.walletConnected
+                ? "sidebar-rewards-tier-wrap"
+                : "sidebar-rewards-tier-wrap sidebar-rewards-tier-wrap--plain"
+            }
+          >
+            <div className="sidebar-rewards-head">
+              <img
+                className="sidebar-rewards-mark"
+                src="/fortytwo-prime-mark.png"
+                width={32}
+                height={32}
+                alt=""
+              />
+              <div className="sidebar-rewards-text">
+                <div className="sidebar-rewards-label">Rewards</div>
+                <div
+                  className={`sidebar-rewards-value${
+                    rewardsHighlight ? " sidebar-rewards-value--hot" : ""
+                  }`}
+                >
+                  {forPointsDisplay} FOR
+                </div>
+              </div>
             </div>
+            {rewardsPrime?.walletConnected ? (
+              <p className="sidebar-rewards-tier-pill" title="Assumed tier for this demo UI">
+                First 500 agents · 3× — {FOR_PER_MCP_3X.toLocaleString("en-US")}{" "}
+                FOR per MCP call
+              </p>
+            ) : null}
           </div>
+
+          {rewardsPrime ? (
+            <div className="sidebar-rewards-detail">
+              <p className="sidebar-rewards-doc">
+                1,000 FOR base per MCP request; early adopters may earn 2× or 3×
+                for 30 days. Streak: {STREAK_REQUIRED_DAYS}+ consecutive calendar
+                days with at least one MCP call per day →{" "}
+                {FOR_STREAK_BONUS.toLocaleString("en-US")} FOR once (
+                <a
+                  href={REWARDS_DOCS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  MCP Rewards program
+                </a>
+                ).
+              </p>
+              <div className="sidebar-rewards-streak" role="status">
+                <span className="sidebar-rewards-streak-label">Day streak</span>
+                <span className="sidebar-rewards-streak-value">
+                  {rewardsPrime.snapshot.currentStreakDays} / {STREAK_REQUIRED_DAYS}{" "}
+                  days
+                </span>
+                {rewardsPrime.snapshot.streakBonusClaimed ? (
+                  <span className="sidebar-rewards-streak-badge">
+                    Streak bonus claimed
+                  </span>
+                ) : null}
+              </div>
+              <div className="sidebar-rewards-links">
+                <a
+                  href={REWARDS_DOCS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="sidebar-rewards-link"
+                >
+                  Program rules
+                </a>
+                <a
+                  href={REWARDS_ACCOUNT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="sidebar-rewards-link"
+                >
+                  Fortytwo account
+                </a>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="sidebar-footer">
@@ -338,12 +415,12 @@ export function Sidebar({
         </div>
       </div>
 
-      {rewardFlyIds.map((id) => (
+      {rewardFlights.map((f) => (
         <FloatingRewardBubble
-          key={id}
+          key={f.id}
           targetRef={rewardsRef}
-          amountLabel={rewardAmountLabel}
-          onComplete={() => onRewardFlyComplete?.(id)}
+          amountLabel={f.amountLabel}
+          onComplete={() => onRewardFlyComplete?.(f.id)}
         />
       ))}
     </aside>

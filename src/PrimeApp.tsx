@@ -52,6 +52,14 @@ import {
   type CloseReason,
   type PrimeSessionRecord,
 } from "./lib/primeHistory";
+import {
+  applySilentStreakBonusIfEligible,
+  computeRewardsSnapshot,
+  formatForDelta,
+  FOR_PER_MCP_3X,
+  FOR_STREAK_BONUS,
+  recordMcpCallForRewards,
+} from "./lib/rewardsProgram";
 import { watchUsdcRefunds } from "./lib/escrowEvents";
 import { buildPrimeWireQuery } from "./lib/primeMemoryQuery";
 import {
@@ -103,9 +111,6 @@ const PENDING_REPLY_TOAST = {
 
 /** Toast duration for "Session launched"; loader waits until this elapses. */
 const SESSION_LAUNCHED_TOAST_MS = 4500;
-
-/** FOR-style points granted per successful assistant reply (sidebar Rewards). */
-const REWARD_FOR_PER_REPLY = 3000;
 
 function newConversation(): Conversation {
   const now = Date.now();
@@ -180,27 +185,27 @@ export default function PrimeApp() {
    */
   const deferPrimeStreamLoaderRef = useRef(false);
 
-  const [forPoints, setForPoints] = useState(0);
-  const [rewardFlyIds, setRewardFlyIds] = useState<string[]>([]);
+  const [rewardsRevision, setRewardsRevision] = useState(0);
+  const [rewardFlights, setRewardFlights] = useState<
+    { id: string; amountLabel: string }[]
+  >([]);
   const [rewardsHighlight, setRewardsHighlight] = useState(false);
 
-  const rewardAmountLabel = `+ ${REWARD_FOR_PER_REPLY.toLocaleString("en-US")} FOR`;
-
   const onRewardFlyComplete = useCallback((id: string) => {
-    setRewardFlyIds((prev) => prev.filter((x) => x !== id));
-    setForPoints((p) => p + REWARD_FOR_PER_REPLY);
+    setRewardFlights((prev) => prev.filter((x) => x.id !== id));
     setRewardsHighlight(true);
     window.setTimeout(() => setRewardsHighlight(false), 500);
-  }, []);
-
-  const queueRewardFly = useCallback(() => {
-    setRewardFlyIds((prev) => [...prev, uid("fly_")]);
   }, []);
 
   const wallet = useMemo(() => {
     return wallets.find((w) => w.connectorType !== "embedded") ?? wallets[0] ?? null;
   }, [wallets]);
   const address = (wallet?.address as Address | undefined) ?? null;
+
+  const rewardsSnapshot = useMemo(
+    () => computeRewardsSnapshot(address, historyRecords),
+    [address, historyRecords, rewardsRevision]
+  );
 
   // ---- Init: load conversations + cached session for the current wallet ----
   useEffect(() => {
@@ -236,6 +241,16 @@ export default function PrimeApp() {
     }
     setHistoryRecords(loadSessionHistory(address));
   }, [address]);
+
+  useEffect(() => {
+    if (!address) {
+      setRewardsRevision((r) => r + 1);
+      return;
+    }
+    if (applySilentStreakBonusIfEligible(address, historyRecords)) {
+      setRewardsRevision((x) => x + 1);
+    }
+  }, [address, historyRecords]);
 
   useEffect(() => {
     if (!session) return;
@@ -724,7 +739,29 @@ export default function PrimeApp() {
                   tokensOut: usage.tokensOut,
                   usdcChargedBaseUnits: usage.usdcChargedBaseUnits,
                 });
-                setHistoryRecords(loadSessionHistory(address));
+                const next = loadSessionHistory(address);
+                setHistoryRecords(next);
+                const { grantStreakBonusFly } = recordMcpCallForRewards(
+                  address,
+                  next
+                );
+                setRewardsRevision((r) => r + 1);
+                setRewardFlights((prev) => [
+                  ...prev,
+                  {
+                    id: uid("fly_"),
+                    amountLabel: formatForDelta(FOR_PER_MCP_3X),
+                  },
+                ]);
+                if (grantStreakBonusFly) {
+                  setRewardFlights((prev) => [
+                    ...prev,
+                    {
+                      id: uid("fly_"),
+                      amountLabel: formatForDelta(FOR_STREAK_BONUS),
+                    },
+                  ]);
+                }
               },
               onPaymentRequired: (accept) => {
                 setAllowPrimeStreamVisual(false);
@@ -796,7 +833,6 @@ export default function PrimeApp() {
               saveSession(address, merged);
               setSession(merged);
             }
-            queueRewardFly();
             lastError = null;
             lastFailedPrimeRef.current = null;
             break;
@@ -851,7 +887,7 @@ export default function PrimeApp() {
         }
       }
     },
-    [address, buildSigner, queueRewardFly]
+    [address, buildSigner]
   );
 
   const retryLastPrimeRequest = useCallback(() => {
@@ -1112,11 +1148,18 @@ export default function PrimeApp() {
         modelLabel="Fortytwo Prime"
         navLocked={isLoading}
         navLockTitle={PENDING_REPLY_TOAST.description}
-        forPoints={forPoints}
+        forPoints={rewardsSnapshot.displayTotalFor}
         rewardsHighlight={rewardsHighlight}
-        rewardFlyIds={rewardFlyIds}
-        rewardAmountLabel={rewardAmountLabel}
+        rewardFlights={rewardFlights}
         onRewardFlyComplete={onRewardFlyComplete}
+        rewardsPrime={
+          address
+            ? {
+                walletConnected: !!(ready && authenticated && address),
+                snapshot: rewardsSnapshot,
+              }
+            : null
+        }
       />
 
       {sidebarOpen && (

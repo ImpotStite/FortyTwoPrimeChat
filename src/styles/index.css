@@ -428,8 +428,9 @@ kbd {
 
 .sidebar-rewards {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   padding: 10px 10px;
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -438,6 +439,105 @@ kbd {
     transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
     border-color 0.35s ease,
     background 0.35s ease;
+}
+
+.sidebar-rewards-tier-wrap {
+  border: 1px dashed color-mix(in srgb, var(--ft-lime) 55%, var(--border));
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--ft-lime) 6%, var(--bg-elev-2));
+}
+
+.sidebar-rewards-tier-wrap--plain {
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+.sidebar-rewards-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-rewards-tier-pill {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-dim);
+}
+
+.sidebar-rewards-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-rewards-doc {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.sidebar-rewards-doc a {
+  color: var(--prime);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sidebar-rewards-doc a:hover {
+  color: var(--prime-deep);
+}
+
+.sidebar-rewards-streak {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 11px;
+}
+
+.sidebar-rewards-streak-label {
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.sidebar-rewards-streak-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.sidebar-rewards-streak-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.sidebar-rewards-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-rewards-link {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--prime);
+  text-decoration: none;
+}
+
+.sidebar-rewards-link:hover {
+  color: var(--prime-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+:root[data-theme="light"] .sidebar-rewards-link {
+  color: var(--prime-deep);
 }
 
 .sidebar-rewards--flash {

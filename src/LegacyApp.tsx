@@ -19,6 +19,7 @@ import {
   newErrorCorrelationId,
   type AppSurfaceError,
 } from "./lib/appSurfaceError";
+import { formatForDelta, FOR_PER_MCP_3X } from "./lib/rewardsProgram";
 import { ErrorActionBar } from "./components/ErrorActionBar";
 import type {
   ChatMessage,
@@ -42,8 +43,7 @@ const RETRY_PROVIDER_PATTERNS = [
   /timeout/i,
 ];
 
-/** Same increment as Prime app — FOR-style sidebar Rewards (test route). */
-const REWARD_FOR_PER_REPLY = 3000;
+/** Demo fly chip uses the same 3× tier amount as Prime. */
 
 function newConversation(model: string): Conversation {
   const now = Date.now();
@@ -77,20 +77,23 @@ export default function LegacyApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [knownModels, setKnownModels] = useState<OpenRouterModel[]>([]);
   const [forPoints, setForPoints] = useState(0);
-  const [rewardFlyIds, setRewardFlyIds] = useState<string[]>([]);
+  const [rewardFlights, setRewardFlights] = useState<
+    { id: string; amountLabel: string }[]
+  >([]);
   const [rewardsHighlight, setRewardsHighlight] = useState(false);
 
-  const rewardAmountLabel = `+ ${REWARD_FOR_PER_REPLY.toLocaleString("en-US")} FOR`;
-
   const onRewardFlyComplete = useCallback((id: string) => {
-    setRewardFlyIds((prev) => prev.filter((x) => x !== id));
-    setForPoints((p) => p + REWARD_FOR_PER_REPLY);
+    setRewardFlights((prev) => prev.filter((x) => x.id !== id));
+    setForPoints((p) => p + FOR_PER_MCP_3X);
     setRewardsHighlight(true);
     window.setTimeout(() => setRewardsHighlight(false), 500);
   }, []);
 
   const queueRewardFly = useCallback(() => {
-    setRewardFlyIds((prev) => [...prev, uid("fly_")]);
+    setRewardFlights((prev) => [
+      ...prev,
+      { id: uid("fly_"), amountLabel: formatForDelta(FOR_PER_MCP_3X) },
+    ]);
   }, []);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -509,9 +512,9 @@ export default function LegacyApp() {
         navLockTitle="Wait for the current reply to finish before switching chats."
         forPoints={forPoints}
         rewardsHighlight={rewardsHighlight}
-        rewardFlyIds={rewardFlyIds}
-        rewardAmountLabel={rewardAmountLabel}
+        rewardFlights={rewardFlights}
         onRewardFlyComplete={onRewardFlyComplete}
+        rewardsPrime={null}
       />
 
       {sidebarOpen && (
