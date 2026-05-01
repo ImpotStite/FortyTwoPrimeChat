@@ -279,10 +279,10 @@ export function Sidebar({
           type="button"
           className="sidebar-donation"
           onClick={() => void handleDonationClick()}
-          title={`Copy ${DONATION_WALLET}`}
-          aria-label={`Copy donation wallet ${DONATION_WALLET}`}
+          title={`Copy address: ${DONATION_WALLET}`}
+          aria-label={`Copy wallet address to buy a coffee. ${DONATION_WALLET}`}
         >
-          <span className="sidebar-donation-label">Donation wallet:</span>
+          <span className="sidebar-donation-label">Buy me a coffee:</span>
           <span className="sidebar-donation-addr">{donationDisplay}</span>
           {donationCopied ? (
             <span className="sidebar-donation-copied" role="status">
