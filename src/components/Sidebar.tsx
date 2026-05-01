@@ -351,7 +351,8 @@ export function Sidebar({
               <p className="sidebar-rewards-doc">
                 1,000 FOR base per MCP request; early adopters may earn 2× or 3×
                 for 30 days. Streak: {STREAK_REQUIRED_DAYS}+ consecutive calendar
-                days with at least one MCP call per day →{" "}
+                days, each with at least one billing session launched; multiple
+                launches on the same calendar day count once →{" "}
                 {FOR_STREAK_BONUS.toLocaleString("en-US")} FOR once (
                 <a
                   href={REWARDS_DOCS_URL}

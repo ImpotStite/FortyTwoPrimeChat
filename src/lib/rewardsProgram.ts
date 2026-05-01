@@ -18,16 +18,11 @@ export const FOR_MULTIPLIER_FIRST500 = 3;
 /** FOR granted per successful MCP call under the 3× tier. */
 export const FOR_PER_MCP_3X =
   FOR_BASE_PER_REQUEST * FOR_MULTIPLIER_FIRST500;
-/** One-time streak bonus (7+ consecutive calendar days with ≥1 MCP/day). */
+/** One-time streak bonus (7+ consecutive calendar days with ≥1 launch day). */
 export const FOR_STREAK_BONUS = 10_000;
 export const STREAK_REQUIRED_DAYS = 7;
 
-const KEY_ACTIVITY = "fortytwo-prime-rewards:activity-days:";
 const KEY_STREAK_CLAIMED = "fortytwo-prime-rewards:streak-bonus-claimed:";
-
-function storageActivityKey(address: string): string {
-  return KEY_ACTIVITY + address.toLowerCase();
-}
 
 function storageClaimedKey(address: string): string {
   return KEY_STREAK_CLAIMED + address.toLowerCase();
@@ -59,59 +54,19 @@ function nextDayKey(key: string): string {
   return localDateKey(d.getTime());
 }
 
-function loadDaySet(address: string): Set<string> {
-  try {
-    const raw = localStorage.getItem(storageActivityKey(address));
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw) as unknown;
-    if (!Array.isArray(arr)) return new Set();
-    return new Set(arr.filter((x): x is string => typeof x === "string"));
-  } catch {
-    return new Set();
-  }
-}
-
-function saveDaySet(address: string, days: Set<string>): void {
-  try {
-    localStorage.setItem(
-      storageActivityKey(address),
-      JSON.stringify([...days].sort())
-    );
-  } catch {
-    /* quota */
-  }
-}
-
-/** Days inferred from session rows: any day the session was opened with ≥1 MCP usage. */
+/**
+ * Distinct local calendar days on which at least one Prime session was launched
+ * (settled open), derived only from `PrimeSessionRecord.openedAt` in session
+ * history. Multiple sessions on the same day collapse to a single date key.
+ */
 export function inferActivityDaysFromHistory(
   records: PrimeSessionRecord[]
 ): Set<string> {
   const out = new Set<string>();
   for (const r of records) {
-    const n = r.messageCount ?? 0;
-    if (n > 0) out.add(localDateKey(r.openedAt));
+    out.add(localDateKey(r.openedAt));
   }
   return out;
-}
-
-export function mergeActivityDays(
-  address: string,
-  records: PrimeSessionRecord[]
-): Set<string> {
-  const merged = loadDaySet(address);
-  for (const d of inferActivityDaysFromHistory(records)) merged.add(d);
-  saveDaySet(address, merged);
-  return merged;
-}
-
-/** Union persisted + history-inferred days without writing (read-only). */
-export function readMergedActivityDays(
-  address: string,
-  records: PrimeSessionRecord[]
-): Set<string> {
-  const merged = loadDaySet(address);
-  for (const d of inferActivityDaysFromHistory(records)) merged.add(d);
-  return merged;
 }
 
 export function isStreakBonusClaimed(address: string): boolean {
@@ -204,12 +159,12 @@ export function computeRewardsSnapshot(
   };
   if (!address) return empty;
 
-  const merged = readMergedActivityDays(address, records);
+  const launchDays = inferActivityDaysFromHistory(records);
   const totalMcp = totalMcpCallsFromHistory(records);
   const baseFor = totalMcp * FOR_PER_MCP_3X;
   const claimed = isStreakBonusClaimed(address);
-  const maxRun = maxConsecutiveDayRun(merged);
-  const curStreak = currentCalendarStreak(merged);
+  const maxRun = maxConsecutiveDayRun(launchDays);
+  const curStreak = currentCalendarStreak(launchDays);
   const eligible = maxRun >= STREAK_REQUIRED_DAYS || curStreak >= STREAK_REQUIRED_DAYS;
   const streakBonusFor = claimed ? FOR_STREAK_BONUS : 0;
 
@@ -226,18 +181,18 @@ export function computeRewardsSnapshot(
 }
 
 /**
- * On wallet load / history refresh: merge days, grant one-time streak bonus
- * silently if already eligible. Returns whether the claim flag was just set.
+ * On wallet load / history refresh: if session history shows a 7-day launch
+ * streak and the one-time bonus was not yet recorded, set the claim flag.
+ * Returns whether the claim flag was just set.
  */
 export function applySilentStreakBonusIfEligible(
   address: string,
   records: PrimeSessionRecord[]
 ): boolean {
-  mergeActivityDays(address, records);
   if (isStreakBonusClaimed(address)) return false;
-  const merged = loadDaySet(address);
-  const maxRun = maxConsecutiveDayRun(merged);
-  const cur = currentCalendarStreak(merged);
+  const launchDays = inferActivityDaysFromHistory(records);
+  const maxRun = maxConsecutiveDayRun(launchDays);
+  const cur = currentCalendarStreak(launchDays);
   if (maxRun >= STREAK_REQUIRED_DAYS || cur >= STREAK_REQUIRED_DAYS) {
     markStreakBonusClaimed(address);
     return true;
@@ -253,22 +208,19 @@ export interface AfterMcpRewardResult {
 
 /**
  * Call after each successful MCP (e.g. after `incrementSessionUsage`).
- * Records today as an active day and may grant the one-time streak bonus.
+ * Re-reads streak eligibility from session history (launch days) and may grant
+ * the one-time streak bonus when the run crosses the threshold.
  */
 export function recordMcpCallForRewards(
   address: string,
   records: PrimeSessionRecord[]
 ): AfterMcpRewardResult {
-  const merged = loadDaySet(address);
-  for (const d of inferActivityDaysFromHistory(records)) merged.add(d);
-  merged.add(localDateKey());
-  saveDaySet(address, merged);
-
+  const launchDays = inferActivityDaysFromHistory(records);
   const wasClaimed = isStreakBonusClaimed(address);
   let grantStreakBonusFly = false;
   if (!wasClaimed) {
-    const maxRun = maxConsecutiveDayRun(merged);
-    const cur = currentCalendarStreak(merged);
+    const maxRun = maxConsecutiveDayRun(launchDays);
+    const cur = currentCalendarStreak(launchDays);
     if (maxRun >= STREAK_REQUIRED_DAYS || cur >= STREAK_REQUIRED_DAYS) {
       markStreakBonusClaimed(address);
       grantStreakBonusFly = true;
