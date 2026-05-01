@@ -622,12 +622,12 @@ kbd {
 }
 
 .rewards-detail-section--streak-claimed {
-  border-color: color-mix(in srgb, #22c55e 45%, var(--border));
-  background: color-mix(in srgb, #22c55e 10%, var(--bg-elev-1));
+  border-color: color-mix(in srgb, var(--ft-lime) 42%, var(--border));
+  background: color-mix(in srgb, var(--ft-lime) 9%, var(--bg-elev-1));
 }
 
 :root[data-theme="light"] .rewards-detail-section--streak-claimed {
-  background: color-mix(in srgb, #22c55e 14%, var(--bg-elev-1));
+  background: color-mix(in srgb, var(--ft-lime) 14%, var(--bg-elev-1));
 }
 
 .rewards-streak-blur-shell {
@@ -731,18 +731,19 @@ kbd {
 .rewards-detail-tier-card--active {
   display: flex;
   flex-direction: column;
-  border-color: color-mix(in srgb, #22c55e 55%, var(--border));
-  background: color-mix(in srgb, #22c55e 11%, var(--bg-elev-1));
+  border-color: color-mix(in srgb, var(--ft-lime) 55%, var(--border));
+  background: color-mix(in srgb, var(--ft-lime) 11%, var(--bg-elev-1));
   box-shadow:
-    0 0 0 1px color-mix(in srgb, #22c55e 32%, transparent),
-    0 6px 26px rgba(34, 197, 94, 0.18);
+    0 0 0 1px color-mix(in srgb, var(--ft-lime) 32%, transparent),
+    0 6px 28px var(--prime-glow);
 }
 
 :root[data-theme="light"] .rewards-detail-tier-card--active {
-  background: color-mix(in srgb, #22c55e 14%, var(--bg-elev-1));
+  border-color: color-mix(in srgb, var(--ft-lime) 45%, var(--border));
+  background: color-mix(in srgb, var(--ft-lime) 16%, var(--bg-elev-1));
   box-shadow:
-    0 0 0 1px color-mix(in srgb, #22c55e 38%, var(--border)),
-    0 4px 18px rgba(34, 197, 94, 0.12);
+    0 0 0 1px color-mix(in srgb, var(--ft-lime) 38%, var(--border)),
+    0 4px 22px rgba(208, 255, 0, 0.22);
 }
 
 .rewards-detail-tier-card-flag {
@@ -755,14 +756,14 @@ kbd {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #14532d;
-  background: color-mix(in srgb, #bbf7d0 88%, #22c55e);
-  border: 1px solid color-mix(in srgb, #22c55e 42%, transparent);
+  color: var(--accent-on);
+  background: color-mix(in srgb, var(--ft-lime) 52%, var(--prime-deep));
+  border: 1px solid color-mix(in srgb, var(--ft-lime) 48%, var(--border));
   align-self: flex-start;
 }
 
 :root[data-theme="light"] .rewards-detail-tier-card-flag {
-  color: #14532d;
+  color: var(--accent-on);
 }
 
 .rewards-detail-tier-card-title {
@@ -791,7 +792,7 @@ kbd {
 
 .rewards-detail-tier-card-for--xl {
   font-size: 22px;
-  color: color-mix(in srgb, #4ade80 92%, var(--text));
+  color: var(--prime);
 }
 
 .rewards-detail-tier-card-desc {
@@ -916,16 +917,21 @@ kbd {
 .rewards-streak-dot--on {
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, #4ade80 88%, #22c55e) 0%,
-    #22c55e 100%
+    var(--prime-deep) 0%,
+    var(--ft-lime) 100%
   );
-  border-color: color-mix(in srgb, #22c55e 55%, var(--border));
-  box-shadow: none;
+  border-color: color-mix(in srgb, var(--ft-lime) 42%, var(--prime-deep));
+  box-shadow: 0 0 14px var(--prime-glow);
 }
 
 :root[data-theme="light"] .rewards-streak-dot--on {
-  background: linear-gradient(180deg, #4ade80, #16a34a);
-  border-color: color-mix(in srgb, #16a34a 45%, var(--border));
+  background: linear-gradient(
+    180deg,
+    var(--ft-lime) 0%,
+    var(--prime-deep) 100%
+  );
+  border-color: color-mix(in srgb, var(--prime-deep) 45%, var(--border));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ft-lime) 28%, transparent);
 }
 
 .rewards-streak-track-best {
@@ -4033,6 +4039,10 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.session-history-spent {
+  color: var(--danger);
 }
 
 .session-history-pos {

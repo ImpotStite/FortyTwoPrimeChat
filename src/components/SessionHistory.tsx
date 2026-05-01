@@ -172,14 +172,17 @@ function SessionDetailRow({
         <div className="session-history-amounts">
           {r.apiReportedSpentBaseUnits &&
             BigInt(r.apiReportedSpentBaseUnits) > 0n && (
-              <span title="If the MCP payload includes USDC fields in usage metadata">
+              <span
+                className="session-history-spent"
+                title="If the MCP payload includes USDC fields in usage metadata"
+              >
                 ≈ <UsdcMark size={12} />{" "}
                 {formatTokenAmount(r.apiReportedSpentBaseUnits, 6, 4)} API est.
                 spent
               </span>
             )}
           {r.spentAmount && BigInt(r.spentAmount) > 0n && (
-            <span title="On-chain: authorized − refunded">
+            <span className="session-history-spent" title="On-chain: authorized − refunded">
               ↦ <UsdcMark size={12} /> {formatTokenAmount(r.spentAmount, 6, 4)}{" "}
               spent
             </span>
