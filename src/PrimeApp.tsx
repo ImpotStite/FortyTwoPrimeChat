@@ -87,6 +87,7 @@ const PRIME_PROGRESS_MESSAGES: Record<PrimeRequestPhase, string> = {
   calling_tool: "Sending your request to Fortytwo…",
   needs_payment: "Confirm payment in the dialog above.",
   wallet_payment: "Sign the USDC authorization in your wallet…",
+  session_pending: "Opening your session…",
   confirming_payment:
     "Confirming payment with Fortytwo and opening your session…",
   starting_reply: "Fortytwo is generating your reply…",
@@ -98,6 +99,9 @@ const PENDING_REPLY_TOAST = {
   description:
     "Wait for Fortytwo to finish the current reply before switching chats or starting a new one.",
 } as const;
+
+/** Toast duration for "Session launched"; loader waits until this elapses. */
+const SESSION_LAUNCHED_TOAST_MS = 4500;
 
 function newConversation(): Conversation {
   const now = Date.now();
@@ -130,6 +134,8 @@ export default function PrimeApp() {
   );
   const [primeProgressPhase, setPrimeProgressPhase] =
     useState<PrimeRequestPhase | null>(null);
+  /** When false, hide Fortytwo stream loader / composer status during payment UX. */
+  const [allowPrimeStreamVisual, setAllowPrimeStreamVisual] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [session, setSession] = useState<PrimeSession | null>(null);
   const [signingState, setSigningState] = useState<
@@ -344,7 +350,8 @@ export default function PrimeApp() {
   );
 
   const composerStatusLine = useMemo(() => {
-    if (!isLoading || !primeProgressPhase) return null;
+    if (!isLoading || !primeProgressPhase || !allowPrimeStreamVisual)
+      return null;
     const last = active?.messages[active.messages.length - 1];
     if (
       primeProgressPhase === "streaming" &&
@@ -354,16 +361,17 @@ export default function PrimeApp() {
       return null;
     }
     return PRIME_PROGRESS_MESSAGES[primeProgressPhase];
-  }, [isLoading, primeProgressPhase, active?.messages]);
+  }, [isLoading, primeProgressPhase, active?.messages, allowPrimeStreamVisual]);
 
   const showPrimeNetworkLoader = useMemo(() => {
+    if (!allowPrimeStreamVisual) return false;
     if (!isLoading || !active?.messages.length) return false;
     const last = active.messages[active.messages.length - 1];
     return (
       last?.role === "assistant" &&
       (last.content?.trim() ?? "").length === 0
     );
-  }, [isLoading, active?.messages]);
+  }, [isLoading, active?.messages, allowPrimeStreamVisual]);
 
   const updateActive = useCallback(
     (updater: (c: Conversation) => Conversation) => {
@@ -562,6 +570,7 @@ export default function PrimeApp() {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       setIsLoading(true);
+      setAllowPrimeStreamVisual(true);
       setSurfaceError(null);
 
       const updateAssistant = (
@@ -657,17 +666,6 @@ export default function PrimeApp() {
                 setLastActivityAt(Date.now());
                 setSigningState("idle");
                 setPendingAmount(null);
-                const decimals = 6;
-                const human = (Number(s.authorizedAmount) / 10 ** decimals).toString();
-                toasts.push({
-                  kind: "success",
-                  title: "Session opened",
-                  description: s.paymentTxHash
-                    ? "Settle transaction confirmed on Monad."
-                    : "USDC authorized — awaiting on-chain confirmation.",
-                  amount: human,
-                  txHash: s.paymentTxHash,
-                });
               },
               onUsage: (usage) => {
                 if (!address || !activeSessionId) return;
@@ -679,6 +677,7 @@ export default function PrimeApp() {
                 setHistoryRecords(loadSessionHistory(address));
               },
               onPaymentRequired: (accept) => {
+                setAllowPrimeStreamVisual(false);
                 const decimals = 6;
                 const human = (Number(accept.amount) / 10 ** decimals).toString();
                 setPendingAmount(`${human} USDC`);
@@ -694,6 +693,24 @@ export default function PrimeApp() {
                     }
                   };
                 });
+              },
+              beforeAssistantStream: async ({ session: s }) => {
+                const decimals = 6;
+                const human = (Number(s.authorizedAmount) / 10 ** decimals).toString();
+                toasts.push({
+                  kind: "success",
+                  title: "Session launched",
+                  description:
+                    "Your billing session is active. Fortytwo is preparing your reply.",
+                  dock: "left",
+                  amount: human,
+                  txHash: s.paymentTxHash,
+                  durationMs: SESSION_LAUNCHED_TOAST_MS,
+                });
+                await new Promise<void>((r) =>
+                  setTimeout(r, SESSION_LAUNCHED_TOAST_MS)
+                );
+                setAllowPrimeStreamVisual(true);
               },
             });
             // Final-shot fallback: if streaming didn't emit chunks, drop the full text now.
@@ -769,6 +786,7 @@ export default function PrimeApp() {
         setPrimeProgressPhase(null);
         setSigningState("idle");
         setPendingAmount(null);
+        setAllowPrimeStreamVisual(true);
         setIsLoading(false);
         abortRef.current = null;
 
@@ -1219,7 +1237,9 @@ export default function PrimeApp() {
                   const thinking =
                     streaming && (m.content ?? "").trim().length === 0;
                   const progressHint =
-                    thinking && primeProgressPhase
+                    thinking &&
+                    allowPrimeStreamVisual &&
+                    primeProgressPhase
                       ? isLast && showPrimeNetworkLoader
                         ? undefined
                         : PRIME_PROGRESS_MESSAGES[primeProgressPhase]

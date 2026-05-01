@@ -21,6 +21,8 @@ export interface ToastInput {
   amount?: string;
   /** Auto-dismiss timeout (ms). Default 9000; pass 0 to require manual dismiss. */
   durationMs?: number;
+  /** Dock to bottom-left (default is bottom-right). */
+  dock?: "left" | "right";
 }
 
 export interface Toast extends ToastInput {
@@ -68,55 +70,80 @@ function shortHash(h: string): string {
   return `${clean.slice(0, 8)}…${clean.slice(-6)}`;
 }
 
-export function Toaster({ toasts, onDismiss, explorerHref }: Props) {
-  if (toasts.length === 0) return null;
+function renderToastRow(
+  t: Toast,
+  onDismiss: (id: string) => void,
+  explorerHref?: (txHash: string) => string
+) {
   return (
-    <div className="toaster" aria-live="polite" aria-atomic="false">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={`toast toast-${t.kind ?? "info"}`}
-          role="status"
-        >
-          <div className="toast-body">
-            <div className="toast-title">{t.title}</div>
-            {t.description && (
-              <div className="toast-desc">{t.description}</div>
+    <div
+      key={t.id}
+      className={`toast toast-${t.kind ?? "info"}`}
+      role="status"
+    >
+      <div className="toast-body">
+        <div className="toast-title">{t.title}</div>
+        {t.description && (
+          <div className="toast-desc">{t.description}</div>
+        )}
+        {(t.amount || t.txHash) && (
+          <div className="toast-meta">
+            {t.amount && (
+              <span className="toast-amount">
+                <UsdcMark size={12} />
+                {t.amount} USDC
+              </span>
             )}
-            {(t.amount || t.txHash) && (
-              <div className="toast-meta">
-                {t.amount && (
-                  <span className="toast-amount">
-                    <UsdcMark size={12} />
-                    {t.amount} USDC
-                  </span>
-                )}
-                {t.txHash && explorerHref && (
-                  <a
-                    className="toast-link"
-                    href={explorerHref(t.txHash)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={t.txHash}
-                  >
-                    {shortHash(t.txHash)} <ExternalIcon />
-                  </a>
-                )}
-              </div>
+            {t.txHash && explorerHref && (
+              <a
+                className="toast-link"
+                href={explorerHref(t.txHash)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={t.txHash}
+              >
+                {shortHash(t.txHash)} <ExternalIcon />
+              </a>
             )}
           </div>
-          <button
-            type="button"
-            className="toast-close"
-            onClick={() => onDismiss(t.id)}
-            aria-label="Dismiss"
-            title="Dismiss"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-      ))}
+        )}
+      </div>
+      <button
+        type="button"
+        className="toast-close"
+        onClick={() => onDismiss(t.id)}
+        aria-label="Dismiss"
+        title="Dismiss"
+      >
+        <CloseIcon />
+      </button>
     </div>
+  );
+}
+
+export function Toaster({ toasts, onDismiss, explorerHref }: Props) {
+  if (toasts.length === 0) return null;
+  const left = useMemo(
+    () => toasts.filter((t) => t.dock === "left"),
+    [toasts]
+  );
+  const right = useMemo(
+    () => toasts.filter((t) => t.dock !== "left"),
+    [toasts]
+  );
+  return (
+    <>
+      {left.length > 0 ? (
+        <div className="toaster toaster--left" aria-live="polite" aria-atomic="false">
+          {left.map((t) => renderToastRow(t, onDismiss, explorerHref))}
+        </div>
+      ) : null}
+      {right.length > 0 ? (
+        <div className="toaster toaster--right" aria-live="polite" aria-atomic="false">
+          {right.map((t) => renderToastRow(t, onDismiss, explorerHref))}
+        </div>
+      ) : null}
+    </>
   );
 }
 

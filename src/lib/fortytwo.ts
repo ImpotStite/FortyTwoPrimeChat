@@ -133,6 +133,8 @@ export type PrimeRequestPhase =
   | "calling_tool"
   | "needs_payment"
   | "wallet_payment"
+  /** After wallet signature; brief pause before the payment replay is sent. */
+  | "session_pending"
   | "confirming_payment"
   | "starting_reply"
   | "streaming";
@@ -155,6 +157,12 @@ export interface AskPrimeOptions {
   onSession?: (session: PrimeSession) => void;
   /** Called once per successful tools/call with token usage from `_meta.usage`. */
   onUsage?: (usage: TokenUsage) => void;
+  /**
+   * After HTTP 200 on the payment replay and `onSession` has run, but before
+   * `starting_reply` / streaming the assistant body. Lets the UI show a toast
+   * and defer the network loader until this promise resolves.
+   */
+  beforeAssistantStream?: (ctx: { session: PrimeSession }) => void | Promise<void>;
   /**
    * Called right before signing — UI can show a confirmation modal and gate
    * the actual signTypedData call. Resolve the returned promise to proceed,
@@ -187,6 +195,37 @@ function wrapOnChunkWithPhase(
     }
     onChunk?.(delta);
   };
+}
+
+/** Pause after wallet signature before replaying `tools/call` with payment. */
+const POST_SIGNATURE_PAUSE_MS = 5000;
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const t = window.setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      window.clearTimeout(t);
+      signal?.removeEventListener("abort", onAbort);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal?.addEventListener("abort", onAbort);
+  });
+}
+
+async function safeReadText(res: Response): Promise<string> {
+  try {
+    const t = await res.text();
+    return t.slice(0, 400);
+  } catch {
+    return "";
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -908,6 +947,7 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
     onUsage,
     onPaymentRequired,
     onRequestPhase,
+    beforeAssistantStream,
   } = opts;
 
   let currentSession = session ?? null;
@@ -999,6 +1039,9 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
         signTypedDataAsync
       );
 
+      onRequestPhase?.("session_pending");
+      await sleep(POST_SIGNATURE_PAUSE_MS, signal);
+
       onRequestPhase?.("confirming_payment");
       const replay = await makeToolsCallRequest({
         query,
@@ -1015,13 +1058,30 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
         );
       }
 
+      const built = buildSession(replay, accept);
+      if (!built) {
+        throw new Error(
+          "Fortytwo accepted payment but did not return x-session-id. Try again."
+        );
+      }
+      currentSession = built;
+      if (onSession) onSession(built);
+
+      if (beforeAssistantStream) {
+        await beforeAssistantStream({ session: built });
+      }
+
       onRequestPhase?.("starting_reply");
       const wrappedReplay = wrapOnChunkWithPhase(onChunk, onRequestPhase);
       const consumed = await consumeResponse(replay, wrappedReplay);
-      const built = buildSession(replay, accept);
-      if (built) {
-        currentSession = built;
-        if (onSession) onSession(built);
+      const sid = replay.headers.get("x-session-id");
+      if (
+        sid &&
+        currentSession &&
+        sid !== currentSession.sessionId
+      ) {
+        currentSession = { ...currentSession, sessionId: sid };
+        if (onSession) onSession(currentSession);
       }
       if (consumed.usage && onUsage) onUsage(consumed.usage);
       return {
@@ -1039,13 +1099,4 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
   }
 
   throw new Error("askPrime: exhausted attempts");
-}
-
-async function safeReadText(res: Response): Promise<string> {
-  try {
-    const t = await res.text();
-    return t.slice(0, 400);
-  } catch {
-    return "";
-  }
 }
