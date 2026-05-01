@@ -1737,6 +1737,7 @@ kbd {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  z-index: 0;
 }
 
 /* Fortytwo Prime: network loading scene (creatures + canvas) */
@@ -1763,6 +1764,7 @@ kbd {
   overflow: hidden;
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--bg-elev-2) 75%, #121212);
+  isolation: isolate;
 }
 
 :root[data-theme="light"] .prime-loader-stage {
@@ -1797,13 +1799,13 @@ kbd {
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 1;
+  z-index: 0;
 }
 
 .prime-loader-nodes {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 1;
 }
 
 .prime-loader-node {
@@ -1816,7 +1818,7 @@ kbd {
 
 .prime-loader-sprite {
   position: relative;
-  z-index: 3;
+  z-index: 1;
   filter: drop-shadow(0 4px 0 color-mix(in srgb, black 50%, transparent));
 }
 
@@ -2553,6 +2555,7 @@ kbd {
   left: 0;
   right: 0;
   bottom: 0;
+  z-index: 3;
   padding: 14px 16px 18px 16px;
   background: linear-gradient(
     to top,

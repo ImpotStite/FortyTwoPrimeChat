@@ -5,6 +5,7 @@ import remarkMath from "remark-math";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import { CodePre } from "./CodeBlock";
+import { FortytwoSign } from "./Icons";
 import {
   formatApproximateCost,
   formatCost,
@@ -77,7 +78,11 @@ export function Message({
   return (
     <div className={`msg ${isUser ? "msg-user" : "msg-assistant"}`}>
       <div className="msg-avatar" aria-hidden>
-        {isUser ? "You" : "42"}
+        {isUser ? (
+          "You"
+        ) : (
+          <FortytwoSign size={24} title="Fortytwo" />
+        )}
       </div>
       <div className="msg-body">
         <div className="msg-meta">
