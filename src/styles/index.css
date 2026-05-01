@@ -729,6 +729,8 @@ kbd {
 }
 
 .rewards-detail-tier-card--active {
+  display: flex;
+  flex-direction: column;
   border-color: color-mix(in srgb, #22c55e 55%, var(--border));
   background: color-mix(in srgb, #22c55e 11%, var(--bg-elev-1));
   box-shadow:
@@ -745,7 +747,8 @@ kbd {
 
 .rewards-detail-tier-card-flag {
   display: inline-block;
-  margin: 0 0 8px;
+  margin-top: auto;
+  margin-bottom: 0;
   padding: 4px 8px;
   border-radius: 999px;
   font-size: 9px;
@@ -755,6 +758,7 @@ kbd {
   color: #14532d;
   background: color-mix(in srgb, #bbf7d0 88%, #22c55e);
   border: 1px solid color-mix(in srgb, #22c55e 42%, transparent);
+  align-self: flex-start;
 }
 
 :root[data-theme="light"] .rewards-detail-tier-card-flag {
@@ -819,22 +823,22 @@ kbd {
   gap: 4px;
   font-size: 11.5px;
   font-weight: 600;
-  color: #4ade80;
+  color: var(--prime);
   text-decoration: none;
 }
 
 .rewards-detail-text-link:hover {
-  color: #86efac;
+  color: var(--prime-deep);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 :root[data-theme="light"] .rewards-detail-text-link {
-  color: #15803d;
+  color: var(--prime-deep);
 }
 
 :root[data-theme="light"] .rewards-detail-text-link:hover {
-  color: #16a34a;
+  color: var(--text);
 }
 
 .rewards-streak-track {
@@ -996,23 +1000,23 @@ kbd {
 }
 
 .rewards-detail-action-link--accent {
-  border-color: color-mix(in srgb, #22c55e 45%, var(--border));
-  background: color-mix(in srgb, #22c55e 10%, var(--bg-elev-2));
-  color: #4ade80;
+  border-color: color-mix(in srgb, var(--ft-lime) 45%, var(--border));
+  background: color-mix(in srgb, var(--ft-lime) 10%, var(--bg-elev-2));
+  color: var(--prime);
 }
 
 .rewards-detail-action-link--accent:hover {
-  background: color-mix(in srgb, #22c55e 18%, var(--bg-elev-2));
-  border-color: color-mix(in srgb, #22c55e 50%, var(--border));
-  color: #86efac;
+  background: color-mix(in srgb, var(--ft-lime) 18%, var(--bg-elev-2));
+  border-color: color-mix(in srgb, var(--ft-lime) 55%, var(--border));
+  color: var(--prime-deep);
 }
 
 :root[data-theme="light"] .rewards-detail-action-link--accent {
-  color: #15803d;
+  color: var(--prime-deep);
 }
 
 :root[data-theme="light"] .rewards-detail-action-link--accent:hover {
-  color: #166534;
+  color: var(--text);
 }
 
 .sidebar-rewards-doc {
@@ -1023,14 +1027,14 @@ kbd {
 }
 
 .sidebar-rewards-doc a {
-  color: #4ade80;
+  color: var(--prime);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .sidebar-rewards-doc a:hover {
-  color: #86efac;
+  color: var(--prime-deep);
 }
 
 .sidebar-rewards-streak {
@@ -1067,22 +1071,22 @@ kbd {
 .sidebar-rewards-link {
   font-size: 11px;
   font-weight: 600;
-  color: #4ade80;
+  color: var(--prime);
   text-decoration: none;
 }
 
 .sidebar-rewards-link:hover {
-  color: #86efac;
+  color: var(--prime-deep);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 :root[data-theme="light"] .sidebar-rewards-link {
-  color: #15803d;
+  color: var(--prime-deep);
 }
 
 :root[data-theme="light"] .sidebar-rewards-link:hover {
-  color: #16a34a;
+  color: var(--text);
 }
 
 .sidebar-rewards--flash {

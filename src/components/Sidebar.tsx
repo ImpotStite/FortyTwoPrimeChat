@@ -481,9 +481,6 @@ export function Sidebar({
                         role="listitem"
                         aria-current="true"
                       >
-                        <span className="rewards-detail-tier-card-flag">
-                          You are Here
-                        </span>
                         <h4 className="rewards-detail-tier-card-title">
                           First 500 agents
                         </h4>
@@ -496,6 +493,9 @@ export function Sidebar({
                         <p className="rewards-detail-tier-card-desc">
                           Best early bonus. This app uses it only to preview FOR.
                         </p>
+                        <span className="rewards-detail-tier-card-flag">
+                          You are Here
+                        </span>
                       </article>
                       <article
                         className="rewards-detail-tier-card"
