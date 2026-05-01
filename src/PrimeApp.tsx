@@ -104,6 +104,9 @@ const PENDING_REPLY_TOAST = {
 /** Toast duration for "Session launched"; loader waits until this elapses. */
 const SESSION_LAUNCHED_TOAST_MS = 4500;
 
+/** FOR-style points granted per successful assistant reply (sidebar Rewards). */
+const REWARD_FOR_PER_REPLY = 3000;
+
 function newConversation(): Conversation {
   const now = Date.now();
   return {
@@ -176,6 +179,23 @@ export default function PrimeApp() {
    * brief loader flash before the session authorization modal.
    */
   const deferPrimeStreamLoaderRef = useRef(false);
+
+  const [forPoints, setForPoints] = useState(0);
+  const [rewardFlyIds, setRewardFlyIds] = useState<string[]>([]);
+  const [rewardsHighlight, setRewardsHighlight] = useState(false);
+
+  const rewardAmountLabel = `+ ${REWARD_FOR_PER_REPLY.toLocaleString("en-US")} FOR`;
+
+  const onRewardFlyComplete = useCallback((id: string) => {
+    setRewardFlyIds((prev) => prev.filter((x) => x !== id));
+    setForPoints((p) => p + REWARD_FOR_PER_REPLY);
+    setRewardsHighlight(true);
+    window.setTimeout(() => setRewardsHighlight(false), 500);
+  }, []);
+
+  const queueRewardFly = useCallback(() => {
+    setRewardFlyIds((prev) => [...prev, uid("fly_")]);
+  }, []);
 
   const wallet = useMemo(() => {
     return wallets.find((w) => w.connectorType !== "embedded") ?? wallets[0] ?? null;
@@ -776,6 +796,7 @@ export default function PrimeApp() {
               saveSession(address, merged);
               setSession(merged);
             }
+            queueRewardFly();
             lastError = null;
             lastFailedPrimeRef.current = null;
             break;
@@ -830,7 +851,7 @@ export default function PrimeApp() {
         }
       }
     },
-    [address, buildSigner]
+    [address, buildSigner, queueRewardFly]
   );
 
   const retryLastPrimeRequest = useCallback(() => {
@@ -1091,6 +1112,11 @@ export default function PrimeApp() {
         modelLabel="Fortytwo Prime"
         navLocked={isLoading}
         navLockTitle={PENDING_REPLY_TOAST.description}
+        forPoints={forPoints}
+        rewardsHighlight={rewardsHighlight}
+        rewardFlyIds={rewardFlyIds}
+        rewardAmountLabel={rewardAmountLabel}
+        onRewardFlyComplete={onRewardFlyComplete}
       />
 
       {sidebarOpen && (

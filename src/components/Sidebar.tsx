@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { compareGroups, groupLabel } from "../lib/format";
 import type { Conversation } from "../types";
+import { FloatingRewardBubble } from "./FloatingRewardBubble";
 
 const DONATION_WALLET = "0xC1F112Cd1D2A6B60B13514602fD0156BA910D488";
 
@@ -47,6 +48,14 @@ interface Props {
   navLocked?: boolean;
   /** Tooltip / `aria-label` detail while `navLocked`. */
   navLockTitle?: string;
+  /** Fortytwo “FOR” style points shown in the Rewards row. */
+  forPoints?: number;
+  /** When true, briefly pulse the Rewards row (after a fly animation lands). */
+  rewardsHighlight?: boolean;
+  /** Pending fly-to-rewards animations (stable ids from parent). */
+  rewardFlyIds?: string[];
+  rewardAmountLabel?: string;
+  onRewardFlyComplete?: (id: string) => void;
 }
 
 export function Sidebar({
@@ -60,6 +69,11 @@ export function Sidebar({
   modelLabel,
   navLocked = false,
   navLockTitle = "Navigation is temporarily disabled.",
+  forPoints = 0,
+  rewardsHighlight = false,
+  rewardFlyIds = [],
+  rewardAmountLabel = "+ 3,000 FOR",
+  onRewardFlyComplete,
 }: Props) {
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,6 +90,10 @@ export function Sidebar({
   }, []);
 
   const donationDisplay = shortEthAddress(DONATION_WALLET);
+
+  const rewardsRef = useRef<HTMLDivElement>(null);
+
+  const forPointsDisplay = forPoints.toLocaleString("en-US");
 
   const handleDonationClick = async () => {
     const ok = await copyToClipboard(DONATION_WALLET);
@@ -274,23 +292,60 @@ export function Sidebar({
         ))}
       </div>
 
-      <div className="sidebar-footer">
-        <button
-          type="button"
-          className="sidebar-donation"
-          onClick={() => void handleDonationClick()}
-          title={`Copy address: ${DONATION_WALLET}`}
-          aria-label={`Copy wallet address to buy a coffee. ${DONATION_WALLET}`}
+      <div className="sidebar-bottom">
+        <div
+          ref={rewardsRef}
+          className={`sidebar-rewards${
+            rewardsHighlight ? " sidebar-rewards--flash" : ""
+          }`}
+          aria-live="polite"
         >
-          <span className="sidebar-donation-label">Buy me a coffee:</span>
-          <span className="sidebar-donation-addr">{donationDisplay}</span>
-          {donationCopied ? (
-            <span className="sidebar-donation-copied" role="status">
-              Copied
-            </span>
-          ) : null}
-        </button>
+          <img
+            className="sidebar-rewards-mark"
+            src="/fortytwo-prime-mark.png"
+            width={32}
+            height={32}
+            alt=""
+          />
+          <div className="sidebar-rewards-text">
+            <div className="sidebar-rewards-label">Rewards</div>
+            <div
+              className={`sidebar-rewards-value${
+                rewardsHighlight ? " sidebar-rewards-value--hot" : ""
+              }`}
+            >
+              {forPointsDisplay} FOR
+            </div>
+          </div>
+        </div>
+
+        <div className="sidebar-footer">
+          <button
+            type="button"
+            className="sidebar-donation"
+            onClick={() => void handleDonationClick()}
+            title={`Copy address: ${DONATION_WALLET}`}
+            aria-label={`Copy wallet address to buy a coffee. ${DONATION_WALLET}`}
+          >
+            <span className="sidebar-donation-label">Buy me a coffee:</span>
+            <span className="sidebar-donation-addr">{donationDisplay}</span>
+            {donationCopied ? (
+              <span className="sidebar-donation-copied" role="status">
+                Copied
+              </span>
+            ) : null}
+          </button>
+        </div>
       </div>
+
+      {rewardFlyIds.map((id) => (
+        <FloatingRewardBubble
+          key={id}
+          targetRef={rewardsRef}
+          amountLabel={rewardAmountLabel}
+          onComplete={() => onRewardFlyComplete?.(id)}
+        />
+      ))}
     </aside>
   );
 }

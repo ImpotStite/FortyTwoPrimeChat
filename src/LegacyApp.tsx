@@ -42,6 +42,9 @@ const RETRY_PROVIDER_PATTERNS = [
   /timeout/i,
 ];
 
+/** Same increment as Prime app — FOR-style sidebar Rewards (test route). */
+const REWARD_FOR_PER_REPLY = 3000;
+
 function newConversation(model: string): Conversation {
   const now = Date.now();
   return {
@@ -73,6 +76,22 @@ export default function LegacyApp() {
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [knownModels, setKnownModels] = useState<OpenRouterModel[]>([]);
+  const [forPoints, setForPoints] = useState(0);
+  const [rewardFlyIds, setRewardFlyIds] = useState<string[]>([]);
+  const [rewardsHighlight, setRewardsHighlight] = useState(false);
+
+  const rewardAmountLabel = `+ ${REWARD_FOR_PER_REPLY.toLocaleString("en-US")} FOR`;
+
+  const onRewardFlyComplete = useCallback((id: string) => {
+    setRewardFlyIds((prev) => prev.filter((x) => x !== id));
+    setForPoints((p) => p + REWARD_FOR_PER_REPLY);
+    setRewardsHighlight(true);
+    window.setTimeout(() => setRewardsHighlight(false), 500);
+  }, []);
+
+  const queueRewardFly = useCallback(() => {
+    setRewardFlyIds((prev) => [...prev, uid("fly_")]);
+  }, []);
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -263,6 +282,7 @@ export default function LegacyApp() {
               }));
             },
           });
+          queueRewardFly();
           lastError = null;
           lastFailedLegacyRef.current = null;
           break;
@@ -303,7 +323,7 @@ export default function LegacyApp() {
       setIsLoading(false);
       abortRef.current = null;
     },
-    []
+    [queueRewardFly]
   );
 
   const retryLastLegacyRequest = useCallback(() => {
@@ -485,6 +505,13 @@ export default function LegacyApp() {
         onRename={handleRename}
         onTogglePin={handleTogglePin}
         modelLabel={activeModel}
+        navLocked={isLoading}
+        navLockTitle="Wait for the current reply to finish before switching chats."
+        forPoints={forPoints}
+        rewardsHighlight={rewardsHighlight}
+        rewardFlyIds={rewardFlyIds}
+        rewardAmountLabel={rewardAmountLabel}
+        onRewardFlyComplete={onRewardFlyComplete}
       />
 
       {sidebarOpen && (
@@ -508,6 +535,14 @@ export default function LegacyApp() {
             {active?.title || "New chat"}
           </div>
           <div className="topbar-tools">
+            <button
+              type="button"
+              className="btn btn-ghost test-reward-fly-btn"
+              onClick={() => queueRewardFly()}
+              title="Play the reward chip animation (no API call)"
+            >
+              Test reward fly
+            </button>
             <ModelPicker value={activeModel} onChange={handleChangeModel} />
             <button
               type="button"
