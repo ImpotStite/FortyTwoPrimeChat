@@ -4083,40 +4083,56 @@ kbd {
   }
 }
 
-/* --- Site-wide maintenance banner (see MaintenanceBanner.tsx) --- */
-.maintenance-banner {
-  position: sticky;
+/* --- Site-wide maintenance banner (fixed overlay — see MaintenanceBanner.tsx) --- */
+.maintenance-banner-root {
+  position: fixed;
   top: 0;
-  z-index: 21000;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  padding: 10px clamp(12px, 2.5vw, 20px) 0;
+  pointer-events: none;
+}
+
+.maintenance-banner {
+  pointer-events: auto;
   width: 100%;
+  max-width: min(920px, calc(100vw - 24px));
   box-sizing: border-box;
-  padding: clamp(1.1rem, 3.2vw, 1.85rem) clamp(1rem, 4vw, 2.75rem);
+  padding: 14px clamp(14px, 3vw, 22px) 16px;
   text-align: center;
-  background: linear-gradient(165deg, #92400e 0%, #451a03 48%, #1c0a02 100%);
-  color: #fef9c3;
-  border-bottom: 5px solid #fbbf24;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.45);
+  background: var(--bg-elev-1);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--ft-lime);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
 }
 
 .maintenance-banner__inner {
-  max-width: 52rem;
+  max-width: 44rem;
   margin: 0 auto;
 }
 
 .maintenance-banner__title {
   display: block;
-  font-size: clamp(1.4rem, 4vw, 2.15rem);
+  font-size: clamp(1.05rem, 2.4vw, 1.38rem);
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  margin: 0 0 0.55rem;
-  color: #fef08a;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  margin: 0 0 0.45rem;
+  color: var(--prime);
 }
 
 .maintenance-banner__text {
   margin: 0;
-  font-size: clamp(0.98rem, 2.3vw, 1.2rem);
-  line-height: 1.6;
-  color: #fef3c7;
+  font-size: clamp(0.875rem, 1.65vw, 1.02rem);
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+:root[data-theme="light"] .maintenance-banner {
+  border-left-color: var(--ft-blue);
 }

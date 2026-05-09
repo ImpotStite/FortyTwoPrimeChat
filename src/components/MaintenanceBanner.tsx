@@ -7,14 +7,16 @@ export function MaintenanceBanner() {
   }
 
   return (
-    <div className="maintenance-banner" role="alert" aria-live="polite">
-      <div className="maintenance-banner__inner">
-        <strong className="maintenance-banner__title">Under maintenance</strong>
-        <p className="maintenance-banner__text">
-          Fortytwo Prime chat may be slow, unavailable, or behave unexpectedly
-          while we work on the service. Payments and sessions could fail—check
-          back soon. Thank you for your patience.
-        </p>
+    <div className="maintenance-banner-root">
+      <div className="maintenance-banner" role="alert" aria-live="polite">
+        <div className="maintenance-banner__inner">
+          <strong className="maintenance-banner__title">Under maintenance</strong>
+          <p className="maintenance-banner__text">
+            Fortytwo Prime chat may be slow, unavailable, or behave unexpectedly
+            while we work on the service. Payments and sessions could fail—check
+            back soon. Thank you for your patience.
+          </p>
+        </div>
       </div>
     </div>
   );
