@@ -32,7 +32,7 @@ export function conversationToMarkdown(c: Conversation): string {
     lines.push(`## ${who}`);
     if (m.attachments?.length)
       lines.push(
-        `_(${m.attachments.length} image attachment(s) — not embedded in Markdown export)_\n`
+        `_(${m.attachments.length} image attachment(s), not embedded in Markdown export)_\n`
       );
     lines.push(m.content || "_(empty)_");
     if (m.usage?.total_tokens != null) {

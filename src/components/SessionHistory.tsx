@@ -34,7 +34,7 @@ const REASON_LABEL: Record<CloseReason, string> = {
 };
 
 function shortHash(h?: string): string {
-  if (!h) return "—";
+  if (!h) return "–";
   const clean = h.startsWith("0x") ? h : `0x${h}`;
   return `${clean.slice(0, 8)}…${clean.slice(-6)}`;
 }
@@ -143,7 +143,7 @@ function SessionDetailRow({
           <div className="session-history-detail-block">
             <span className="session-history-detail-label">Closed</span>
             <span className="session-history-detail-value">
-              {r.closedAt ? fmtTime(r.closedAt) : "—"}
+              {r.closedAt ? fmtTime(r.closedAt) : "–"}
             </span>
           </div>
         </div>
@@ -217,7 +217,7 @@ function SessionDetailRow({
                   {linkAddr(r.asset, shortHash(r.asset))}
                 </>
               ) : (
-                <span className="session-history-mono">—</span>
+                <span className="session-history-mono">–</span>
               )}
             </span>
           </div>
@@ -226,7 +226,7 @@ function SessionDetailRow({
             {payTo ? (
               linkAddr(payTo, shortHash(payTo))
             ) : (
-              <span className="session-history-mono">—</span>
+              <span className="session-history-mono">–</span>
             )}
           </div>
 
@@ -243,7 +243,7 @@ function SessionDetailRow({
                 {shortHash(r.settleTxHash)}
               </a>
             ) : (
-              <span className="session-history-mono">—</span>
+              <span className="session-history-mono">–</span>
             )}
           </div>
           <div
@@ -263,7 +263,7 @@ function SessionDetailRow({
                 {shortHash(r.refundTxHash)}
               </a>
             ) : (
-              <span className="session-history-mono">—</span>
+              <span className="session-history-mono">–</span>
             )}
           </div>
         </div>
@@ -341,14 +341,14 @@ export function SessionHistory({
       ? formatTokenAmount(totals.spent.toString(), 6, 4)
       : totals.awaitingRefundCount > 0
         ? "Pending"
-        : "—";
+        : "–";
 
   const refundedLabel =
     totals.refunded > 0n
       ? formatTokenAmount(totals.refunded.toString(), 6, 4)
       : totals.awaitingRefundCount > 0
         ? "Pending"
-        : "—";
+        : "–";
 
   const apiSpentLabel =
     totals.apiSpent > 0n
@@ -387,7 +387,7 @@ export function SessionHistory({
 
         {records.length === 0 ? (
           <p className="modal-text session-history-empty">
-            No past sessions yet — they'll appear here after your first paid
+            No past sessions yet, they'll appear here after your first paid
             message.
           </p>
         ) : (

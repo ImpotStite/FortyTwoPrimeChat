@@ -39,7 +39,7 @@ import { monad, monadHttpTransport } from "./privy";
 /**
  * Default endpoint: same-origin `/api/mcp` (Vercel Function proxy in `api/mcp.ts`).
  * Browsers can't talk to `mcp.fortytwo.network` directly because the server
- * doesn't reply to CORS preflights — the proxy adds the missing headers and
+ * doesn't reply to CORS preflights, the proxy adds the missing headers and
  * forwards the streaming body verbatim.
  *
  * Override with `VITE_FORTYTWO_MCP_ENDPOINT` if you have your own proxy or if
@@ -83,7 +83,7 @@ export interface PaymentRequired {
 
 export interface PrimeSession {
   sessionId: string;
-  /** Approximate expiry timestamp (ms) — derived from server hints. */
+  /** Approximate expiry timestamp (ms), derived from server hints. */
   expiresAt: number;
   /** USDC amount that was authorized for this session (base units, decimal string). */
   authorizedAmount: string;
@@ -95,14 +95,14 @@ export interface PrimeSession {
    * after the server credits the escrow. Useful for support / refund flows.
    */
   paymentTxHash?: string;
-  /** Timestamp (ms) when the session was opened — used to enforce the 60min hard cap. */
+  /** Timestamp (ms) when the session was opened, used to enforce the 60min hard cap. */
   openedAt?: number;
   /** ERC-20 asset signed against (USDC contract address). */
   asset?: Address;
   /** Recipient of the EIP-3009 transfer (Fortytwo escrow address). */
   payTo?: Address;
   /**
-   * Last tools/call completion time (ms) — persisted so idle timeout survives
+   * Last tools/call completion time (ms), persisted so idle timeout survives
    * reload and matches server-side session rules.
    */
   lastActivityAt?: number;
@@ -124,7 +124,7 @@ export interface TokenUsage {
  */
 const SESSION_HARD_CAP_MS = 60 * 60 * 1000;
 
-/** Idle timeout — keep in sync with docs/mcp-integration and PrimeApp. */
+/** Idle timeout, keep in sync with docs/mcp-integration and PrimeApp. */
 export const PRIME_SESSION_IDLE_MS = 10 * 60 * 1000;
 
 /** Human-driven progress for Fortytwo `askPrime` (optional UI). */
@@ -152,7 +152,7 @@ export interface AskPrimeOptions {
     primaryType: string;
     message: Record<string, unknown>;
   }) => Promise<Hex>;
-  /** Optional cached session — will be reused when valid. */
+  /** Optional cached session, will be reused when valid. */
   session?: PrimeSession | null;
   signal?: AbortSignal;
   /** Called with text deltas (streaming) or once with the full text. */
@@ -168,7 +168,7 @@ export interface AskPrimeOptions {
    */
   beforeAssistantStream?: (ctx: { session: PrimeSession }) => void | Promise<void>;
   /**
-   * Called right before signing — UI can show a confirmation modal and gate
+   * Called right before signing, UI can show a confirmation modal and gate
    * the actual signTypedData call. Resolve the returned promise to proceed,
    * reject (or throw) to abort.
    */
@@ -274,7 +274,7 @@ function randomNonce32(): Hex {
   return hex as Hex;
 }
 
-/** RFC 4122 v4 UUID — used for `x-idempotency-key` (Fortytwo canonical format). */
+/** RFC 4122 v4 UUID, used for `x-idempotency-key` (Fortytwo canonical format). */
 function uuidV4(): string {
   const c = (globalThis as unknown as { crypto?: Crypto }).crypto;
   if (c && typeof c.randomUUID === "function") return c.randomUUID();
@@ -331,7 +331,7 @@ export function saveSession(address: string, session: PrimeSession): void {
       JSON.stringify(session)
     );
   } catch {
-    /* quota — ignore */
+    /* quota, ignore */
   }
 }
 
@@ -396,7 +396,7 @@ export async function mcpListTools(signal?: AbortSignal): Promise<unknown> {
 }
 
 // --------------------------------------------------------------------------
-// askPrime — orchestrated flow with x402 payment + SSE
+// askPrime, orchestrated flow with x402 payment + SSE
 // --------------------------------------------------------------------------
 
 interface MakeRequestArgs {
@@ -665,7 +665,7 @@ function buildSession(
   const decimals = 6; // USDC
   const human = (Number(accept.amount) / 10 ** decimals).toString();
   // Per the integration docs, sessions are bounded by a 60min hard cap (and
-  // a 10min idle timeout — re-arm on activity, not handled here). The
+  // a 10min idle timeout, re-arm on activity, not handled here). The
   // `maxTimeoutSeconds` field describes the signature window, not the session
   // lifetime, and must not be used to compute `expiresAt`.
   const openedAt = Date.now();
@@ -701,7 +701,7 @@ function parsePaymentResponseTxHash(res: Response): string | undefined {
       if (typeof inner === "string") return inner;
     }
   } catch {
-    /* not base64-JSON — ignore */
+    /* not base64-JSON, ignore */
   }
   return undefined;
 }
@@ -795,11 +795,11 @@ async function resolveDomainHints(
     try {
       localStorage.setItem(DOMAIN_CACHE_KEY + key, JSON.stringify(resolved));
     } catch {
-      /* quota — best-effort */
+      /* quota, best-effort */
     }
     return resolved;
   } catch {
-    // RPC unreachable (or asset on a different chain than Monad) — caller
+    // RPC unreachable (or asset on a different chain than Monad), caller
     // should still get a sensible default.
     return fallback;
   }
@@ -914,7 +914,7 @@ async function buildPaymentSignature(
   // under `payload`, then reconstructs the EIP-3009 `ReceiveWithAuthorization`
   // struct and calls `escrow.settle(...)` (which forwards to USDC's
   // `receiveWithAuthorization`). The struct typeHash MUST be Receive, not
-  // Transfer — that part is enforced via `primaryType` above. The 27/28
+  // Transfer, that part is enforced via `primaryType` above. The 27/28
   // recovery byte is required (some EIP-1271 wallets use 0/1, but EOAs use
   // 27/28).
   const split = parseSignature(signature);
@@ -1057,7 +1057,7 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
         const txt = await safeReadText(replay);
         throw new Error(
           `Fortytwo refused payment (${replay.status} ${replay.statusText})${
-            txt ? ` — ${txt}` : ""
+            txt ? `, ${txt}` : ""
           }`
         );
       }
@@ -1098,7 +1098,7 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
     // Other errors → bail out.
     const txt = await safeReadText(res);
     throw new Error(
-      `Fortytwo error ${res.status} ${res.statusText}${txt ? ` — ${txt}` : ""}`
+      `Fortytwo error ${res.status} ${res.statusText}${txt ? `, ${txt}` : ""}`
     );
   }
 

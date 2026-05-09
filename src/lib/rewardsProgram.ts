@@ -1,7 +1,7 @@
 /**
  * Client-side FOR points model aligned with Fortytwo MCP Rewards Program
  * (https://docs.fortytwo.network/docs/mcp-program). Not authoritative for
- * on-chain balances — use https://platform.fortytwo.network/account for that.
+ * on-chain balances, use https://platform.fortytwo.network/account for that.
  */
 
 import type { PrimeSessionRecord } from "./primeHistory";

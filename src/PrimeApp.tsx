@@ -96,10 +96,10 @@ const PRIME_PROGRESS_MESSAGES: Record<PrimeRequestPhase, string> = {
   needs_payment: "Confirm payment in the dialog above.",
   wallet_payment: "Sign the USDC authorization in your wallet…",
   session_pending:
-    "You're all set — finishing session setup, then your reply will stream here.",
+    "You're all set, finishing session setup, then your reply will stream here.",
   confirming_payment:
-    "You're all set — confirming with Fortytwo and opening your session…",
-  starting_reply: "You're all set — Fortytwo is generating your reply…",
+    "You're all set, confirming with Fortytwo and opening your session…",
+  starting_reply: "You're all set, Fortytwo is generating your reply…",
   streaming: "Receiving the response…",
 };
 
@@ -155,7 +155,7 @@ export default function PrimeApp() {
   const [usdcLoading, setUsdcLoading] = useState(false);
   /** Forces session pill label to recompute as wall-clock time advances. */
   const [sessionTimerTick, setSessionTimerTick] = useState(0);
-  /** Last successful exchange (ms) — used for the 10min idle timeout. */
+  /** Last successful exchange (ms), used for the 10min idle timeout. */
   const [lastActivityAt, setLastActivityAt] = useState<number>(() => Date.now());
   const [sessionPopoverOpen, setSessionPopoverOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -180,7 +180,7 @@ export default function PrimeApp() {
   const confirmResolverRef = useRef<((accept: boolean) => void) | null>(null);
   /**
    * When this run started without a cached x-session-id, skip the assistant
-   * loader until payment UI is done or the stream actually starts — avoids a
+   * loader until payment UI is done or the stream actually starts, avoids a
    * brief loader flash before the session authorization modal.
    */
   const deferPrimeStreamLoaderRef = useRef(false);
@@ -675,7 +675,7 @@ export default function PrimeApp() {
           }
           try {
             const cachedSession = address ? loadSession(address) : null;
-            // Local session id used to attribute usage on the same call —
+            // Local session id used to attribute usage on the same call,
             // closure-stable, unlike the React state which only updates on
             // the next render.
             let activeSessionId = cachedSession?.sessionId ?? null;
@@ -1099,7 +1099,7 @@ export default function PrimeApp() {
         reason: null,
       };
     // Fortytwo closes a session on the *earlier* of the 60min hard cap or
-    // 10min idle timeout — mirror that locally so the pill matches reality.
+    // 10min idle timeout, mirror that locally so the pill matches reality.
     const idleExpiry = lastActivityAt + PRIME_SESSION_IDLE_MS;
     const effectiveExpiry = Math.min(session.expiresAt, idleExpiry);
     const reason: "idle" | "cap" =
@@ -1119,14 +1119,14 @@ export default function PrimeApp() {
       label: `Session · ${mins}m left`,
       title:
         reason === "idle"
-          ? `Idle timeout in ~${mins} min — send any message to keep the session alive (up to ${session.authorizedAmountDisplay} authorized)`
-          : `Up to ${session.authorizedAmountDisplay} authorized — no further signature needed for ~${mins} min`,
+          ? `Idle timeout in ~${mins} min, send any message to keep the session alive (up to ${session.authorizedAmountDisplay} authorized)`
+          : `Up to ${session.authorizedAmountDisplay} authorized, no further signature needed for ~${mins} min`,
       effectiveExpiresAt: effectiveExpiry,
       reason,
     };
   }, [session, sessionTimerTick, lastActivityAt]);
 
-  /** Active session record (for popover) — null until first reply. */
+  /** Active session record (for popover), null until first reply. */
   const activeRecord = useMemo<PrimeSessionRecord | undefined>(() => {
     if (!session) return undefined;
     return historyRecords.find((r) => r.id === session.sessionId);
@@ -1249,7 +1249,7 @@ export default function PrimeApp() {
                       ? usdcBalance.display
                       : usdcLoading
                         ? "…"
-                        : "—"}
+                        : "–"}
                   </span>
                   <span className="wallet-addr">{shortAddress(address)}</span>
                   <button
@@ -1459,7 +1459,7 @@ export default function PrimeApp() {
                   You're about to authorize up to{" "}
                   <span className="modal-amount">
                     <UsdcMark size={16} />
-                    <strong>{pendingAmount ?? "—"}</strong>
+                    <strong>{pendingAmount ?? "–"}</strong>
                   </span>{" "}
                   for this session on <strong>Monad</strong>. Subsequent
                   messages in this session won't require another signature

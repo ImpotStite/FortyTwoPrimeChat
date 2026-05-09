@@ -1,7 +1,7 @@
 {
   "name": "Fortytwo Prime Chat",
   "short_name": "Prime Chat",
-  "description": "Fortytwo Prime — pay-per-use AI inference settled in USDC on Monad.",
+  "description": "Fortytwo Prime, pay-per-use AI inference settled in USDC on Monad.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

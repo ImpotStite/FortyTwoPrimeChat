@@ -473,7 +473,7 @@ export function Sidebar({
                           {FOR_BASE_PER_REQUEST.toLocaleString("en-US")} FOR
                         </p>
                         <p className="rewards-detail-tier-card-desc">
-                          Base rate — no early bonus.
+                          Base rate, no early bonus.
                         </p>
                       </article>
                       <article

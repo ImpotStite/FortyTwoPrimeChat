@@ -10,7 +10,7 @@ import { createPortal } from "react-dom";
 const TIP = {
   title: "What Memory does",
   body:
-    "Prior messages in this chat are sent with each Fortytwo request so replies can use context. That increases input tokens, so cost may be higher—especially on long threads.",
+    "Prior messages in this chat are sent with each Fortytwo request so replies can use context. That increases input tokens, so cost may be higher, especially on long threads.",
 } as const;
 
 type Props = {

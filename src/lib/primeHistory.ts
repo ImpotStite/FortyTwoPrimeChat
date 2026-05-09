@@ -11,7 +11,7 @@ import { FORTYTWO_X402_ESCROW_MONAD } from "./usdc";
 
 const KEY_PREFIX = "fortytwo-prime-chat:prime-history:";
 
-/** Why a session ended — drives badge colors and tooltips in the UI. */
+/** Why a session ended, drives badge colors and tooltips in the UI. */
 export type CloseReason =
   | "idle" // 10min without activity
   | "hard-cap" // 60min from open
@@ -23,7 +23,7 @@ export type CloseReason =
 export interface PrimeSessionRecord {
   /** sessionId returned by the server (header `x-session-id`). */
   id: string;
-  /** Owner wallet address (lowercase) — also used as the storage key bucket. */
+  /** Owner wallet address (lowercase), also used as the storage key bucket. */
   walletAddress: string;
   /** Network identifier (e.g. "eip155:143"). */
   network: string;
@@ -60,12 +60,12 @@ export interface PrimeSessionRecord {
   tokensOut?: number;
   /**
    * Sum of optional per-call USDC charges reported in `_meta.usage` (6 decimals,
-   * base units). Not always present — on-chain spent/refund remain authoritative.
+   * base units). Not always present, on-chain spent/refund remain authoritative.
    */
   apiReportedSpentBaseUnits?: string;
 }
 
-/** Maximum entries kept per wallet — older sessions are pruned on append. */
+/** Maximum entries kept per wallet, older sessions are pruned on append. */
 const MAX_ENTRIES = 100;
 
 function key(addr: string): string {
@@ -197,7 +197,7 @@ export function incrementSessionUsage(
   persist(address, list);
 }
 
-/** Close a session locally — call from UI when expiry/410/disconnect is observed. */
+/** Close a session locally, call from UI when expiry/410/disconnect is observed. */
 export function markSessionClosed(
   address: string,
   sessionId: string,
@@ -286,7 +286,7 @@ export function findRefundTargetRecord(
       );
       // Live session rows still match `from === escrow` (no refundTxHash yet).
       // On-chain release after opening a *new* session must attach to an older
-      // *closed* row, not the active one — sessionIdRef tracks the new session.
+      // *closed* row, not the active one, sessionIdRef tracks the new session.
       if (match.closedAt == null && otherClosed) {
         /* fall through to closedAt sort */
       } else {
@@ -306,11 +306,11 @@ export function formatTokenAmount(
   decimals = 6,
   maxFractionDigits = 2
 ): string {
-  if (!baseUnits) return "—";
+  if (!baseUnits) return "–";
   try {
     const big = BigInt(baseUnits);
     const n = Number(big) / 10 ** decimals;
-    if (!Number.isFinite(n)) return "—";
+    if (!Number.isFinite(n)) return "–";
     const maxF = Math.max(0, Math.min(maxFractionDigits, decimals));
     const minF = maxF >= 2 ? 2 : 0;
     return n.toLocaleString("en-US", {
@@ -318,6 +318,6 @@ export function formatTokenAmount(
       maximumFractionDigits: maxF,
     });
   } catch {
-    return "—";
+    return "–";
   }
 }

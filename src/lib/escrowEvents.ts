@@ -103,7 +103,7 @@ export interface RefundLog {
 }
 
 export interface WatchOptions {
-  /** User wallet — refunds arrive *to* this address. */
+  /** User wallet, refunds arrive *to* this address. */
   user: Address;
   /**
    * Escrow `from` addresses to match in USDC `Transfer` logs (402 `payTo`,
@@ -118,7 +118,7 @@ export interface WatchOptions {
 
 /**
  * Start polling for incoming refunds. Returns an unsubscribe function.
- * Safe to call multiple times for the same wallet — each instance manages
+ * Safe to call multiple times for the same wallet, each instance manages
  * its own dedupe set.
  */
 export function watchUsdcRefunds(opts: WatchOptions): () => void {

@@ -1,6 +1,6 @@
 import type { ChatMessage, OpenRouterModel, Usage } from "../types";
 
-/** Same-origin Edge Function (`api/openrouter.ts`) or Vite dev middleware — never embeds the API key in the client. */
+/** Same-origin Edge Function (`api/openrouter.ts`) or Vite dev middleware, never embeds the API key in the client. */
 const CHAT_COMPLETIONS_PROXY = "/api/openrouter";
 const MODELS_URL = "https://openrouter.ai/api/v1/models";
 

@@ -17,7 +17,7 @@ export const monad = defineChain({
 });
 
 /**
- * Shared JSON-RPC transport. `batch: false` keeps each RPC call in its own POST —
+ * Shared JSON-RPC transport. `batch: false` keeps each RPC call in its own POST,
  * public RPCs (e.g. monad.xyz) often reject fat batch payloads with HTTP 413.
  */
 export const monadHttpTransport = http(RPC_URL, {

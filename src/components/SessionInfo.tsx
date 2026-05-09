@@ -33,7 +33,7 @@ interface Props {
 }
 
 function timeAgo(ts?: number): string {
-  if (!ts) return "—";
+  if (!ts) return "–";
   const diff = Date.now() - ts;
   if (diff < 0) return "just now";
   const sec = Math.floor(diff / 1000);
@@ -47,7 +47,7 @@ function timeAgo(ts?: number): string {
 }
 
 function formatUntil(ts: number | null): string {
-  if (ts == null) return "—";
+  if (ts == null) return "–";
   const diff = ts - Date.now();
   if (diff <= 0) return "expired";
   const min = Math.round(diff / 60000);
@@ -56,7 +56,7 @@ function formatUntil(ts: number | null): string {
 }
 
 function shortHash(h?: string): string {
-  if (!h) return "—";
+  if (!h) return "–";
   const clean = h.startsWith("0x") ? h : `0x${h}`;
   return `${clean.slice(0, 8)}…${clean.slice(-6)}`;
 }
@@ -204,7 +204,7 @@ export function SessionInfo(props: Props) {
                 {shortHash(session.paymentTxHash)}
               </a>
             ) : (
-              "—"
+              "–"
             )
           }
         />
@@ -253,7 +253,7 @@ export function SessionInfo(props: Props) {
             type="button"
             className="btn-ghost session-popover-end"
             onClick={onEndSessionLocally}
-            title="Forget the local session — next message will require a new signature"
+            title="Forget the local session, next message will require a new signature"
           >
             End session locally
           </button>

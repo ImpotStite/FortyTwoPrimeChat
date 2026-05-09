@@ -1,4 +1,4 @@
-/* Fortytwo Prime Chat — minimal service worker (offline app shell). */
+/* Fortytwo Prime Chat, minimal service worker (offline app shell). */
 
 const CACHE_VERSION = "v4";
 const APP_SHELL = `app-shell-${CACHE_VERSION}`;
@@ -40,10 +40,10 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
-  // Never intercept OpenRouter — keep live API calls uncached.
+  // Never intercept OpenRouter, keep live API calls uncached.
   if (url.hostname === "openrouter.ai") return;
 
-  // Navigation requests — network-first, fallback offline app shell.
+  // Navigation requests, network-first, fallback offline app shell.
   if (req.mode === "navigate") {
     event.respondWith(
       fetch(req).catch(() =>
@@ -53,7 +53,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Same-origin static assets — stale-while-revalidate.
+  // Same-origin static assets, stale-while-revalidate.
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.open(ASSET_CACHE).then(async (cache) => {

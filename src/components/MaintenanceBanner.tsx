@@ -13,7 +13,7 @@ export function MaintenanceBanner() {
           <strong className="maintenance-banner__title">Under maintenance</strong>
           <p className="maintenance-banner__text">
             Fortytwo Prime chat may be slow, unavailable, or behave unexpectedly
-            while we work on the service. Payments and sessions could fail—check
+            while we work on the service. Payments and sessions could fail, check
             back soon. Thank you for your patience.
           </p>
         </div>

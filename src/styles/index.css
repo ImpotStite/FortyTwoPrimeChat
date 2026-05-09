@@ -1351,7 +1351,7 @@ kbd {
 /* Pin / rename / delete: fade in only on row hover (or focus within for
    keyboard + rename field). Touch devices without hover keep actions visible.
    On fine pointer: actions are absolutely positioned so they do not reserve
-   flex width while hidden — title uses full row; on hover, title gains
+   flex width while hidden, title uses full row; on hover, title gains
    padding so ellipsis respects the action strip. */
 @media (hover: hover) {
   .conv-actions {
@@ -1442,7 +1442,7 @@ kbd {
   position: relative;
 }
 
-/* Light: main column must be opaque — semi-transparent `--bg-elev-2/3`
+/* Light: main column must be opaque, semi-transparent `--bg-elev-2/3`
    tokens are meant to sit on white; on lime body they read as muddy green. */
 :root[data-theme="light"] .main {
   background: var(--bg-elev-1);
@@ -3173,7 +3173,7 @@ kbd {
 }
 
 /* --------------------------------------------------------------------------
-   Toaster (bottom corners — default right; `dock: "left"` uses .toaster--left)
+   Toaster (bottom corners, default right; `dock: "left"` uses .toaster--left)
    -------------------------------------------------------------------------- */
 
 .toaster {
@@ -4083,7 +4083,7 @@ kbd {
   }
 }
 
-/* --- Site-wide maintenance banner (fixed overlay — see MaintenanceBanner.tsx) --- */
+/* --- Site-wide maintenance banner (fixed overlay, see MaintenanceBanner.tsx) --- */
 .maintenance-banner-root {
   position: fixed;
   top: 0;

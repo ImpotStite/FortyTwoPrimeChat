@@ -6,8 +6,8 @@ A **Claude / ChatGPT–style** chat built with **React + Vite + TypeScript**.
 
 | Path | What it is |
 |------|------------|
-| **`/`** | **Fortytwo Prime** — wallet login (Privy), x402 USDC on **Monad**, MCP tool `ask_fortytwo_prime` via a same-origin proxy (`/api/mcp` → `mcp.fortytwo.network`). Streaming replies, session + billing history, on-chain refund toasts. |
-| **`/test`** | **Legacy OpenRouter** playground — free models, vision, model picker; API key on the **server** only (`OPENROUTER_API_KEY` via Edge `api/openrouter.ts` or Vite dev middleware). |
+| **`/`** | **Fortytwo Prime**, wallet login (Privy), x402 USDC on **Monad**, MCP tool `ask_fortytwo_prime` via a same-origin proxy (`/api/mcp` → `mcp.fortytwo.network`). Streaming replies, session + billing history, on-chain refund toasts. |
+| **`/test`** | **Legacy OpenRouter** playground, free models, vision, model picker; API key on the **server** only (`OPENROUTER_API_KEY` via Edge `api/openrouter.ts` or Vite dev middleware). |
 
 ## Features (/)
 
@@ -19,7 +19,7 @@ A **Claude / ChatGPT–style** chat built with **React + Vite + TypeScript**.
 - **PWA**: service worker registers only in **production** builds
 - Code blocks: syntax highlighting + copy
 
-## Features (/test — OpenRouter)
+## Features (/test, OpenRouter)
 
 - Model picker (including free models), vision when the model supports images
 - Streaming with retries on transient errors
@@ -39,7 +39,7 @@ Opens [http://localhost:5173](http://localhost:5173). In dev, Vite proxies `/api
 
 Create `.env.local` (see `.env.example`):
 
-**Fortytwo Prime (`/`) — required for wallet app**
+**Fortytwo Prime (`/`), required for wallet app**
 
 ```env
 VITE_PRIVY_APP_ID=...
@@ -67,7 +67,7 @@ npm run build
 npm run preview
 ```
 
-Deploy on **Vercel**: `api/mcp.ts` and `api/openrouter.ts` are Edge proxies (CORS + streaming). Static assets + `sw.js` live under `public/`. `npm run preview` serves static files only — use `vercel dev` or a deployed preview to exercise `/api/*` routes locally.
+Deploy on **Vercel**: `api/mcp.ts` and `api/openrouter.ts` are Edge proxies (CORS + streaming). Static assets + `sw.js` live under `public/`. `npm run preview` serves static files only, use `vercel dev` or a deployed preview to exercise `/api/*` routes locally.
 
 ## Keyboard shortcuts
 
