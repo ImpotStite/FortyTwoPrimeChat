@@ -392,6 +392,9 @@ const PAYMENT_5XX_RETRY_BACKOFF_MS = 2500;
 const PAYMENT_UPSTREAM_5XX_HINT =
   " USDC may still move on-chain briefly; check your Monad explorer. If funds moved or returned but the chat shows an error, contact Fortytwo support (e.g. Discord) with transaction hashes.";
 
+const PAYMENT_EXECUTION_FAILED_HINT =
+  " Cached USDC EIP-712 domain hints were cleared. Tap Retry so the app can re-fetch token name/version from Monad. If it persists, confirm the wallet is on Monad and matches the connected address.";
+
 let mcpReady: Promise<void> | null = null;
 
 /** One JSON-RPC `initialize` per page load before paid `tools/call` (some MCP stacks expect it). */
@@ -767,7 +770,7 @@ function parsePaymentResponseTxHash(res: Response): string | undefined {
  * - Some testnets bump version to "3"
  *
  * If we sign with the wrong values, the wallet still signs (it just hashes
- * the user-provided domain) but the on-chain `transferWithAuthorization`
+ * the user-provided domain) but the on-chain `receiveWithAuthorization`
  * reverts with `ExecutionFailed` because the recovered address won't match
  * the `from` field. To avoid that we probe `name()`/`version()` on the
  * actual asset contract, with a small in-memory + localStorage cache.
@@ -798,6 +801,17 @@ interface ResolvedDomain {
 }
 
 const memDomainCache = new Map<string, ResolvedDomain>();
+
+/** Drop cached EIP-712 domain so the next payment re-probes `name()` / `version()` on-chain. */
+function invalidateEip712DomainCache(asset: Address): void {
+  const key = asset.toLowerCase();
+  memDomainCache.delete(key);
+  try {
+    localStorage.removeItem(DOMAIN_CACHE_KEY + key);
+  } catch {
+    /* private mode / quota */
+  }
+}
 
 async function resolveDomainHints(
   asset: Address,
@@ -1120,6 +1134,15 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
         if (replay.status >= 500) {
           throw new Error(
             `Fortytwo MCP returned ${replay.status} ${replay.statusText} after signing (server or network issue, not your wallet declining)${lastPaymentReplayDetail}${PAYMENT_UPSTREAM_5XX_HINT}`
+          );
+        }
+        const executionFailed = /executionfailed/i.test(
+          lastPaymentReplayDetail
+        );
+        if (replay.status === 400 && executionFailed) {
+          invalidateEip712DomainCache(accept.asset);
+          throw new Error(
+            `Fortytwo did not complete payment (${replay.status} ${replay.statusText})${lastPaymentReplayDetail}${PAYMENT_EXECUTION_FAILED_HINT}`
           );
         }
         throw new Error(
