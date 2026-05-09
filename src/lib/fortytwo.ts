@@ -798,6 +798,16 @@ const ABI_NAME_VERSION = [
   },
 ] as const;
 
+const ERC20_BALANCE_OF_ABI = [
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }],
+    outputs: [{ type: "uint256" }],
+  },
+] as const;
+
 const DOMAIN_CACHE_KEY = "fortytwo:eip712-domain:";
 
 interface ResolvedDomain {
@@ -940,15 +950,32 @@ async function buildPaymentSignature(
     }
   }
 
+  const need = BigInt(accept.amount);
+  const [resolved, balanceRaw] = await Promise.all([
+    resolveDomainHints(assetAddr, {
+      name: accept.extra?.name ?? "USDC",
+      version: accept.extra?.version ?? "2",
+    }),
+    chainClient
+      .readContract({
+        address: assetAddr,
+        abi: ERC20_BALANCE_OF_ABI,
+        functionName: "balanceOf",
+        args: [fromAddr],
+      })
+      .catch(() => null),
+  ]);
+  if (balanceRaw !== null && (balanceRaw as bigint) < need) {
+    throw new Error(
+      `Insufficient USDC on Monad for this payment: your balance is ${(balanceRaw as bigint).toString()} but at least ${need.toString()} (base units, 6 decimals) is required.`
+    );
+  }
+
   // EIP-712 domain must match the token contract's `name()` / `version()` or
   // `receiveWithAuthorization` reverts. On-chain reads are authoritative; do
   // not prefer `accepts[].extra` over them (stale or cross-chain hints cause
   // persistent ExecutionFailed). `extra` is only used as fallback when RPC
   // fails — see `resolveDomainHints` second argument.
-  const resolved = await resolveDomainHints(assetAddr, {
-    name: accept.extra?.name ?? "USDC",
-    version: accept.extra?.version ?? "2",
-  });
   const domain: TypedDataDomain = {
     name: resolved.name,
     version: resolved.version,
@@ -959,7 +986,7 @@ async function buildPaymentSignature(
   const message = {
     from: fromAddr,
     to: toAddr,
-    value: BigInt(accept.amount),
+    value: need,
     validAfter: 0n,
     validBefore: BigInt(validBefore),
     nonce,
@@ -1039,7 +1066,7 @@ async function buildPaymentSignature(
     network: accept.network,
     payload: {
       client: fromAddr,
-      maxAmount: accept.amount,
+      maxAmount: need.toString(),
       validAfter: "0",
       validBefore: validBefore.toString(),
       nonce,
