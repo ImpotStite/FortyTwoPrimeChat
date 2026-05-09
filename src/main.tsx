@@ -5,7 +5,6 @@ import { PrivyProvider } from "@privy-io/react-auth";
 import { Analytics } from "@vercel/analytics/react";
 import LegacyApp from "./LegacyApp";
 import PrimeApp from "./PrimeApp";
-import { MaintenanceBanner } from "./components/MaintenanceBanner";
 import { PRIVY_APP_ID, privyConfig } from "./lib/privy";
 import "highlight.js/styles/github-dark.css";
 import "katex/dist/katex.min.css";
@@ -13,7 +12,6 @@ import "./styles/index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <MaintenanceBanner />
     <BrowserRouter>
       <Routes>
         <Route
