@@ -28,6 +28,7 @@
 
 import {
   createPublicClient,
+  getAddress,
   hashTypedData,
   parseSignature,
   recoverTypedDataAddress,
@@ -37,6 +38,7 @@ import {
 } from "viem";
 import { PACKAGE_VERSION } from "./appVersion";
 import { monad, monadHttpTransport } from "./privy";
+import { FORTYTWO_X402_ESCROW_MONAD } from "./usdc";
 
 /**
  * Default endpoint: same-origin `/api/mcp` (Vercel Function proxy in `api/mcp.ts`).
@@ -394,7 +396,7 @@ const PAYMENT_UPSTREAM_5XX_HINT =
   " USDC may still move on-chain briefly; check your Monad explorer. If funds moved or returned but the chat shows an error, contact Fortytwo support (e.g. Discord) with transaction hashes.";
 
 const PAYMENT_EXECUTION_FAILED_HINT =
-  " Cached USDC EIP-712 domain hints were cleared. Tap Retry. If it still fails, sync your system clock, confirm Monad + the signing wallet address, then contact Fortytwo support (Discord) with this message and any tx hashes.";
+  " Cached USDC EIP-712 domain hints were cleared. Tap Retry. If it still fails, sync your system clock, confirm Monad + the signing wallet address, then contact Fortytwo support (Discord) with this message and any tx hashes. If you use a smart-contract wallet, try an EOA (browser extension) instead — USDC EIP-3009 here expects a standard ECDSA signer.";
 
 let mcpReady: Promise<void> | null = null;
 
@@ -908,13 +910,14 @@ async function buildPaymentSignature(
   address: Address,
   signTypedDataAsync: AskPrimeOptions["signTypedDataAsync"]
 ): Promise<string> {
+  const fromAddr = getAddress(address);
   const chainClient = createPublicClient({
     chain: monad,
     transport: monadHttpTransport,
   });
   const [latestBlock, fromBytecode] = await Promise.all([
     chainClient.getBlock({ blockTag: "latest" }).catch(() => null),
-    chainClient.getCode({ address }).catch(() => undefined),
+    chainClient.getCode({ address: fromAddr }).catch(() => undefined),
   ]);
   // USDC checks `block.timestamp` against validAfter/validBefore — not the
   // wall clock. A skewed OS clock makes authorizations "expired" on-chain.
@@ -926,12 +929,23 @@ async function buildPaymentSignature(
   const validBefore = now + window;
   const nonce = randomNonce32();
 
+  const toAddr = getAddress(accept.payTo);
+  const assetAddr = getAddress(accept.asset);
+  if (accept.network.toLowerCase() === "eip155:143") {
+    const expectedEscrow = getAddress(FORTYTWO_X402_ESCROW_MONAD);
+    if (toAddr !== expectedEscrow) {
+      throw new Error(
+        `Fortytwo payment route lists payTo ${toAddr} on Monad, but this app only supports x402Escrow at ${expectedEscrow}.`
+      );
+    }
+  }
+
   // EIP-712 domain must match the token contract's `name()` / `version()` or
   // `receiveWithAuthorization` reverts. On-chain reads are authoritative; do
   // not prefer `accepts[].extra` over them (stale or cross-chain hints cause
   // persistent ExecutionFailed). `extra` is only used as fallback when RPC
   // fails — see `resolveDomainHints` second argument.
-  const resolved = await resolveDomainHints(accept.asset, {
+  const resolved = await resolveDomainHints(assetAddr, {
     name: accept.extra?.name ?? "USDC",
     version: accept.extra?.version ?? "2",
   });
@@ -939,12 +953,12 @@ async function buildPaymentSignature(
     name: resolved.name,
     version: resolved.version,
     chainId: monad.id,
-    verifyingContract: accept.asset,
+    verifyingContract: assetAddr,
   };
 
   const message = {
-    from: address,
-    to: accept.payTo,
+    from: fromAddr,
+    to: toAddr,
     value: BigInt(accept.amount),
     validAfter: 0n,
     validBefore: BigInt(validBefore),
@@ -983,7 +997,7 @@ async function buildPaymentSignature(
     void err;
   }
 
-  const isEoa = !fromBytecode || fromBytecode === "0x";
+  const isEoa = fromBytecode === "0x";
   if (isEoa) {
     const recovered = await recoverTypedDataAddress({
       domain,
@@ -992,7 +1006,7 @@ async function buildPaymentSignature(
       message,
       signature,
     });
-    if (recovered.toLowerCase() !== address.toLowerCase()) {
+    if (recovered.toLowerCase() !== fromAddr.toLowerCase()) {
       throw new Error(
         "Payment signature does not recover to your connected address. Check that your wallet is on Monad, your system clock is accurate, and try again."
       );
@@ -1024,7 +1038,7 @@ async function buildPaymentSignature(
     scheme: "exact",
     network: accept.network,
     payload: {
-      client: address,
+      client: fromAddr,
       maxAmount: accept.amount,
       validAfter: "0",
       validBefore: validBefore.toString(),
