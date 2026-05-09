@@ -774,6 +774,8 @@ function parsePaymentResponseTxHash(res: Response): string | undefined {
  * reverts with `ExecutionFailed` because the recovered address won't match
  * the `from` field. To avoid that we probe `name()`/`version()` on the
  * actual asset contract, with a small in-memory + localStorage cache.
+ * Server `payment-required` `extra` hints are not used for signing when
+ * on-chain reads succeed — only as fallback when RPC fails.
  */
 
 const ABI_NAME_VERSION = [
@@ -911,16 +913,19 @@ async function buildPaymentSignature(
   const validBefore = now + window;
   const nonce = randomNonce32();
 
-  // Resolve the canonical EIP-712 domain for this asset. Prefer server hints,
-  // then on-chain probe, then a Monad-specific default ("USDC" / "2").
+  // EIP-712 domain must match the token contract's `name()` / `version()` or
+  // `receiveWithAuthorization` reverts. On-chain reads are authoritative; do
+  // not prefer `accepts[].extra` over them (stale or cross-chain hints cause
+  // persistent ExecutionFailed). `extra` is only used as fallback when RPC
+  // fails — see `resolveDomainHints` second argument.
   const resolved = await resolveDomainHints(accept.asset, {
-    name: "USDC",
-    version: "2",
+    name: accept.extra?.name ?? "USDC",
+    version: accept.extra?.version ?? "2",
   });
   const domain: TypedDataDomain = {
-    name: accept.extra?.name ?? resolved.name,
-    version: accept.extra?.version ?? resolved.version,
-    chainId: 143,
+    name: resolved.name,
+    version: resolved.version,
+    chainId: monad.id,
     verifyingContract: accept.asset,
   };
 
