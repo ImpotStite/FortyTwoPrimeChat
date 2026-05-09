@@ -30,6 +30,7 @@ import {
   createPublicClient,
   getAddress,
   hashTypedData,
+  numberToHex,
   parseSignature,
   recoverTypedDataAddress,
   type Address,
@@ -396,7 +397,26 @@ const PAYMENT_UPSTREAM_5XX_HINT =
   " USDC may still move on-chain briefly; check your Monad explorer. If funds moved or returned but the chat shows an error, contact Fortytwo support (e.g. Discord) with transaction hashes.";
 
 const PAYMENT_EXECUTION_FAILED_HINT =
-  " Cached USDC EIP-712 domain hints were cleared. Tap Retry. If it still fails, sync your system clock, confirm Monad + the signing wallet address, then contact Fortytwo support (Discord) with this message and any tx hashes. If you use a smart-contract wallet, try an EOA (browser extension) instead — USDC EIP-3009 here expects a standard ECDSA signer.";
+  " Cached USDC EIP-712 domain hints were cleared. Tap Retry. If no separate \"USDC ... preview\" error appeared first, your signature likely passed local checks but Fortytwo's facilitator still failed—send this message and Request ID to Fortytwo Discord. Otherwise: sync your system clock, confirm Monad + the signing address, try an EOA (not a smart-contract wallet) for EIP-3009, and include any tx hashes.";
+
+/** secp256k1 curve order `n` (EIP-2 low-`s` bound uses `n / 2`). */
+const SECP256K1_N = BigInt(
+  "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
+);
+const SECP256K1_HALF_N = SECP256K1_N / 2n;
+
+/** Map ECDSA `(r,s,v)` to canonical low-`s` with matching `v` (27↔28). */
+function eip2NormalizeRsV(
+  r: Hex,
+  s: Hex,
+  v: number
+): { r: Hex; s: Hex; v: number } {
+  let sb = BigInt(s);
+  if (sb <= SECP256K1_HALF_N) return { r, s, v };
+  sb = SECP256K1_N - sb;
+  const v2 = v === 27 ? 28 : v === 28 ? 27 : v;
+  return { r, s: numberToHex(sb, { size: 32 }), v: v2 };
+}
 
 let mcpReady: Promise<void> | null = null;
 
@@ -1079,8 +1099,12 @@ async function buildPaymentSignature(
   // recovery byte is required (some EIP-1271 wallets use 0/1, but EOAs use
   // 27/28).
   const split = parseSignature(signature);
-  const v = split.v ?? (split.yParity === 1 ? 28 : 27);
-  const vNum = Number(v);
+  const vRaw = Number(split.v ?? (split.yParity === 1 ? 28 : 27));
+  const { r: rNorm, s: sNorm, v: vNorm } = eip2NormalizeRsV(
+    split.r,
+    split.s,
+    vRaw
+  );
 
   try {
     await chainClient.simulateContract({
@@ -1094,9 +1118,9 @@ async function buildPaymentSignature(
         0n,
         BigInt(validBefore),
         nonce,
-        vNum,
-        split.r,
-        split.s,
+        vNorm,
+        rNorm,
+        sNorm,
       ],
       account: toAddr,
     });
@@ -1122,9 +1146,9 @@ async function buildPaymentSignature(
       validAfter: "0",
       validBefore: validBefore.toString(),
       nonce,
-      v: vNum,
-      r: split.r,
-      s: split.s,
+      v: vNorm,
+      r: rNorm,
+      s: sNorm,
     },
   };
 
