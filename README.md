@@ -7,7 +7,7 @@ A **Claude / ChatGPT–style** chat built with **React + Vite + TypeScript**.
 | Path | What it is |
 |------|------------|
 | **`/`** | **Fortytwo Prime** — wallet login (Privy), x402 USDC on **Monad**, MCP tool `ask_fortytwo_prime` via a same-origin proxy (`/api/mcp` → `mcp.fortytwo.network`). Streaming replies, session + billing history, on-chain refund toasts. |
-| **`/test`** | **Legacy OpenRouter** playground — free models, vision, model picker; API key on the **server** only (`OPENROUTER_API_KEY` via Edge `api/openrouter.ts` or Vite dev middleware). |
+| **`/test`** | **Legacy OpenRouter** playground — free models, vision, model picker; API key on the **server** only (`OPENROUTER_API_KEY` via Vercel Node.js `api/openrouter.ts` or Vite dev middleware). |
 
 ## Features (/)
 
@@ -67,7 +67,17 @@ npm run build
 npm run preview
 ```
 
-Deploy on **Vercel**: `api/mcp.ts` and `api/openrouter.ts` are Edge proxies (CORS + streaming). Static assets + `sw.js` live under `public/`. `npm run preview` serves static files only — use `vercel dev` or a deployed preview to exercise `/api/*` routes locally.
+### Deploy on Vercel
+
+- **Static app:** Vite output in `dist/` (`vercel.json` sets `outputDirectory` + `buildCommand`).
+- **API routes:** `api/mcp.ts` and `api/openrouter.ts` are **Vercel Node.js serverless functions** (Web `fetch` handler, `export default { fetch }`). They are **not** Edge: long MCP streams and x402 payment settlement need a higher invocation limit than Edge allows.
+- **Duration:** Both functions set `export const maxDuration = 300` and `vercel.json` → `functions["api/mcp.ts"]` / `["api/openrouter.ts"]` with `maxDuration: 300` so SSE + payment replay are not cut off with HTTP 504.
+- **Assets:** `public/` (e.g. `sw.js`, icons, PWA manifest). `npm run preview` serves static files only — use `vercel dev` or a deployed preview to exercise `/api/*` locally.
+
+**Troubleshooting**
+
+- **504** on `/api/mcp` after long waits: usually Vercel function timeout — confirm `maxDuration` and project plan limits ([Vercel function duration](https://vercel.com/docs/functions/configuring-functions/duration)).
+- **502** with upstream Fortytwo in logs (`mcp.fortytwo.network` → 502): the proxy is working; the failure is on Fortytwo’s side or the network path — retry or contact Fortytwo with timestamps / correlation ids.
 
 ## Keyboard shortcuts
 
@@ -95,8 +105,8 @@ src/
     usdc.ts          # Balance + escrow address
     openrouter.ts    # Legacy route only
 api/
-  mcp.ts             # Vercel Edge proxy to Fortytwo MCP
-  openrouter.ts      # Vercel Edge proxy to OpenRouter (holds OPENROUTER_API_KEY)
+  mcp.ts             # Vercel Node.js proxy → Fortytwo MCP (CORS, SSE, x402 headers)
+  openrouter.ts      # Vercel Node.js proxy → OpenRouter (server-only OPENROUTER_API_KEY)
 public/
   manifest.webmanifest, sw.js, icons, brand assets
 scripts/
@@ -106,6 +116,7 @@ scripts/
 ## Notes / tooling
 
 - Regenerating cropped logo assets: run `python scripts/crop-brand-mark.py <src.png> public/fortytwo-prime-mark.png` (requires Python with **Pillow** and **numpy**), then regenerate `favicon-32.png`, `apple-touch-icon.png`, and manifest icons as needed.
+
 ## Language
 
 All user-visible UI strings and this README are **English**. See `.cursor/rules/english-language.mdc`.
