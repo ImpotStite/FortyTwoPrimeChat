@@ -808,6 +808,27 @@ const ERC20_BALANCE_OF_ABI = [
   },
 ] as const;
 
+/** EIP-3009 on Circle-style USDC — same call path as `X402Escrow.settle` → USDC. */
+const RECEIVE_WITH_AUTHORIZATION_ABI = [
+  {
+    type: "function",
+    name: "receiveWithAuthorization",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "from", type: "address" },
+      { name: "to", type: "address" },
+      { name: "value", type: "uint256" },
+      { name: "validAfter", type: "uint256" },
+      { name: "validBefore", type: "uint256" },
+      { name: "nonce", type: "bytes32" },
+      { name: "v", type: "uint8" },
+      { name: "r", type: "bytes32" },
+      { name: "s", type: "bytes32" },
+    ],
+    outputs: [],
+  },
+] as const;
+
 const DOMAIN_CACHE_KEY = "fortytwo:eip712-domain:";
 
 interface ResolvedDomain {
@@ -1059,6 +1080,37 @@ async function buildPaymentSignature(
   // 27/28).
   const split = parseSignature(signature);
   const v = split.v ?? (split.yParity === 1 ? 28 : 27);
+  const vNum = Number(v);
+
+  try {
+    await chainClient.simulateContract({
+      address: assetAddr,
+      abi: RECEIVE_WITH_AUTHORIZATION_ABI,
+      functionName: "receiveWithAuthorization",
+      args: [
+        fromAddr,
+        toAddr,
+        need,
+        0n,
+        BigInt(validBefore),
+        nonce,
+        vNum,
+        split.r,
+        split.s,
+      ],
+      account: toAddr,
+    });
+  } catch (err: unknown) {
+    const details =
+      err && typeof err === "object" && "shortMessage" in err
+        ? String((err as { shortMessage?: string }).shortMessage)
+        : err instanceof Error
+          ? err.message
+          : String(err);
+    throw new Error(
+      `USDC receiveWithAuthorization failed on-chain preview (Monad): ${details}`
+    );
+  }
 
   const payload = {
     x402Version: 2,
@@ -1070,7 +1122,7 @@ async function buildPaymentSignature(
       validAfter: "0",
       validBefore: validBefore.toString(),
       nonce,
-      v: Number(v),
+      v: vNum,
       r: split.r,
       s: split.s,
     },
