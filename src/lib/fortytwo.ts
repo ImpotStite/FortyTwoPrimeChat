@@ -232,6 +232,34 @@ async function safeReadText(res: Response): Promise<string> {
   }
 }
 
+/** Readable extras from `/api/mcp` (exposes `x-upstream-status`) or raw MCP JSON errors. */
+function formatMcpHttpError(res: Response, bodySlice: string): string {
+  const upstream = res.headers.get("x-upstream-status");
+  const bits: string[] = [];
+  if (upstream) bits.push(`upstream HTTP ${upstream}`);
+  const raw = bodySlice.trim().replace(/\s+/g, " ");
+  if (!raw) {
+    return bits.length ? ` — ${bits.join(" · ")}` : "";
+  }
+  if (raw.startsWith("<")) {
+    bits.push("non-JSON error body");
+    return bits.length ? ` — ${bits.join(" · ")}` : " — non-JSON error body";
+  }
+  try {
+    const j = JSON.parse(raw) as { error?: { message?: string } };
+    const msg = j?.error?.message;
+    if (typeof msg === "string" && msg.length > 0) {
+      bits.push(msg);
+      return ` — ${bits.join(" · ")}`;
+    }
+  } catch {
+    /* not JSON */
+  }
+  const short = raw.length > 220 ? `${raw.slice(0, 220)}…` : raw;
+  bits.push(short);
+  return ` — ${bits.join(" · ")}`;
+}
+
 // --------------------------------------------------------------------------
 // JSON-RPC helpers
 // --------------------------------------------------------------------------
@@ -1055,10 +1083,14 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
 
       if (!replay.ok) {
         const txt = await safeReadText(replay);
+        const detail = formatMcpHttpError(replay, txt);
+        if (replay.status >= 500) {
+          throw new Error(
+            `Fortytwo MCP returned ${replay.status} ${replay.statusText} after signing (server or network issue, not your wallet declining)${detail}`
+          );
+        }
         throw new Error(
-          `Fortytwo refused payment (${replay.status} ${replay.statusText})${
-            txt ? ` — ${txt}` : ""
-          }`
+          `Fortytwo did not complete payment (${replay.status} ${replay.statusText})${detail}`
         );
       }
 
@@ -1097,9 +1129,8 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
 
     // Other errors → bail out.
     const txt = await safeReadText(res);
-    throw new Error(
-      `Fortytwo error ${res.status} ${res.statusText}${txt ? ` — ${txt}` : ""}`
-    );
+    const detail = formatMcpHttpError(res, txt);
+    throw new Error(`Fortytwo error ${res.status} ${res.statusText}${detail}`);
   }
 
   throw new Error("askPrime: exhausted attempts");

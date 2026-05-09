@@ -20,12 +20,24 @@ export function ErrorActionBar({
   onDismiss,
 }: Props) {
   const [copied, setCopied] = useState(false);
+  const [copiedDetails, setCopiedDetails] = useState(false);
 
   const copyErrorId = async () => {
     try {
       await navigator.clipboard.writeText(correlationId);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const copySupportDetails = async () => {
+    const block = `${message}\n\nRequest ID: ${correlationId}`;
+    try {
+      await navigator.clipboard.writeText(block);
+      setCopiedDetails(true);
+      setTimeout(() => setCopiedDetails(false), 1500);
     } catch {
       /* ignore */
     }
@@ -67,6 +79,14 @@ export function ErrorActionBar({
         )}
         <button type="button" className="error-action-btn" onClick={copyErrorId}>
           {copied ? "Copied" : "Copy request ID"}
+        </button>
+        <button
+          type="button"
+          className="error-action-btn"
+          onClick={copySupportDetails}
+          title="Full message and request ID for support or bug reports"
+        >
+          {copiedDetails ? "Copied" : "Copy details for support"}
         </button>
       </div>
     </div>
