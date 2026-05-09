@@ -30,6 +30,7 @@ import {
   createPublicClient,
   hashTypedData,
   parseSignature,
+  recoverTypedDataAddress,
   type Address,
   type Hex,
   type TypedDataDomain,
@@ -393,7 +394,7 @@ const PAYMENT_UPSTREAM_5XX_HINT =
   " USDC may still move on-chain briefly; check your Monad explorer. If funds moved or returned but the chat shows an error, contact Fortytwo support (e.g. Discord) with transaction hashes.";
 
 const PAYMENT_EXECUTION_FAILED_HINT =
-  " Cached USDC EIP-712 domain hints were cleared. Tap Retry so the app can re-fetch token name/version from Monad. If it persists, confirm the wallet is on Monad and matches the connected address.";
+  " Cached USDC EIP-712 domain hints were cleared. Tap Retry. If it still fails, sync your system clock, confirm Monad + the signing wallet address, then contact Fortytwo support (Discord) with this message and any tx hashes.";
 
 let mcpReady: Promise<void> | null = null;
 
@@ -907,7 +908,19 @@ async function buildPaymentSignature(
   address: Address,
   signTypedDataAsync: AskPrimeOptions["signTypedDataAsync"]
 ): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
+  const chainClient = createPublicClient({
+    chain: monad,
+    transport: monadHttpTransport,
+  });
+  const [latestBlock, fromBytecode] = await Promise.all([
+    chainClient.getBlock({ blockTag: "latest" }).catch(() => null),
+    chainClient.getCode({ address }).catch(() => undefined),
+  ]);
+  // USDC checks `block.timestamp` against validAfter/validBefore — not the
+  // wall clock. A skewed OS clock makes authorizations "expired" on-chain.
+  const now = latestBlock
+    ? Number(latestBlock.timestamp)
+    : Math.floor(Date.now() / 1000);
   // Stay within the server-advertised window if any (defaults to 90s).
   const window = Math.max(30, (accept.maxTimeoutSeconds ?? 90) - 5);
   const validBefore = now + window;
@@ -968,6 +981,22 @@ async function buildPaymentSignature(
       message: message as unknown as Record<string, unknown>,
     });
     void err;
+  }
+
+  const isEoa = !fromBytecode || fromBytecode === "0x";
+  if (isEoa) {
+    const recovered = await recoverTypedDataAddress({
+      domain,
+      types: { ReceiveWithAuthorization: receiveType },
+      primaryType: "ReceiveWithAuthorization",
+      message,
+      signature,
+    });
+    if (recovered.toLowerCase() !== address.toLowerCase()) {
+      throw new Error(
+        "Payment signature does not recover to your connected address. Check that your wallet is on Monad, your system clock is accurate, and try again."
+      );
+    }
   }
 
   // Sanity: ensure the digest is recoverable (helps debugging signature issues).
