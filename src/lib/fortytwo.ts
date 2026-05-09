@@ -15,7 +15,7 @@
  *  5. Server replies 200 with `x-session-id` and `payment-response` (txHash);
  *     cache them for follow-ups within the same billing session.
  *
- * Session lifetime (per docs.fortytwo.network/docs/mcp-integration):
+ * Session lifetime (per https://docs.fortytwo.network/docs/mcp-integration):
  *  - 60 minutes hard cap from session opening
  *  - 10 minutes idle timeout
  *  - Closed earlier on budget-exhausted, dropped connection, or upstream error
@@ -34,6 +34,7 @@ import {
   type Hex,
   type TypedDataDomain,
 } from "viem";
+import { PACKAGE_VERSION } from "./appVersion";
 import { monad, monadHttpTransport } from "./privy";
 
 /**
@@ -371,8 +372,25 @@ export function clearSession(address: string): void {
 // Free JSON-RPC calls (no payment)
 // --------------------------------------------------------------------------
 
-/** MCP protocol version string sent in `initialize` (Fortytwo docs). */
+/**
+ * MCP `initialize.params.protocolVersion` per Fortytwo integration docs.
+ * @see https://docs.fortytwo.network/docs/mcp-integration
+ */
 export const FORTYTWO_MCP_PROTOCOL_VERSION = "2026-03-03";
+
+/** Server-announced MCP protocol version from the last successful `initialize` (may differ from the client request). */
+let negotiatedMcpProtocolVersion: string | null = null;
+
+export function getNegotiatedMcpProtocolVersion(): string | null {
+  return negotiatedMcpProtocolVersion;
+}
+
+/** Retries for `tools/call` after payment when Fortytwo returns 5xx (doc: wait and retry). */
+const PAYMENT_REPLAY_MAX_ATTEMPTS = 3;
+const PAYMENT_5XX_RETRY_BACKOFF_MS = 2500;
+
+const PAYMENT_UPSTREAM_5XX_HINT =
+  " USDC may still move on-chain briefly; check your Monad explorer. If funds moved or returned but the chat shows an error, contact Fortytwo support (e.g. Discord) with transaction hashes.";
 
 let mcpReady: Promise<void> | null = null;
 
@@ -395,7 +413,10 @@ export async function mcpInitialize(signal?: AbortSignal): Promise<unknown> {
       rpcCall("initialize", {
         protocolVersion: FORTYTWO_MCP_PROTOCOL_VERSION,
         capabilities: {},
-        clientInfo: { name: "fortytwo-prime-chat", version: "0.1.0" },
+        clientInfo: {
+          name: "fortytwo-prime-chat",
+          version: PACKAGE_VERSION,
+        },
       })
     ),
     signal,
@@ -403,7 +424,13 @@ export async function mcpInitialize(signal?: AbortSignal): Promise<unknown> {
   if (!res.ok) {
     throw new Error(`initialize failed: ${res.status} ${res.statusText}`);
   }
-  return res.json();
+  const json = (await res.json()) as {
+    result?: { protocolVersion?: string };
+  };
+  if (json?.result?.protocolVersion) {
+    negotiatedMcpProtocolVersion = json.result.protocolVersion;
+  }
+  return json;
 }
 
 export async function mcpListTools(signal?: AbortSignal): Promise<unknown> {
@@ -1071,23 +1098,37 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
       await sleep(POST_SIGNATURE_PAUSE_MS, signal);
 
       onRequestPhase?.("confirming_payment");
-      const replay = await makeToolsCallRequest({
-        query,
-        paymentSignatureB64: signatureB64,
-        signal,
-      });
-
-      if (!replay.ok) {
+      let replay: Response | null = null;
+      let lastPaymentReplayDetail = "";
+      for (let payAttempt = 0; payAttempt < PAYMENT_REPLAY_MAX_ATTEMPTS; payAttempt++) {
+        if (payAttempt > 0) {
+          await sleep(PAYMENT_5XX_RETRY_BACKOFF_MS * payAttempt, signal);
+        }
+        replay = await makeToolsCallRequest({
+          query,
+          paymentSignatureB64: signatureB64,
+          signal,
+        });
+        if (replay.ok) break;
         const txt = await safeReadText(replay);
-        const detail = formatMcpHttpError(replay, txt);
+        lastPaymentReplayDetail = formatMcpHttpError(replay, txt);
+        const retryable =
+          replay.status >= 500 &&
+          replay.status < 600 &&
+          payAttempt < PAYMENT_REPLAY_MAX_ATTEMPTS - 1;
+        if (retryable) continue;
         if (replay.status >= 500) {
           throw new Error(
-            `Fortytwo MCP returned ${replay.status} ${replay.statusText} after signing (server or network issue, not your wallet declining)${detail}`
+            `Fortytwo MCP returned ${replay.status} ${replay.statusText} after signing (server or network issue, not your wallet declining)${lastPaymentReplayDetail}${PAYMENT_UPSTREAM_5XX_HINT}`
           );
         }
         throw new Error(
-          `Fortytwo did not complete payment (${replay.status} ${replay.statusText})${detail}`
+          `Fortytwo did not complete payment (${replay.status} ${replay.statusText})${lastPaymentReplayDetail}`
         );
+      }
+
+      if (!replay?.ok) {
+        throw new Error("askPrime: payment replay failed unexpectedly");
       }
 
       const built = buildSession(replay, accept);

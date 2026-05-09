@@ -3,6 +3,7 @@ import {
   FORTYTWO_MCP_HTTP_ENDPOINT,
   FORTYTWO_MCP_PROTOCOL_VERSION,
 } from "../lib/fortytwo";
+import { PACKAGE_VERSION } from "../lib/appVersion";
 
 /**
  * Dev-only MCP connectivity checks for `/test` (LegacyApp).
@@ -29,7 +30,7 @@ export function FortytwoMcpProbe() {
         params: {
           protocolVersion: FORTYTWO_MCP_PROTOCOL_VERSION,
           capabilities: {},
-          clientInfo: { name: "fortytwo-prime-test", version: "0.1.0" },
+          clientInfo: { name: "fortytwo-prime-test", version: PACKAGE_VERSION },
         },
       });
       const res = await fetch(FORTYTWO_MCP_HTTP_ENDPOINT, {
@@ -98,8 +99,9 @@ export function FortytwoMcpProbe() {
       <div className="legacy-mcp-probe-head">
         <h2 className="legacy-mcp-probe-title">Fortytwo MCP probe</h2>
         <p className="legacy-mcp-probe-meta">
-          Endpoint: <code>{FORTYTWO_MCP_HTTP_ENDPOINT}</code> · protocol:{" "}
-          <code>{FORTYTWO_MCP_PROTOCOL_VERSION}</code>
+          Endpoint: <code>{FORTYTWO_MCP_HTTP_ENDPOINT}</code> · client protocol:{" "}
+          <code>{FORTYTWO_MCP_PROTOCOL_VERSION}</code> · app{" "}
+          <code>{PACKAGE_VERSION}</code>
         </p>
         <div className="legacy-mcp-probe-actions">
           <button
