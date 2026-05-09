@@ -397,7 +397,7 @@ const PAYMENT_UPSTREAM_5XX_HINT =
   " USDC may still move on-chain briefly; check your Monad explorer. If funds moved or returned but the chat shows an error, contact Fortytwo support (e.g. Discord) with transaction hashes.";
 
 const PAYMENT_EXECUTION_FAILED_HINT =
-  " Cached USDC EIP-712 domain hints were cleared. Tap Retry. If no separate \"USDC ... preview\" error appeared first, your signature likely passed local checks but Fortytwo's facilitator still failed—send this message and Request ID to Fortytwo Discord. Otherwise: sync your system clock, confirm Monad + the signing address, try an EOA (not a smart-contract wallet) for EIP-3009, and include any tx hashes.";
+  " Cached USDC EIP-712 domain hints were cleared. Tap Retry. If no separate \"USDC ... preview\" error appeared first, your signature likely passed local checks but Fortytwo's facilitator still failed—open https://docs.fortytwo.network/docs/support-mcp or https://discord.gg/fortytwo and paste this full error plus your Request ID. Otherwise: sync your system clock, confirm Monad + the signing address, try an EOA (not a smart-contract wallet) for EIP-3009, and include any tx hashes.";
 
 /** secp256k1 curve order `n` (EIP-2 low-`s` bound uses `n / 2`). */
 const SECP256K1_N = BigInt(
