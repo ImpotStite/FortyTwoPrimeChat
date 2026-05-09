@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"call-curl","method":"tools/call","params":{"name":"ask_fortytwo_prime","arguments":{"query":"ping"}}}

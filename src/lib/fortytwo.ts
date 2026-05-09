@@ -38,14 +38,10 @@ import { monad, monadHttpTransport } from "./privy";
 
 /**
  * Default endpoint: same-origin `/api/mcp` (Vercel Function proxy in `api/mcp.ts`).
- * Browsers can't talk to `mcp.fortytwo.network` directly because the server
- * doesn't reply to CORS preflights — the proxy adds the missing headers and
- * forwards the streaming body verbatim.
- *
- * Override with `VITE_FORTYTWO_MCP_ENDPOINT` if you have your own proxy or if
- * Fortytwo eventually enables CORS server-side.
+ * Browsers can't call `https://mcp.fortytwo.network/mcp` directly without CORS.
+ * Override with `VITE_FORTYTWO_MCP_ENDPOINT` for debugging.
  */
-const ENDPOINT =
+export const FORTYTWO_MCP_HTTP_ENDPOINT =
   (import.meta.env.VITE_FORTYTWO_MCP_ENDPOINT as string | undefined) ||
   "/api/mcp";
 
@@ -375,8 +371,8 @@ export function clearSession(address: string): void {
 // Free JSON-RPC calls (no payment)
 // --------------------------------------------------------------------------
 
-/** Negotiated in practice with `fortytwo-mcp` (see `initialize` result.protocolVersion). */
-const MCP_PROTOCOL_VERSION = "2025-11-25";
+/** MCP protocol version string sent in `initialize` (Fortytwo docs). */
+export const FORTYTWO_MCP_PROTOCOL_VERSION = "2026-03-03";
 
 let mcpReady: Promise<void> | null = null;
 
@@ -392,12 +388,12 @@ function ensureMcpInitialized(signal?: AbortSignal): Promise<void> {
 }
 
 export async function mcpInitialize(signal?: AbortSignal): Promise<unknown> {
-  const res = await fetch(ENDPOINT, {
+  const res = await fetch(FORTYTWO_MCP_HTTP_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(
       rpcCall("initialize", {
-        protocolVersion: MCP_PROTOCOL_VERSION,
+        protocolVersion: FORTYTWO_MCP_PROTOCOL_VERSION,
         capabilities: {},
         clientInfo: { name: "fortytwo-prime-chat", version: "0.1.0" },
       })
@@ -411,7 +407,7 @@ export async function mcpInitialize(signal?: AbortSignal): Promise<unknown> {
 }
 
 export async function mcpListTools(signal?: AbortSignal): Promise<unknown> {
-  const res = await fetch(ENDPOINT, {
+  const res = await fetch(FORTYTWO_MCP_HTTP_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(rpcCall("tools/list", {})),
@@ -450,7 +446,7 @@ async function makeToolsCallRequest(args: MakeRequestArgs): Promise<Response> {
     headers["payment-signature"] = args.paymentSignatureB64;
   }
 
-  return fetch(ENDPOINT, {
+  return fetch(FORTYTWO_MCP_HTTP_ENDPOINT, {
     method: "POST",
     headers,
     body: JSON.stringify(

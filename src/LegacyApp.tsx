@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Sidebar } from "./components/Sidebar";
 import { Message } from "./components/Message";
 import { Composer } from "./components/Composer";
@@ -21,6 +22,7 @@ import {
 } from "./lib/appSurfaceError";
 import { formatForDelta, FOR_PER_MCP_3X } from "./lib/rewardsProgram";
 import { ErrorActionBar } from "./components/ErrorActionBar";
+import { FortytwoMcpProbe } from "./components/FortytwoMcpProbe";
 import type {
   ChatMessage,
   Conversation,
@@ -58,6 +60,7 @@ function newConversation(model: string): Conversation {
 }
 
 export default function LegacyApp() {
+  const location = useLocation();
   const { theme, toggle: toggleTheme } = useTheme();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -557,6 +560,8 @@ export default function LegacyApp() {
             </button>
           </div>
         </header>
+
+        {location.pathname === "/test" && <FortytwoMcpProbe />}
 
         <div className="messages-wrap">
           <div
