@@ -381,8 +381,8 @@ export function Sidebar({
               <img
                 className="sidebar-rewards-mark"
                 src="/fortytwo-prime-mark.png"
-                width={44}
-                height={44}
+                width={64}
+                height={64}
                 alt=""
               />
               <div className="sidebar-rewards-text">

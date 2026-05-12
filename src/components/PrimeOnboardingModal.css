@@ -389,8 +389,8 @@
 
 /* Same crop as .sidebar-rewards-mark; size tracks sidebar (see index.css) */
 .prime-onb-ft-frame--reward {
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   padding: 0;
   border-radius: 50%;
   background: transparent;
