@@ -613,11 +613,26 @@ export interface PrimeOnboardingModalProps {
 
 const SWIPE_MIN_PX = 52;
 const SWIPE_DOMINANCE = 1.12;
+const STEP_SLIDE_MS = 260;
+
+type StepAnim =
+  | "idle"
+  | "exit-forward"
+  | "enter-forward-prep"
+  | "enter-forward"
+  | "exit-back"
+  | "enter-back-prep"
+  | "enter-back";
+
+function stepPanelClass(phase: StepAnim): string {
+  if (phase === "idle") return "prime-onb-step-panel";
+  return `prime-onb-step-panel prime-onb-step-panel--${phase}`;
+}
 
 export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isClosing, setIsClosing] = useState(false);
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+  const [stepAnim, setStepAnim] = useState<StepAnim>("idle");
 
   const currentStep = STEPS[currentStepIndex]!;
   const isLastStep = currentStepIndex === STEPS.length - 1;
@@ -625,7 +640,8 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const isClosingRef = useRef(false);
-  const isAnimatingOutRef = useRef(false);
+  const stepAnimRef = useRef<StepAnim>("idle");
+  const transitionLockRef = useRef(false);
   const stepIndexRef = useRef(0);
   const goToStepRef = useRef<(idx: number) => void>(() => {});
   const handleNextRef = useRef<() => void>(() => {});
@@ -639,17 +655,44 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
     window.setTimeout(finishClose, 300);
   }, [finishClose]);
 
-  const goToStep = useCallback((idx: number) => {
-    const clamped = Math.max(0, Math.min(STEPS.length - 1, idx));
-    if (clamped === currentStepIndex) return;
-    setIsAnimatingOut(true);
-    window.setTimeout(() => {
-      setCurrentStepIndex(clamped);
-      setIsAnimatingOut(false);
-    }, 150);
-  }, [currentStepIndex]);
+  const goToStep = useCallback(
+    (idx: number) => {
+      const clamped = Math.max(0, Math.min(STEPS.length - 1, idx));
+      if (clamped === currentStepIndex) return;
+      if (transitionLockRef.current) return;
+
+      const prefersReduce =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      if (prefersReduce) {
+        setCurrentStepIndex(clamped);
+        return;
+      }
+
+      const forward = clamped > currentStepIndex;
+      transitionLockRef.current = true;
+      setStepAnim(forward ? "exit-forward" : "exit-back");
+
+      window.setTimeout(() => {
+        setCurrentStepIndex(clamped);
+        setStepAnim(forward ? "enter-forward-prep" : "enter-back-prep");
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setStepAnim(forward ? "enter-forward" : "enter-back");
+            window.setTimeout(() => {
+              setStepAnim("idle");
+              transitionLockRef.current = false;
+            }, STEP_SLIDE_MS);
+          });
+        });
+      }, STEP_SLIDE_MS);
+    },
+    [currentStepIndex]
+  );
 
   const handleNext = useCallback(() => {
+    if (transitionLockRef.current) return;
     if (isLastStep) {
       handleClose();
     } else {
@@ -659,7 +702,7 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
 
   useEffect(() => {
     isClosingRef.current = isClosing;
-    isAnimatingOutRef.current = isAnimatingOut;
+    stepAnimRef.current = stepAnim;
     stepIndexRef.current = currentStepIndex;
     goToStepRef.current = goToStep;
     handleNextRef.current = handleNext;
@@ -679,7 +722,7 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
     const start = touchStartRef.current;
     touchStartRef.current = null;
     if (!start || e.changedTouches.length !== 1) return;
-    if (isClosingRef.current || isAnimatingOutRef.current) return;
+    if (isClosingRef.current || stepAnimRef.current !== "idle") return;
 
     const t = e.changedTouches[0]!;
     const dx = t.clientX - start.x;
@@ -711,6 +754,7 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="prime-onb-title"
+        aria-busy={stepAnim !== "idle"}
         onTouchStart={onShellTouchStart}
         onTouchEnd={onShellTouchEnd}
         onTouchCancel={onShellTouchCancel}
@@ -729,39 +773,41 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
           )}
         </button>
 
-        <div className={`prime-onb-visual-wrap${isAnimatingOut ? " is-dim" : ""}`}>
-          <Visual />
-          <div className="prime-onb-visual-fade" />
-        </div>
-
-        <div className={`prime-onb-body${isAnimatingOut ? " is-dim" : ""}`}>
-          <div className="prime-onb-text-block">
-            <h2 id="prime-onb-title" className="prime-onb-title">
-              {currentStep.title}
-            </h2>
-            <p className="prime-onb-desc">{currentStep.description}</p>
+        <div className={stepPanelClass(stepAnim)}>
+          <div className="prime-onb-visual-wrap">
+            <Visual />
+            <div className="prime-onb-visual-fade" />
           </div>
-          <div className="prime-onb-footer">
-            <div className="prime-onb-dots">
-              {STEPS.map((s, idx) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className={`prime-onb-dot${idx === currentStepIndex ? " is-active" : ""}`}
-                  onClick={() => goToStep(idx)}
-                  aria-label={`Go to step ${idx + 1}`}
-                />
-              ))}
+
+          <div className="prime-onb-body">
+            <div className="prime-onb-text-block">
+              <h2 id="prime-onb-title" className="prime-onb-title">
+                {currentStep.title}
+              </h2>
+              <p className="prime-onb-desc">{currentStep.description}</p>
             </div>
-            <p className="prime-onb-swipe-hint">Swipe to change steps</p>
-            <button
-              type="button"
-              className={`prime-onb-cta${isLastStep ? " prime-onb-cta--final" : " prime-onb-cta--default"}`}
-              onClick={handleNext}
-            >
-              {currentStep.buttonText}
-              {!isLastStep ? <IconChevronRight /> : <IconCheck />}
-            </button>
+            <div className="prime-onb-footer">
+              <div className="prime-onb-dots">
+                {STEPS.map((s, idx) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={`prime-onb-dot${idx === currentStepIndex ? " is-active" : ""}`}
+                    onClick={() => goToStep(idx)}
+                    aria-label={`Go to step ${idx + 1}`}
+                  />
+                ))}
+              </div>
+              <p className="prime-onb-swipe-hint">Swipe to change steps</p>
+              <button
+                type="button"
+                className={`prime-onb-cta${isLastStep ? " prime-onb-cta--final" : " prime-onb-cta--default"}`}
+                onClick={handleNext}
+              >
+                {currentStep.buttonText}
+                {!isLastStep ? <IconChevronRight /> : <IconCheck />}
+              </button>
+            </div>
           </div>
         </div>
       </div>
