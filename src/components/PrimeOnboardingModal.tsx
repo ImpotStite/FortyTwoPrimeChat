@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { FortytwoSign } from "./Icons";
 import "./PrimeOnboardingModal.css";
 
@@ -611,6 +611,9 @@ export interface PrimeOnboardingModalProps {
   onClose: () => void;
 }
 
+const SWIPE_MIN_PX = 52;
+const SWIPE_DOMINANCE = 1.12;
+
 export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isClosing, setIsClosing] = useState(false);
@@ -619,6 +622,13 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
   const currentStep = STEPS[currentStepIndex]!;
   const isLastStep = currentStepIndex === STEPS.length - 1;
   const Visual = currentStep.Visual;
+
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const isClosingRef = useRef(false);
+  const isAnimatingOutRef = useRef(false);
+  const stepIndexRef = useRef(0);
+  const goToStepRef = useRef<(idx: number) => void>(() => {});
+  const handleNextRef = useRef<() => void>(() => {});
 
   const finishClose = useCallback(() => {
     onClose();
@@ -630,10 +640,11 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
   }, [finishClose]);
 
   const goToStep = useCallback((idx: number) => {
-    if (idx === currentStepIndex) return;
+    const clamped = Math.max(0, Math.min(STEPS.length - 1, idx));
+    if (clamped === currentStepIndex) return;
     setIsAnimatingOut(true);
     window.setTimeout(() => {
-      setCurrentStepIndex(idx);
+      setCurrentStepIndex(clamped);
       setIsAnimatingOut(false);
     }, 150);
   }, [currentStepIndex]);
@@ -646,6 +657,49 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
     }
   }, [currentStepIndex, goToStep, handleClose, isLastStep]);
 
+  useEffect(() => {
+    isClosingRef.current = isClosing;
+    isAnimatingOutRef.current = isAnimatingOut;
+    stepIndexRef.current = currentStepIndex;
+    goToStepRef.current = goToStep;
+    handleNextRef.current = handleNext;
+  });
+
+  const onShellTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length !== 1) return;
+    const { target } = e;
+    if (target instanceof Element && target.closest("button, a, input, textarea, select")) {
+      return;
+    }
+    const t = e.touches[0]!;
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  }, []);
+
+  const onShellTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || e.changedTouches.length !== 1) return;
+    if (isClosingRef.current || isAnimatingOutRef.current) return;
+
+    const t = e.changedTouches[0]!;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+
+    if (Math.abs(dx) < SWIPE_MIN_PX) return;
+    if (Math.abs(dx) < Math.abs(dy) * SWIPE_DOMINANCE) return;
+
+    if (dx < 0) {
+      handleNextRef.current();
+    } else {
+      const i = stepIndexRef.current;
+      if (i > 0) goToStepRef.current(i - 1);
+    }
+  }, []);
+
+  const onShellTouchCancel = useCallback(() => {
+    touchStartRef.current = null;
+  }, []);
+
   return (
     <div
       className={`prime-onb-overlay${isClosing ? " is-closing" : ""}`}
@@ -657,6 +711,9 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="prime-onb-title"
+        onTouchStart={onShellTouchStart}
+        onTouchEnd={onShellTouchEnd}
+        onTouchCancel={onShellTouchCancel}
       >
         <div className="prime-onb-shell-top-line" />
         <button
@@ -696,6 +753,7 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
                 />
               ))}
             </div>
+            <p className="prime-onb-swipe-hint">Swipe to change steps</p>
             <button
               type="button"
               className={`prime-onb-cta${isLastStep ? " prime-onb-cta--final" : " prime-onb-cta--default"}`}
