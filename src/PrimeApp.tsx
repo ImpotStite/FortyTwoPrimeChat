@@ -67,9 +67,14 @@ import {
   primeErrorActions,
   type AppSurfaceError,
 } from "./lib/appSurfaceError";
+import {
+  isPrimeOnboardingCompleted,
+  markPrimeOnboardingCompleted,
+} from "./lib/primeOnboarding";
 import { ErrorActionBar } from "./components/ErrorActionBar";
 import { PrimeNetworkLoader } from "./components/PrimeNetworkLoader";
 import { MemoryToggle } from "./components/MemoryToggle";
+import { PrimeOnboardingModal } from "./components/PrimeOnboardingModal";
 import type {
   ChatMessage,
   Conversation,
@@ -167,6 +172,9 @@ export default function PrimeApp() {
       return false;
     }
   });
+  const [primeOnboardingOpen, setPrimeOnboardingOpen] = useState(
+    () => !isPrimeOnboardingCompleted()
+  );
   const toasts = useToasts();
   const sessionIdRef = useRef<string | null>(null);
 
@@ -1083,6 +1091,11 @@ export default function PrimeApp() {
     }
   };
 
+  const dismissPrimeOnboarding = useCallback(() => {
+    markPrimeOnboardingCompleted();
+    setPrimeOnboardingOpen(false);
+  }, []);
+
   const sessionState = useMemo<{
     active: boolean;
     label: string;
@@ -1532,6 +1545,10 @@ export default function PrimeApp() {
         onDismiss={toasts.dismiss}
         explorerHref={explorerTxHref}
       />
+
+      {primeOnboardingOpen ? (
+        <PrimeOnboardingModal onClose={dismissPrimeOnboarding} />
+      ) : null}
 
       {/* Hidden but keeps user variable referenced so it stays in scope for future use. */}
       {user ? null : null}

@@ -20,7 +20,12 @@ import {
   type AppSurfaceError,
 } from "./lib/appSurfaceError";
 import { formatForDelta, FOR_PER_MCP_3X } from "./lib/rewardsProgram";
+import {
+  isTestOnboardingCompleted,
+  markTestOnboardingCompleted,
+} from "./lib/primeOnboarding";
 import { ErrorActionBar } from "./components/ErrorActionBar";
+import { PrimeOnboardingModal } from "./components/PrimeOnboardingModal";
 import type {
   ChatMessage,
   Conversation,
@@ -81,6 +86,14 @@ export default function LegacyApp() {
     { id: string; amountLabel: string }[]
   >([]);
   const [rewardsHighlight, setRewardsHighlight] = useState(false);
+  const [legacyOnboardingOpen, setLegacyOnboardingOpen] = useState(
+    () => !isTestOnboardingCompleted()
+  );
+
+  const dismissLegacyOnboarding = useCallback(() => {
+    markTestOnboardingCompleted();
+    setLegacyOnboardingOpen(false);
+  }, []);
 
   const onRewardFlyComplete = useCallback((id: string) => {
     setRewardFlights((prev) => prev.filter((x) => x.id !== id));
@@ -540,6 +553,14 @@ export default function LegacyApp() {
           <div className="topbar-tools">
             <button
               type="button"
+              className="btn btn-ghost legacy-onboarding-replay-btn"
+              onClick={() => setLegacyOnboardingOpen(true)}
+              title="Open the Fortytwo Prime walkthrough again"
+            >
+              Replay tutorial
+            </button>
+            <button
+              type="button"
               className="btn btn-ghost test-reward-fly-btn"
               onClick={() => queueRewardFly()}
               title="Play the reward chip animation (no API call)"
@@ -654,6 +675,10 @@ export default function LegacyApp() {
           }
         />
       </main>
+
+      {legacyOnboardingOpen ? (
+        <PrimeOnboardingModal onClose={dismissLegacyOnboarding} />
+      ) : null}
     </div>
   );
 }

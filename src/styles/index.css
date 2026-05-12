@@ -1479,7 +1479,8 @@ kbd {
   flex: 0 1 auto;
 }
 
-.test-reward-fly-btn {
+.test-reward-fly-btn,
+.legacy-onboarding-replay-btn {
   flex-shrink: 0;
   padding: 6px 10px;
   font-size: 12px;

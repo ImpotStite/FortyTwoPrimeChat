@@ -1,0 +1,1137 @@
+/* Fortytwo Prime onboarding: lime accents; marks align with Welcome / Sidebar / Message (no tutorial-only assets) */
+.prime-onb-overlay {
+  --ob-lime: #d0ff00;
+  --ob-lime-hover: #b8e600;
+  --ob-lime-soft: rgba(208, 255, 0, 0.12);
+  --ob-lime-border: rgba(208, 255, 0, 0.35);
+  --ob-lime-glow: rgba(208, 255, 0, 0.28);
+  --ob-lime-mist: rgba(208, 255, 0, 0.16);
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 24px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(4px);
+  transition: opacity 0.3s ease, background 0.3s ease;
+}
+
+.prime-onb-overlay.is-closing {
+  opacity: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+@keyframes prime-onb-pulse-glow {
+  0% {
+    box-shadow: 0 0 14px 0 rgba(208, 255, 0, 0.12),
+      0 0 26px rgba(208, 255, 0, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 28px 3px rgba(208, 255, 0, 0.28),
+      0 0 44px rgba(208, 255, 0, 0.14);
+  }
+  100% {
+    box-shadow: 0 0 14px 0 rgba(208, 255, 0, 0.12),
+      0 0 26px rgba(208, 255, 0, 0.08);
+  }
+}
+
+@keyframes prime-onb-slide-right {
+  0% {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes prime-onb-slide-up {
+  0% {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes prime-onb-dash-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+@keyframes prime-onb-refund-pop {
+  0% {
+    transform: scale(0.8) translateY(10px);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.06) translateY(-4px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes prime-onb-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.prime-onb-animate-glow {
+  animation: prime-onb-pulse-glow 3s ease-in-out infinite;
+}
+
+.prime-onb-animate-flow {
+  animation: prime-onb-dash-flow 1.5s linear infinite;
+}
+
+.prime-onb-animate-slide-up {
+  animation: prime-onb-slide-up 0.5s ease-out forwards;
+}
+
+.prime-onb-animate-refund {
+  animation: prime-onb-refund-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.prime-onb-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 380px;
+  height: 620px;
+  max-height: min(620px, calc(100vh - 32px));
+  background: #161616;
+  border-radius: var(--radius, 4px);
+  border: 1px solid rgba(250, 250, 250, 0.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.prime-onb-shell.is-closing {
+  transform: scale(0.96) translateY(12px);
+  opacity: 0;
+}
+
+.prime-onb-shell-top-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(250, 250, 250, 0.2),
+    transparent
+  );
+  z-index: 20;
+  pointer-events: none;
+}
+
+.prime-onb-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.prime-onb-skip {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 21;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #858585;
+  background: rgba(10, 10, 10, 0.55);
+  backdrop-filter: blur(8px);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.prime-onb-skip:hover {
+  color: #fafafa;
+  background: #0a0a0a;
+}
+
+.prime-onb-skip-sr {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.prime-onb-visual-wrap {
+  flex: 0 0 300px;
+  height: 300px;
+  width: 100%;
+  position: relative;
+  background: #111111;
+  border-bottom: 1px solid rgba(250, 250, 250, 0.05);
+  overflow: hidden;
+  transition: opacity 0.15s ease;
+}
+
+.prime-onb-visual-wrap.is-dim {
+  opacity: 0;
+}
+
+.prime-onb-visual-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(to top, #161616, transparent);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.prime-onb-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 28px 28px;
+  min-height: 0;
+  transition: opacity 0.15s ease;
+}
+
+.prime-onb-body.is-dim {
+  opacity: 0;
+}
+
+.prime-onb-title {
+  margin: 0 0 12px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fafafa;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.prime-onb-desc {
+  margin: 0;
+  font-size: 14.5px;
+  color: #858585;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+.prime-onb-text-block {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.prime-onb-footer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  margin-top: 16px;
+}
+
+.prime-onb-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prime-onb-dot {
+  height: 6px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(133, 133, 133, 0.35);
+  transition: width 0.25s ease, background 0.25s ease;
+}
+
+.prime-onb-dot:hover {
+  background: rgba(133, 133, 133, 0.65);
+}
+
+.prime-onb-dot.is-active {
+  width: 24px;
+  background: #fafafa;
+}
+
+.prime-onb-dot:not(.is-active) {
+  width: 6px;
+}
+
+.prime-onb-cta {
+  width: 100%;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 14px 16px;
+  border-radius: var(--radius, 4px);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  letter-spacing: 0.02em;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.prime-onb-cta:active {
+  transform: scale(0.98);
+}
+
+.prime-onb-cta--default {
+  background: #fafafa;
+  color: #000000;
+}
+
+.prime-onb-cta--default:hover {
+  background: #e8e8e8;
+}
+
+.prime-onb-cta--final {
+  background: var(--ob-lime);
+  color: #000000;
+  box-shadow: 0 0 22px rgba(208, 255, 0, 0.2);
+}
+
+.prime-onb-cta--final:hover {
+  background: var(--ob-lime-hover);
+}
+
+.prime-onb-cta-icon {
+  opacity: 0.55;
+}
+
+/* ---- Visual panes (scoped) ---- */
+.prime-onb-v {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* Match in-app marks: empty-chat welcome + sidebar rewards + assistant avatar (Message.tsx) */
+.prime-onb-img-ft-inset {
+  display: block;
+}
+
+.prime-onb-img-ft-inset--welcome {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.prime-onb-img-ft-inset--reward {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  box-sizing: border-box;
+}
+
+.prime-onb-ft-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Same treatment as .welcome-logo (index.css): lime tile + cover — mark fills the tile */
+.prime-onb-ft-frame--welcome {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  padding: 0;
+  border-radius: 4px;
+  background: var(--ob-lime);
+  border: 1px solid #0a0a0a;
+  box-shadow: 0 0 28px rgba(208, 255, 0, 0.14), 0 0 40px var(--ob-lime-mist);
+}
+
+/* Same crop as .sidebar-rewards-mark; 40px for legibility in the modal (sidebar uses 32px) */
+.prime-onb-ft-frame--reward {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  box-shadow: 0 0 24px rgba(208, 255, 0, 0.16), 0 0 36px var(--ob-lime-mist);
+}
+
+/* Mirrors .msg-assistant .msg-avatar + FortytwoSign 24 (Message.tsx, Icons.tsx) */
+.prime-onb-assistant-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--ob-lime);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+}
+
+.prime-onb-img-usdc {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.prime-onb-img-monad-badge {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #0a0a0a;
+  display: block;
+}
+
+.prime-onb-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to bottom, #111111, #161616);
+}
+
+.prime-onb-welcome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+      ellipse 85% 65% at 50% 42%,
+      var(--ob-lime-mist),
+      transparent 58%
+    ),
+    radial-gradient(
+      circle at center,
+      rgba(208, 255, 0, 0.07),
+      transparent 62%
+    );
+}
+
+.prime-onb-welcome-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.prime-onb-icon-row {
+  display: flex;
+  gap: 10px;
+  color: rgba(250, 250, 250, 0.38);
+}
+
+.prime-onb-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #111111;
+}
+
+.prime-onb-trigger-inner {
+  width: 100%;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.prime-onb-trigger-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+  opacity: 0.52;
+}
+
+.prime-onb-trigger-ava {
+  flex-shrink: 0;
+}
+
+.prime-onb-trigger-bubble {
+  flex: 1;
+  background: #1c1c1c;
+  border: 1px solid rgba(250, 250, 250, 0.06);
+  border-radius: 4px 4px 4px 2px;
+  padding: 12px;
+}
+
+.prime-onb-skel {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(250, 250, 250, 0.14);
+  margin-bottom: 8px;
+}
+
+.prime-onb-skel:last-child {
+  margin-bottom: 0;
+  width: 55%;
+}
+
+.prime-onb-trigger-input {
+  background: var(--ob-lime-soft);
+  border: 1px solid var(--ob-lime-border);
+  border-radius: 4px;
+  padding: 12px;
+  position: relative;
+  box-shadow: 0 0 18px rgba(208, 255, 0, 0.1);
+}
+
+.prime-onb-trigger-input-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  padding-right: 36px;
+}
+
+.prime-onb-trigger-placeholder {
+  font-size: 13px;
+  color: rgba(250, 250, 250, 0.38);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prime-onb-caret {
+  width: 2px;
+  height: 12px;
+  background: #fafafa;
+  animation: prime-onb-blink 1s step-end infinite;
+}
+
+@keyframes prime-onb-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.prime-onb-send-fab {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  background: var(--ob-lime);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prime-onb-auth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #111111;
+}
+
+.prime-onb-auth-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 192px;
+  height: 192px;
+  background: radial-gradient(
+    circle,
+    var(--ob-lime-mist) 0%,
+    rgba(208, 255, 0, 0.06) 45%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  filter: blur(40px);
+}
+
+.prime-onb-auth-line {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 40px;
+  color: rgba(250, 250, 250, 0.2);
+}
+
+.prime-onb-auth-card {
+  position: relative;
+  z-index: 2;
+  width: 208px;
+  margin-top: 28px;
+  background: #1c1c1c;
+  border: 1px solid rgba(250, 250, 250, 0.1);
+  border-radius: 4px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.prime-onb-auth-row-usdc {
+  width: 100%;
+  background: #0a0a0a;
+  border: 1px solid rgba(250, 250, 250, 0.06);
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.prime-onb-auth-usdc-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prime-onb-auth-badge-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.prime-onb-auth-badge-wrap .prime-onb-img-monad-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+}
+
+.prime-onb-auth-sign-btn {
+  width: 100%;
+  height: 34px;
+  background: #fafafa;
+  color: #000;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.prime-onb-auth-sign-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+  animation: prime-onb-shimmer 2.2s infinite;
+}
+
+.prime-onb-escrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: linear-gradient(to top right, #0a0a0a, #111111);
+}
+
+.prime-onb-escrow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+      circle at bottom center,
+      rgba(208, 255, 0, 0.06),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 70% 20%,
+      var(--ob-lime-mist),
+      transparent 50%
+    );
+}
+
+.prime-onb-escrow-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 260px;
+  border: 1px solid var(--ob-lime-border);
+  background: rgba(22, 22, 22, 0.88);
+  backdrop-filter: blur(10px);
+  border-radius: 4px;
+  padding: 14px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.35);
+}
+
+.prime-onb-escrow-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(250, 250, 250, 0.1);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.prime-onb-escrow-head span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.prime-onb-dot-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ob-lime);
+  animation: prime-onb-pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes prime-onb-pulse-dot {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+.prime-onb-refund {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: linear-gradient(
+    to top,
+    rgba(208, 255, 0, 0.05),
+    rgba(208, 255, 0, 0.08),
+    #111111
+  );
+}
+
+.prime-onb-refund-pill {
+  background: rgba(208, 255, 0, 0.1);
+  border: 1px solid var(--ob-lime);
+  color: var(--ob-lime);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 0 20px rgba(208, 255, 0, 0.15);
+}
+
+.prime-onb-memory {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #111111;
+}
+
+.prime-onb-memory-card {
+  width: 144px;
+  background: #1c1c1c;
+  border: 1px solid var(--ob-lime-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 0 20px rgba(208, 255, 0, 0.08);
+}
+
+.prime-onb-memory-toggle {
+  width: 28px;
+  height: 16px;
+  background: var(--ob-lime);
+  border-radius: 999px;
+  position: relative;
+}
+
+.prime-onb-memory-toggle::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  background: #000;
+  border-radius: 50%;
+}
+
+.prime-onb-auto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 22px;
+  background: linear-gradient(to bottom left, #0a0a0a, #111111);
+}
+
+.prime-onb-auto-timer {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid #1c1c1c;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 0 18px rgba(208, 255, 0, 0.1), 0 0 32px var(--ob-lime-mist);
+}
+
+.prime-onb-auto-timer-clock {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.prime-onb-auto-timer-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  animation: prime-onb-auto-ring-rotate 2.4s linear infinite;
+  transform-origin: center center;
+}
+
+@keyframes prime-onb-auto-ring-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.prime-onb-privacy-shield {
+  background: #1c1c1c;
+  border: 1px solid var(--ob-lime-border);
+  padding: 14px;
+  border-radius: 4px;
+  box-shadow: 0 10px 28px rgba(208, 255, 0, 0.1);
+}
+
+.prime-onb-memory-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.prime-onb-memory-head span:first-child {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.prime-onb-memory-hint {
+  font-size: 10px;
+  color: #858585;
+  line-height: 1.35;
+}
+
+.prime-onb-memory-dots {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  justify-content: center;
+}
+
+.prime-onb-memory-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ob-lime);
+  animation: prime-onb-pulse-dot 1.2s ease-in-out infinite;
+}
+
+.prime-onb-memory-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.prime-onb-memory-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.prime-onb-memory-deco {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.prime-onb-memory-deco svg {
+  animation: prime-onb-spin-slow 20s linear infinite;
+}
+
+@keyframes prime-onb-spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes prime-onb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.prime-onb-spin {
+  animation: prime-onb-spin 1s linear infinite;
+}
+
+
+.prime-onb-auto-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 192px;
+  height: 192px;
+  background: radial-gradient(
+    circle,
+    rgba(208, 255, 0, 0.08) 0%,
+    var(--ob-lime-mist) 40%,
+    transparent 68%
+  );
+  border-radius: 50%;
+  filter: blur(40px);
+}
+
+.prime-onb-auto-badge {
+  position: relative;
+  z-index: 2;
+  background: #1c1c1c;
+  border: 1px solid rgba(250, 250, 250, 0.1);
+  padding: 6px 12px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.prime-onb-auto-badge span:last-child {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: #fafafa;
+  letter-spacing: 0.04em;
+}
+
+.prime-onb-privacy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: #111111;
+}
+
+.prime-onb-privacy-stack {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prime-onb-privacy-chip {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: #858585;
+  border: 1px solid rgba(250, 250, 250, 0.1);
+  background: #0a0a0a;
+  padding: 6px 12px;
+  border-radius: 4px;
+}
+
+.prime-onb-rewards-wrap {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.prime-onb-rewards-hero {
+  display: flex;
+  justify-content: center;
+}
+
+.prime-onb-rewards-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+      circle at center,
+      rgba(208, 255, 0, 0.12),
+      transparent 48%
+    ),
+    radial-gradient(
+      circle at 50% 30%,
+      var(--ob-lime-mist),
+      transparent 55%
+    );
+  animation: prime-onb-pulse-dot 3s ease-in-out infinite;
+}
+
+.prime-onb-rewards-label {
+  margin-top: 0;
+  font-size: 15px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--ob-lime);
+}
+
+.prime-onb-rewards-sub {
+  margin-top: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: #858585;
+}
+
+.prime-onb-escrow-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.prime-onb-escrow-row + .prime-onb-escrow-row {
+  margin-top: 10px;
+}
+
+.prime-onb-escrow-mono {
+  font-family: var(--font-mono);
+  color: #fafafa;
+}
+
+.prime-onb-escrow-cost {
+  background: #0a0a0a;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(250, 250, 250, 0.06);
+}
+
+.prime-onb-escrow-cost-amount {
+  color: var(--ob-lime);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.prime-onb-refund-arrows {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 20px;
+  color: rgba(208, 255, 0, 0.38);
+}
+
+.prime-onb-refund-wallet {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #1c1c1c;
+  border: 1px solid rgba(250, 250, 250, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.prime-onb-mono-amount {
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: #fafafa;
+}
+
+.prime-onb-label-usdc {
+  font-size: 12px;
+  color: #fafafa;
+  font-weight: 500;
+}
+
+.prime-onb-auth-label {
+  font-size: 12px;
+  color: #858585;
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.prime-onb-auth-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fafafa;
+  margin-bottom: 12px;
+  text-align: center;
+}
