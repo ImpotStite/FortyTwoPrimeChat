@@ -440,7 +440,7 @@
   box-shadow: 0 0 28px rgba(208, 255, 0, 0.14), 0 0 40px var(--ob-lime-mist);
 }
 
-/* Same crop as .sidebar-rewards-mark; size tracks sidebar (see index.css) */
+/* Tutorial-only: larger FOR mark in onboarding hero (sidebar stays 32px) */
 .prime-onb-ft-frame--reward {
   width: 64px;
   height: 64px;

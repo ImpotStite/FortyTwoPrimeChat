@@ -55,7 +55,7 @@ export function FloatingRewardBubble({
       if (el) {
         const rect = el.getBoundingClientRect();
         if (rect.width > 0) {
-          targetX = rect.left + 42;
+          targetX = rect.left + 28;
           targetY = rect.top + rect.height / 2;
         }
       }
