@@ -673,11 +673,11 @@ kbd {
 }
 
 .rewards-detail-dialog::backdrop {
-  background: color-mix(in srgb, #000000 80%, transparent);
+  background: color-mix(in srgb, var(--ft-black) 80%, transparent);
 }
 
 :root[data-theme="light"] .rewards-detail-dialog::backdrop {
-  background: color-mix(in srgb, #1a1a1a 42%, transparent);
+  background: color-mix(in srgb, var(--text) 42%, transparent);
 }
 
 .rewards-detail-dialog-panel {
@@ -776,7 +776,7 @@ kbd {
   font-family: var(--font-mono);
   font-size: 2.25rem;
   font-weight: 700;
-  color: var(--ft-lime);
+  color: var(--prime);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
@@ -828,7 +828,7 @@ kbd {
   justify-content: space-between;
   gap: 10px;
   padding: 12px 16px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   border: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
   background: var(--bg-elev-2);
   color: var(--text);
@@ -840,9 +840,12 @@ kbd {
     border-color 0.12s ease;
 }
 
-.rewards-detail-link-row:hover {
+.rewards-detail-link-row:hover,
+.rewards-detail-link-row:focus-visible {
   background: var(--bg-elev-3);
   border-color: color-mix(in srgb, var(--text) 18%, var(--border));
+  color: var(--text);
+  text-decoration: none;
 }
 
 .rewards-detail-link-row-arrow {
@@ -859,6 +862,12 @@ kbd {
   gap: 40px;
   overflow-y: auto;
   max-height: min(80vh, 720px);
+  background: var(--bg-elev-2);
+}
+
+:root[data-theme="light"] .rewards-detail-right {
+  /* --bg-elev-2 is translucent on lime canvas; keep this column opaque */
+  background: var(--bg-elev-1);
 }
 
 @media (min-width: 768px) {
@@ -968,7 +977,7 @@ kbd {
 .rewards-launch-day-box--done {
   background: var(--ft-lime);
   border-color: var(--ft-lime);
-  color: #000000;
+  color: var(--accent-on);
   font-weight: 700;
 }
 
@@ -1131,9 +1140,9 @@ kbd {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #000000;
+  color: var(--accent-on);
   background: var(--ft-lime);
-  border-radius: 0 0 0 2px;
+  border-radius: 0 0 0 var(--radius-sm);
 }
 
 .rewards-detail-rate-kicker {
