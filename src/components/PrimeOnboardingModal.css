@@ -110,6 +110,24 @@
   }
 }
 
+@keyframes prime-onb-follow-scan {
+  0% {
+    top: -15%;
+  }
+  50% {
+    top: 115%;
+  }
+  100% {
+    top: -15%;
+  }
+}
+
+@keyframes prime-onb-follow-pulse-x {
+  50% {
+    opacity: 0.42;
+  }
+}
+
 .prime-onb-animate-glow {
   animation: prime-onb-pulse-glow 3s ease-in-out infinite;
 }
@@ -1414,6 +1432,230 @@
   stroke: currentColor;
 }
 
+/* ---- Follow gate (last step): X follow + simulated verify ---- */
+.prime-onb-follow-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: color-mix(in srgb, var(--text) 10%, var(--onb-shell));
+  z-index: 22;
+  pointer-events: none;
+}
+
+.prime-onb-follow-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--text);
+  transition: width 75ms linear;
+}
+
+.prime-onb-follow-progress-fill.is-success {
+  background: var(--ob-lime);
+  box-shadow: 0 0 10px var(--ob-lime-glow);
+}
+
+.prime-onb-follow-gate {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--onb-visual);
+}
+
+.prime-onb-follow-gate-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--text) 4%, transparent),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.prime-onb-follow-gate-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  transition: border-color 0.85s ease, box-shadow 0.85s ease;
+  pointer-events: none;
+}
+
+.prime-onb-follow-gate-ring--inner {
+  width: min(192px, 52vw);
+  height: min(192px, 52vw);
+}
+
+.prime-onb-follow-gate-ring--outer {
+  width: min(256px, 68vw);
+  height: min(256px, 68vw);
+}
+
+.prime-onb-follow-gate-ring.is-success {
+  border-color: color-mix(in srgb, var(--ft-lime) 28%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--ft-lime) 12%, transparent);
+}
+
+.prime-onb-follow-gate-center-wrap {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.prime-onb-follow-gate-hub {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: var(--onb-raise);
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  box-shadow: var(--shadow-1);
+  transition: background 0.45s ease, border-color 0.45s ease, box-shadow 0.45s ease;
+}
+
+.prime-onb-follow-gate-hub.is-busy {
+  border-color: color-mix(in srgb, var(--text) 28%, transparent);
+}
+
+.prime-onb-follow-gate-hub.is-success {
+  background: color-mix(in srgb, var(--ft-lime) 12%, var(--onb-raise));
+  border-color: var(--ob-lime-border-card);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--ft-lime) 18%, transparent);
+}
+
+.prime-onb-follow-gate-scan-wrap {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.prime-onb-follow-gate-scan-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--ob-lime);
+  box-shadow: 0 0 11px 1px var(--ob-lime);
+  animation: prime-onb-follow-scan 2.5s ease-in-out infinite;
+}
+
+.prime-onb-follow-gate-check {
+  position: relative;
+  z-index: 3;
+  color: var(--ob-lime-on-elevated);
+  animation: prime-onb-refund-pop 0.5s ease-out forwards;
+}
+
+.prime-onb-follow-gate-x {
+  width: 40px;
+  height: 40px;
+  position: relative;
+  z-index: 1;
+  color: var(--text);
+}
+
+.prime-onb-follow-gate-x.is-pulse {
+  animation: prime-onb-follow-pulse-x 1.4s ease-in-out infinite;
+}
+
+.prime-onb-footer--follow {
+  gap: 16px;
+}
+
+.prime-onb-follow-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prime-onb-follow-primary {
+  width: 100%;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius, 4px);
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 0.02em;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+    opacity 0.15s ease, transform 0.1s ease;
+}
+
+.prime-onb-follow-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.prime-onb-follow-primary.is-idle {
+  background: color-mix(in srgb, var(--text) 92%, var(--onb-surface));
+  color: var(--accent-on);
+}
+
+.prime-onb-follow-primary.is-idle:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 86%, var(--onb-surface));
+}
+
+.prime-onb-follow-primary.is-busy {
+  background: var(--onb-raise);
+  color: var(--text);
+  border-color: var(--border);
+  cursor: wait;
+}
+
+.prime-onb-follow-primary.is-done {
+  background: var(--onb-shell);
+  color: var(--ob-lime-on-elevated);
+  border: 1px solid color-mix(in srgb, var(--ft-lime) 32%, var(--border));
+  opacity: 0.55;
+  cursor: default;
+}
+
+.prime-onb-follow-primary-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.prime-onb-follow-primary-external {
+  margin-left: 2px;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.prime-onb-follow-enter:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prime-onb-follow-gate-scan-line {
+    animation: none;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.4;
+  }
+}
+
 /* Softer scrim on light canvas (same idea as .rewards-detail-dialog::backdrop) */
 :root[data-theme="light"] .prime-onb-overlay {
   background: color-mix(in srgb, #1a1a1a 30%, transparent);
@@ -1437,4 +1679,22 @@
 
 :root[data-theme="light"] .prime-onb-overlay .prime-onb-auto-timer-ring-bg {
   stroke: color-mix(in srgb, var(--ob-lime-on-elevated) 24%, transparent);
+}
+
+:root[data-theme="light"] .prime-onb-overlay .prime-onb-follow-progress {
+  background: color-mix(in srgb, var(--text) 6%, var(--onb-shell));
+}
+
+:root[data-theme="light"] .prime-onb-overlay .prime-onb-follow-primary.is-idle {
+  background: var(--text);
+  color: var(--onb-surface);
+}
+
+:root[data-theme="light"] .prime-onb-overlay .prime-onb-follow-primary.is-idle:hover:not(:disabled) {
+  background: #1a1a1a;
+}
+
+:root[data-theme="light"] .prime-onb-overlay .prime-onb-follow-gate-hub:not(.is-success) {
+  background: var(--onb-surface);
+  border-color: var(--border-strong);
 }
