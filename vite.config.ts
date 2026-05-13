@@ -1,4 +1,6 @@
 import { Buffer } from "node:buffer";
+import fs from "node:fs";
+import path from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
@@ -23,6 +25,8 @@ export default defineConfig(({ mode }) => {
     (mode === "production" ? DEFAULT_PRODUCTION_SITE : "http://localhost:5173")
   ).replace(/\/$/, "");
 
+  let resolvedOutDir = "dist";
+
   return {
     plugins: [
       {
@@ -32,6 +36,35 @@ export default defineConfig(({ mode }) => {
         },
       },
       react(),
+      {
+        name: "write-seo-files",
+        configResolved(config) {
+          resolvedOutDir = config.build.outDir;
+        },
+        writeBundle() {
+          const outAbs = path.resolve(process.cwd(), resolvedOutDir);
+          const robots = `User-agent: *
+Allow: /
+
+# Internal OpenRouter playground (also noindex when the app loads)
+Disallow: /test
+
+Sitemap: ${siteUrl}/sitemap.xml
+`;
+          const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${siteUrl}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
+`;
+          fs.mkdirSync(outAbs, { recursive: true });
+          fs.writeFileSync(path.join(outAbs, "robots.txt"), robots, "utf8");
+          fs.writeFileSync(path.join(outAbs, "sitemap.xml"), sitemap, "utf8");
+        },
+      },
       {
         name: "openrouter-dev-proxy",
         configureServer(server) {

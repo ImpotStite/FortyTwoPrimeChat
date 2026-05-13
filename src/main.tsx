@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { Analytics } from "@vercel/analytics/react";
+import { RouteSeo } from "./components/RouteSeo";
 import LegacyApp from "./LegacyApp";
 import PrimeApp from "./PrimeApp";
 import { PRIVY_APP_ID, privyConfig } from "./lib/privy";
@@ -13,6 +14,7 @@ import "./styles/index.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
+      <RouteSeo />
       <Routes>
         <Route
           path="/"
