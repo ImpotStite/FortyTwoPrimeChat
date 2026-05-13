@@ -882,36 +882,12 @@ kbd {
   gap: 0;
 }
 
-.rewards-launch-timeline-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
 .rewards-launch-timeline-title {
-  margin: 0;
+  margin: 0 0 16px;
   font-size: 15px;
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.02em;
-}
-
-.rewards-launch-best-pill {
-  flex-shrink: 0;
-  font-size: 13px;
-  color: var(--text-muted);
-  padding: 4px 8px;
-  border-radius: 2px;
-  border: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
-  background: var(--bg-elev-1);
-}
-
-.rewards-launch-best-num {
-  font-family: var(--font-mono);
-  color: var(--text);
-  font-weight: 600;
 }
 
 .rewards-launch-timeline-desc {

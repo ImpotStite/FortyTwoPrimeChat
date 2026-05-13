@@ -20,12 +20,10 @@ const DONATION_WALLET = "0xC1F112Cd1D2A6B60B13514602fD0156BA910D488";
 function RewardsLaunchTimeline({
   current,
   required,
-  bestRun,
   claimed,
 }: {
   current: number;
   required: number;
-  bestRun: number;
   claimed: boolean;
 }) {
   const filled = Math.min(Math.max(current, 0), required);
@@ -33,16 +31,9 @@ function RewardsLaunchTimeline({
 
   return (
     <div className="rewards-launch-timeline">
-      <div className="rewards-launch-timeline-head">
-        <h3 id="rewards-section-streak" className="rewards-launch-timeline-title">
-          Launch streak
-        </h3>
-        {bestRun > 0 ? (
-          <div className="rewards-launch-best-pill" role="status">
-            Best run: <span className="rewards-launch-best-num">{bestRun} days</span>
-          </div>
-        ) : null}
-      </div>
+      <h3 id="rewards-section-streak" className="rewards-launch-timeline-title">
+        Launch streak
+      </h3>
       <p className="rewards-launch-timeline-desc">
         One step per calendar day when you start a Prime billing session. Multiple
         launches on the same day still count as one step.
@@ -544,7 +535,6 @@ export function Sidebar({
                     <RewardsLaunchTimeline
                       current={rewardsPrime.snapshot.currentStreakDays}
                       required={STREAK_REQUIRED_DAYS}
-                      bestRun={rewardsPrime.snapshot.maxConsecutiveDays}
                       claimed={rewardsPrime.snapshot.streakBonusClaimed}
                     />
 
@@ -572,7 +562,7 @@ export function Sidebar({
                           <div className="rewards-detail-rate-for rewards-detail-rate-for--lime">
                             {FOR_PER_MCP_3X.toLocaleString("en-US")} FOR / call
                           </div>
-                          <p className="rewards-detail-rate-desc">Early multiplier (preview)</p>
+                          <p className="rewards-detail-rate-desc">Early multiplier</p>
                         </article>
                         <article className="rewards-detail-rate-card">
                           <div className="rewards-detail-rate-kicker">Agents 501–2,000</div>
@@ -580,7 +570,7 @@ export function Sidebar({
                           <div className="rewards-detail-rate-for">
                             {FOR_PER_MCP_501_2000.toLocaleString("en-US")} FOR / call
                           </div>
-                          <p className="rewards-detail-rate-desc">Next wave (example)</p>
+                          <p className="rewards-detail-rate-desc">Next wave</p>
                         </article>
                       </div>
                     </section>
