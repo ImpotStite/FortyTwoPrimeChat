@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { compareGroups, groupLabel } from "../lib/format";
 import {
   FOR_BASE_PER_REQUEST,
+  FOR_MULTIPLIER_FIRST500,
+  FOR_MULTIPLIER_501_2000,
   FOR_PER_MCP_3X,
   FOR_PER_MCP_501_2000,
   FOR_STREAK_BONUS,
@@ -15,7 +17,7 @@ import { FloatingRewardBubble } from "./FloatingRewardBubble";
 
 const DONATION_WALLET = "0xC1F112Cd1D2A6B60B13514602fD0156BA910D488";
 
-function RewardsStreakTrack({
+function RewardsLaunchTimeline({
   current,
   required,
   bestRun,
@@ -27,39 +29,77 @@ function RewardsStreakTrack({
   claimed: boolean;
 }) {
   const filled = Math.min(Math.max(current, 0), required);
-  const ariaLabel = claimed
-    ? `Launch streak ${current} of ${required} days, streak bonus claimed`
-    : `Launch streak ${current} of ${required} days toward the bonus`;
+  const progressPct = required > 0 ? (filled / required) * 100 : 0;
 
   return (
-    <div className="rewards-streak-track">
-      <div className="rewards-streak-track-head">
-        <span className="rewards-streak-track-title">Progress</span>
-        <span className="rewards-streak-track-count" aria-live="polite">
-          <strong>{current}</strong>
-          <span className="rewards-streak-track-of"> / {required}</span>
-          <span className="rewards-streak-track-suffix"> days</span>
-        </span>
+    <div className="rewards-launch-timeline">
+      <div className="rewards-launch-timeline-head">
+        <h3 id="rewards-section-streak" className="rewards-launch-timeline-title">
+          Launch streak
+        </h3>
+        {bestRun > 0 ? (
+          <div className="rewards-launch-best-pill" role="status">
+            Best run: <span className="rewards-launch-best-num">{bestRun} days</span>
+          </div>
+        ) : null}
       </div>
+      <p className="rewards-launch-timeline-desc">
+        One step per calendar day when you start a Prime billing session. Multiple
+        launches on the same day still count as one step.
+      </p>
       <div
-        className="rewards-streak-track-visual"
-        role="img"
-        aria-label={ariaLabel}
+        className={`rewards-launch-timeline-board${
+          claimed ? " rewards-launch-timeline-board--claimed" : ""
+        }`}
       >
-        <div className="rewards-streak-dots" aria-hidden>
-          {Array.from({ length: required }, (_, i) => (
-            <span
-              key={i}
-              className={`rewards-streak-dot${
-                i < filled ? " rewards-streak-dot--on" : ""
-              }`}
-            />
-          ))}
+        <div className="rewards-launch-days" aria-hidden>
+          {Array.from({ length: required }, (_, i) => {
+            const dayNum = i + 1;
+            const isDone = dayNum <= filled;
+            return (
+              <div key={dayNum} className="rewards-launch-day">
+                <div
+                  className={`rewards-launch-day-box${
+                    isDone ? " rewards-launch-day-box--done" : ""
+                  }`}
+                >
+                  {isDone ? "✓" : dayNum}
+                </div>
+                <span
+                  className={`rewards-launch-day-label${
+                    isDone ? " rewards-launch-day-label--on" : ""
+                  }`}
+                >
+                  Day {dayNum}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="rewards-launch-track" aria-hidden>
+          <div className="rewards-launch-track-bg" />
+          <div
+            className="rewards-launch-track-fill"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+        {claimed ? (
+          <div className="rewards-launch-claimed-overlay" role="status">
+            <span className="rewards-launch-claimed-ribbon">Streak bonus claimed</span>
+          </div>
+        ) : null}
+      </div>
+      <div className="rewards-launch-bonus-row">
+        <div>
+          <div className="rewards-launch-bonus-title">Streak bonus</div>
+          <div className="rewards-launch-bonus-sub">
+            Complete {STREAK_REQUIRED_DAYS} consecutive days
+          </div>
+        </div>
+        <div className="rewards-launch-bonus-amt">
+          +{FOR_STREAK_BONUS.toLocaleString("en-US")}
         </div>
       </div>
-      {bestRun > current ? (
-        <p className="rewards-streak-track-best">Best run: {bestRun} days</p>
-      ) : null}
     </div>
   );
 }
@@ -376,38 +416,37 @@ export function Sidebar({
           }`}
           aria-live="polite"
         >
-          <div className="sidebar-rewards-tier-wrap sidebar-rewards-tier-wrap--plain">
-            <div className="sidebar-rewards-head">
+          <div className="sidebar-rewards-card">
+            <div className="sidebar-rewards-card-head">
+              <span className="sidebar-rewards-card-dot" aria-hidden />
+              <span className="sidebar-rewards-card-brand">Rewards</span>
               <img
-                className="sidebar-rewards-mark"
+                className="sidebar-rewards-card-mark"
                 src="/fortytwo-prime-mark.png"
-                width={32}
-                height={32}
+                width={24}
+                height={24}
                 alt=""
               />
-              <div className="sidebar-rewards-text">
-                <div className="sidebar-rewards-label">Rewards</div>
-                <div
-                  className={`sidebar-rewards-value${
-                    rewardsHighlight ? " sidebar-rewards-value--hot" : ""
-                  }`}
-                >
-                  {forPointsDisplay} FOR
-                </div>
-              </div>
+            </div>
+            <div
+              className={`sidebar-rewards-card-balance${
+                rewardsHighlight ? " sidebar-rewards-card-balance--hot" : ""
+              }`}
+            >
+              <span className="sidebar-rewards-card-for-num">{forPointsDisplay}</span>
+              <span className="sidebar-rewards-card-for-unit">FOR</span>
             </div>
             {rewardsPrime ? (
-              <div className="sidebar-rewards-compact">
-                <div className="sidebar-rewards-compact-streak" role="status">
-                  <span className="sidebar-rewards-streak-label">Day streak</span>
-                  <span className="sidebar-rewards-streak-value">
-                    {rewardsPrime.snapshot.currentStreakDays} /{" "}
-                    {STREAK_REQUIRED_DAYS}
+              <>
+                <div className="sidebar-rewards-card-streak" role="status">
+                  <span className="sidebar-rewards-card-streak-label">Day streak</span>
+                  <span className="sidebar-rewards-card-streak-value">
+                    {rewardsPrime.snapshot.currentStreakDays} / {STREAK_REQUIRED_DAYS}
                   </span>
                 </div>
                 <button
                   type="button"
-                  className="sidebar-rewards-details-btn"
+                  className="sidebar-rewards-card-details"
                   onClick={openRewardsDetail}
                   aria-expanded={rewardsDetailOpen}
                   aria-haspopup="dialog"
@@ -415,7 +454,7 @@ export function Sidebar({
                 >
                   Details
                 </button>
-              </div>
+              </>
             ) : null}
           </div>
 
@@ -434,181 +473,125 @@ export function Sidebar({
                 className="rewards-detail-dialog-panel"
                 onClick={(e) => e.stopPropagation()}
               >
-                <header className="rewards-detail-dialog-header">
-                  <h2 id="rewards-detail-title" className="rewards-detail-dialog-title">
-                    Rewards & Streak
-                  </h2>
-                  <form method="dialog">
-                    <button
-                      type="submit"
-                      className="rewards-detail-dialog-close"
-                      aria-label="Close"
-                    >
-                      ×
-                    </button>
-                  </form>
-                </header>
-                <div className="rewards-detail-dialog-body">
-                  <section
-                    className="rewards-detail-section"
-                    aria-labelledby="rewards-section-earnings"
-                  >
-                    <h3 id="rewards-section-earnings" className="rewards-detail-section-title">
-                      MCP earnings
-                    </h3>
-                    <div
-                      className="rewards-detail-tier-grid"
-                      role="list"
-                      aria-label="FOR tiers overview"
-                    >
-                      <article
-                        className="rewards-detail-tier-card"
-                        role="listitem"
-                      >
-                        <h4 className="rewards-detail-tier-card-title">
-                          Base program
-                        </h4>
-                        <p className="rewards-detail-tier-card-sub">Default</p>
-                        <p className="rewards-detail-tier-card-for">
-                          {FOR_BASE_PER_REQUEST.toLocaleString("en-US")} FOR
-                        </p>
-                        <p className="rewards-detail-tier-card-desc">
-                          Base rate, no early bonus.
-                        </p>
-                      </article>
-                      <article
-                        className="rewards-detail-tier-card rewards-detail-tier-card--active"
-                        role="listitem"
-                        aria-current="true"
-                      >
-                        <h4 className="rewards-detail-tier-card-title">
-                          First 500 agents
-                        </h4>
-                        <p className="rewards-detail-tier-card-sub">
-                          3× for 30 days · early cohort
-                        </p>
-                        <p className="rewards-detail-tier-card-for rewards-detail-tier-card-for--xl">
-                          {FOR_PER_MCP_3X.toLocaleString("en-US")} FOR
-                        </p>
-                        <p className="rewards-detail-tier-card-desc">
-                          Best early bonus. This app uses it only to preview FOR.
-                        </p>
-                        <span className="rewards-detail-tier-card-flag">
-                          You are Here
-                        </span>
-                      </article>
-                      <article
-                        className="rewards-detail-tier-card"
-                        role="listitem"
-                      >
-                        <h4 className="rewards-detail-tier-card-title">
-                          Agents 501–2,000
-                        </h4>
-                        <p className="rewards-detail-tier-card-sub">
-                          2× for 30 days · example next wave
-                        </p>
-                        <p className="rewards-detail-tier-card-for">
-                          {FOR_PER_MCP_501_2000.toLocaleString("en-US")} FOR
-                        </p>
-                        <p className="rewards-detail-tier-card-desc">
-                          Another early tier with a smaller bonus.
-                        </p>
-                      </article>
-                    </div>
-                    <a
-                      href={REWARDS_DOCS_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rewards-detail-text-link"
-                    >
-                      Official MCP Rewards program →
-                    </a>
-                  </section>
+                <button
+                  type="button"
+                  className="rewards-detail-dialog-close-x"
+                  onClick={closeRewardsDetail}
+                  aria-label="Close"
+                >
+                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path
+                      d="M18 6L6 18M6 6l12 12"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
 
-                  <section
-                    className={`rewards-detail-section rewards-detail-section--streak${
-                      rewardsPrime.snapshot.streakBonusClaimed
-                        ? " rewards-detail-section--streak-claimed"
-                        : ""
-                    }`}
-                    aria-labelledby="rewards-section-streak"
-                  >
-                    <div className="rewards-streak-blur-shell">
-                      <div
-                        className={`rewards-streak-blur-inner${
-                          rewardsPrime.snapshot.streakBonusClaimed
-                            ? " rewards-streak-blur-inner--muted"
-                            : ""
-                        }`}
-                      >
-                        <h3
-                          id="rewards-section-streak"
-                          className="rewards-detail-section-title"
-                        >
-                          Launch streak
-                        </h3>
-                        <p className="rewards-detail-section-desc">
-                          One step per calendar day when you start a Prime billing
-                          session. Multiple launches on the same day still count as
-                          one step.
-                        </p>
-                        <RewardsStreakTrack
-                          current={rewardsPrime.snapshot.currentStreakDays}
-                          required={STREAK_REQUIRED_DAYS}
-                          bestRun={rewardsPrime.snapshot.maxConsecutiveDays}
-                          claimed={rewardsPrime.snapshot.streakBonusClaimed}
-                        />
-                        <p className="rewards-detail-bonus-line">
-                          <span className="rewards-detail-bonus-label">
-                            Streak bonus
+                <div className="rewards-detail-split">
+                  <aside className="rewards-detail-left">
+                    <div className="rewards-detail-left-inner">
+                      <img
+                        className="rewards-detail-left-mark"
+                        src="/fortytwo-prime-mark.png"
+                        width={40}
+                        height={40}
+                        alt=""
+                      />
+                      <h2 id="rewards-detail-title" className="rewards-detail-left-title">
+                        Rewards & Streak
+                      </h2>
+                      <div className="rewards-detail-estimate">
+                        <div className="rewards-detail-estimate-label">Local estimate</div>
+                        <div className="rewards-detail-estimate-row">
+                          <span className="rewards-detail-estimate-num">
+                            {rewardsPrime.snapshot.displayTotalFor.toLocaleString("en-US")}
                           </span>
-                          <span className="rewards-detail-bonus-value">
-                            {FOR_STREAK_BONUS.toLocaleString("en-US")} FOR
-                          </span>
-                          <span className="rewards-detail-bonus-meta">
-                            one-time · {STREAK_REQUIRED_DAYS} consecutive days
-                          </span>
+                          <span className="rewards-detail-estimate-unit">FOR</span>
+                        </div>
+                      </div>
+                      <div className="rewards-detail-disclaimer">
+                        <p>
+                          This is an estimated balance calculated locally. Verify your
+                          official on-chain balance via the Fortytwo platform.
                         </p>
                       </div>
-                      {rewardsPrime.snapshot.streakBonusClaimed ? (
-                        <div
-                          className="rewards-streak-claimed-overlay"
-                          role="status"
+                    </div>
+                    <div className="rewards-detail-left-foot">
+                      <h3 className="rewards-detail-left-foot-title">Account & rules</h3>
+                      <div className="rewards-detail-link-rows">
+                        <a
+                          href={REWARDS_DOCS_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rewards-detail-link-row"
                         >
-                          <span className="rewards-streak-claimed-ribbon">
-                            Streak bonus claimed
+                          <span>Official MCP Rewards</span>
+                          <span className="rewards-detail-link-row-arrow" aria-hidden>
+                            →
                           </span>
-                        </div>
-                      ) : null}
+                        </a>
+                        <a
+                          href={REWARDS_ACCOUNT_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rewards-detail-link-row"
+                        >
+                          <span>Fortytwo account</span>
+                          <span className="rewards-detail-link-row-arrow" aria-hidden>
+                            ↗
+                          </span>
+                        </a>
+                      </div>
                     </div>
-                  </section>
+                  </aside>
 
-                  <section
-                    className="rewards-detail-section rewards-detail-section--links"
-                    aria-labelledby="rewards-section-links"
-                  >
-                    <h3 id="rewards-section-links" className="rewards-detail-section-title">
-                      {"Account & rules"}
-                    </h3>
-                    <div className="rewards-detail-link-grid">
-                      <a
-                        href={REWARDS_DOCS_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rewards-detail-action-link"
-                      >
-                        Program rules
-                      </a>
-                      <a
-                        href={REWARDS_ACCOUNT_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rewards-detail-action-link rewards-detail-action-link--accent"
-                      >
-                        Fortytwo account
-                      </a>
-                    </div>
-                  </section>
+                  <div className="rewards-detail-right">
+                    <RewardsLaunchTimeline
+                      current={rewardsPrime.snapshot.currentStreakDays}
+                      required={STREAK_REQUIRED_DAYS}
+                      bestRun={rewardsPrime.snapshot.maxConsecutiveDays}
+                      claimed={rewardsPrime.snapshot.streakBonusClaimed}
+                    />
+
+                    <section className="rewards-detail-rate-section" aria-labelledby="rewards-rate-heading">
+                      <h3 id="rewards-rate-heading" className="rewards-detail-rate-heading">
+                        MCP earnings rate
+                      </h3>
+                      <div className="rewards-detail-rate-grid">
+                        <article className="rewards-detail-rate-card rewards-detail-rate-card--muted">
+                          <div className="rewards-detail-rate-kicker">Base program</div>
+                          <div className="rewards-detail-rate-mult">1×</div>
+                          <div className="rewards-detail-rate-for">
+                            {FOR_BASE_PER_REQUEST.toLocaleString("en-US")} FOR / call
+                          </div>
+                          <p className="rewards-detail-rate-desc">Standard rate</p>
+                        </article>
+                        <article className="rewards-detail-rate-card rewards-detail-rate-card--active">
+                          <span className="rewards-detail-rate-active-flag">Active</span>
+                          <div className="rewards-detail-rate-kicker rewards-detail-rate-kicker--lime">
+                            First 500 agents
+                          </div>
+                          <div className="rewards-detail-rate-mult rewards-detail-rate-mult--lime">
+                            {FOR_MULTIPLIER_FIRST500}×
+                          </div>
+                          <div className="rewards-detail-rate-for rewards-detail-rate-for--lime">
+                            {FOR_PER_MCP_3X.toLocaleString("en-US")} FOR / call
+                          </div>
+                          <p className="rewards-detail-rate-desc">Early multiplier (preview)</p>
+                        </article>
+                        <article className="rewards-detail-rate-card">
+                          <div className="rewards-detail-rate-kicker">Agents 501–2,000</div>
+                          <div className="rewards-detail-rate-mult">{FOR_MULTIPLIER_501_2000}×</div>
+                          <div className="rewards-detail-rate-for">
+                            {FOR_PER_MCP_501_2000.toLocaleString("en-US")} FOR / call
+                          </div>
+                          <p className="rewards-detail-rate-desc">Next wave (example)</p>
+                        </article>
+                      </div>
+                    </section>
+                  </div>
                 </div>
               </div>
             </dialog>
