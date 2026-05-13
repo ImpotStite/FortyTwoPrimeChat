@@ -733,8 +733,34 @@ kbd {
   flex-direction: column;
   justify-content: space-between;
   padding: 32px 32px 28px;
-  background: var(--bg-elev-1);
+  background:
+    radial-gradient(
+      95% 70% at 50% -15%,
+      color-mix(in srgb, var(--ft-black) 42%, transparent) 0%,
+      transparent 58%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ft-black) 38%, transparent) 0%,
+      transparent 48%
+    ),
+    var(--bg-elev-1);
   border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
+}
+
+:root[data-theme="light"] .rewards-detail-left {
+  background:
+    radial-gradient(
+      95% 65% at 50% -12%,
+      color-mix(in srgb, var(--text) 10%, transparent) 0%,
+      transparent 55%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--text) 7%, transparent) 0%,
+      transparent 46%
+    ),
+    var(--bg-elev-1);
 }
 
 @media (min-width: 768px) {
