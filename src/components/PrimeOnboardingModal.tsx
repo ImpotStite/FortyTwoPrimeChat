@@ -64,7 +64,7 @@ function IconSend() {
     <svg width={12} height={12} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
-        stroke="#000000"
+        stroke="currentColor"
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -73,21 +73,21 @@ function IconSend() {
   );
 }
 
-function IconWallet({ stroke = "#fafafa" }: { stroke?: string }) {
+function IconWallet({ className }: { className?: string }) {
   return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg className={className} width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M21 12V7H5a2 2 0 0 1 0-4h14v4M3 5v14a2 2 0 0 0 2 2h16v-5M18 12a2 2 0 0 0 0 4h4v-4Z"
-        stroke={stroke}
+        stroke="currentColor"
         strokeWidth={1.5}
       />
     </svg>
   );
 }
 
-function IconLock({ color = "#d0ff00" }: { color?: string }) {
+function IconLock({ className }: { className?: string }) {
   return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg className={className} width={16} height={16} viewBox="0 0 24 24" fill="none" aria-hidden>
       <rect
         x="3"
         y="11"
@@ -95,10 +95,10 @@ function IconLock({ color = "#d0ff00" }: { color?: string }) {
         height="11"
         rx="2"
         ry="2"
-        stroke={color}
+        stroke="currentColor"
         strokeWidth={2}
       />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke={color} strokeWidth={2} />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth={2} />
     </svg>
   );
 }
@@ -124,11 +124,12 @@ function IconChevronDown({ delay }: { delay?: string }) {
 function IconShield() {
   return (
     <svg
+      className="prime-onb-icon-lime"
       width={28}
       height={28}
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#d0ff00"
+      stroke="currentColor"
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -276,19 +277,7 @@ function VisualAuth() {
         />
       </svg>
       <div className="prime-onb-auth-card">
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            background: "#0a0a0a",
-            border: "1px solid rgba(250,250,250,0.1)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 12,
-          }}
-        >
+        <div className="prime-onb-auth-icon-wrap">
           <IconWallet />
         </div>
         <div className="prime-onb-auth-label">Signature Request</div>
@@ -328,22 +317,24 @@ function VisualEscrow() {
     <div className="prime-onb-v prime-onb-escrow">
       <div className="prime-onb-escrow-card">
         <div className="prime-onb-escrow-head">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <IconLock />
+          <div className="prime-onb-escrow-title-row">
+            <span className="prime-onb-icon-lime">
+              <IconLock />
+            </span>
             <span>x402 Escrow Active</span>
           </div>
           <span className="prime-onb-dot-pulse" />
         </div>
         <div>
           <div className="prime-onb-escrow-row">
-            <span style={{ color: "#858585", display: "flex", alignItems: "center", gap: 6 }}>
+            <span className="prime-onb-escrow-muted">
               <IconRefresh size={12} />
               AI Output
             </span>
             <span className="prime-onb-escrow-mono">Computing...</span>
           </div>
           <div className="prime-onb-escrow-row prime-onb-escrow-cost">
-            <span style={{ color: "#858585" }}>Current Cost</span>
+            <span className="prime-onb-escrow-muted">Current Cost</span>
             <span className="prime-onb-escrow-cost-amount">
               −$0.123
               <svg
@@ -370,7 +361,7 @@ function VisualEscrow() {
 function VisualRefund() {
   return (
     <div className="prime-onb-v prime-onb-refund">
-      <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div className="prime-onb-refund-stack">
         <div className="prime-onb-refund-pill prime-onb-animate-refund">
           <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
             <path d="M12 19V5M5 12l7-7 7 7" />
@@ -394,11 +385,15 @@ function VisualMemory() {
     <div className="prime-onb-v prime-onb-memory">
       <div className="prime-onb-memory-deco">
         <svg width={200} height={200} viewBox="0 0 200 200" aria-hidden>
-          <circle cx={100} cy={100} r={80} stroke="#858585" strokeWidth={1} strokeDasharray="4 4" fill="none" />
-          <circle cx={100} cy={100} r={60} stroke="#fafafa" strokeWidth={1} strokeDasharray="2 6" fill="none" />
+          <g className="prime-onb-memory-deco-ring-outer">
+            <circle cx={100} cy={100} r={80} strokeWidth={1} strokeDasharray="4 4" fill="none" />
+          </g>
+          <g className="prime-onb-memory-deco-ring-inner">
+            <circle cx={100} cy={100} r={60} strokeWidth={1} strokeDasharray="2 6" fill="none" />
+          </g>
         </svg>
       </div>
-      <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div className="prime-onb-memory-stack">
         <div className="prime-onb-memory-card">
           <div className="prime-onb-memory-head">
             <span>Memory Mode</span>
@@ -424,17 +419,16 @@ function VisualAutoProtection() {
       <div className="prime-onb-auto-glow" />
       <div className="prime-onb-auto-timer">
         <svg
-          className="prime-onb-auto-timer-clock"
+          className="prime-onb-auto-timer-dim"
           width={24}
           height={24}
           viewBox="0 0 24 24"
           fill="none"
           aria-hidden
         >
-          <circle cx={12} cy={12} r={10} stroke="#858585" strokeWidth={2} />
+          <circle cx={12} cy={12} r={10} strokeWidth={2} />
           <path
             d="M12 6v6l4 2"
-            stroke="#858585"
             strokeWidth={2}
             strokeLinecap="round"
           />
@@ -445,19 +439,19 @@ function VisualAutoProtection() {
           aria-hidden
         >
           <circle
+            className="prime-onb-auto-timer-ring-bg"
             cx={18}
             cy={18}
             r={15}
             fill="none"
-            stroke="rgba(208, 255, 0, 0.15)"
             strokeWidth={2}
           />
           <circle
+            className="prime-onb-auto-timer-ring-fg"
             cx={18}
             cy={18}
             r={15}
             fill="none"
-            stroke="#d0ff00"
             strokeWidth={2}
             strokeLinecap="round"
             strokeDasharray="22 72"
@@ -478,11 +472,10 @@ function VisualPrivacy() {
     <div className="prime-onb-v prime-onb-privacy">
       <div className="prime-onb-privacy-stack">
         <svg
+          className="prime-onb-privacy-paper"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="#858585"
           strokeWidth={1}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.1 }}
           aria-hidden
         >
           <path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4" />
@@ -492,8 +485,10 @@ function VisualPrivacy() {
         </div>
       </div>
       <div className="prime-onb-privacy-chip">
-        <IconLock color="#d0ff00" />
-        <span style={{ opacity: 0.85 }}>localStorage</span>
+        <span className="prime-onb-icon-lime" aria-hidden>
+          <IconLock />
+        </span>
+        <span className="prime-onb-privacy-chip-label">localStorage</span>
       </div>
     </div>
   );
@@ -501,17 +496,9 @@ function VisualPrivacy() {
 
 function VisualRewards() {
   return (
-    <div className="prime-onb-v" style={{ background: "#111111", overflow: "hidden" }}>
+    <div className="prime-onb-v prime-onb-rewards">
       <div className="prime-onb-rewards-bg" />
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      <div className="prime-onb-rewards-center">
         <div className="prime-onb-rewards-wrap">
           <div className="prime-onb-rewards-hero prime-onb-animate-refund">
             <FortytwoMarkFramed variant="reward" glow />

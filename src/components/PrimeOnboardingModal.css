@@ -1,11 +1,20 @@
 /* Fortytwo Prime onboarding: lime accents; marks align with Welcome / Sidebar / Message (no tutorial-only assets) */
 .prime-onb-overlay {
-  --ob-lime: #d0ff00;
-  --ob-lime-hover: #b8e600;
-  --ob-lime-soft: rgba(208, 255, 0, 0.12);
-  --ob-lime-border: rgba(208, 255, 0, 0.35);
+  --ob-lime: var(--ft-lime);
+  --ob-lime-hover: var(--accent-mid);
+  --ob-lime-soft: color-mix(in srgb, var(--ft-lime) 14%, transparent);
+  --ob-lime-border: color-mix(in srgb, var(--ft-lime) 38%, var(--border));
   --ob-lime-glow: rgba(208, 255, 0, 0.28);
-  --ob-lime-mist: rgba(208, 255, 0, 0.16);
+  --ob-lime-mist: color-mix(in srgb, var(--ft-lime) 18%, transparent);
+  /* Readable lime on pale cards (bright --ft-lime fails WCAG on --onb-raise / --onb-deep) */
+  --ob-lime-on-elevated: var(--ft-lime);
+  --ob-lime-border-card: var(--ob-lime-border);
+  /* Opaque surfaces: global --bg-elev-2/3 are translucent in light theme */
+  --onb-shell: var(--bg-elev-2);
+  --onb-visual: var(--bg-elev-1);
+  --onb-raise: var(--bg-elev-3);
+  --onb-deep: var(--code-bg);
+  --onb-surface: var(--bg-elev-1);
   position: fixed;
   inset: 0;
   z-index: 200;
@@ -21,7 +30,8 @@
   line-height: 1.55;
   letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
-  background: rgba(0, 0, 0, 0.9);
+  color: var(--text);
+  background: color-mix(in srgb, var(--ft-black) 88%, transparent);
   backdrop-filter: blur(4px);
   overscroll-behavior-x: contain;
   transition: opacity 0.3s ease, background 0.3s ease;
@@ -123,10 +133,10 @@
   max-width: 380px;
   height: 620px;
   max-height: min(620px, calc(100vh - 32px));
-  background: #161616;
+  background: var(--onb-shell);
   border-radius: var(--radius, 4px);
-  border: 1px solid rgba(250, 250, 250, 0.1);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -155,6 +165,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  background: var(--onb-shell);
   transform: translateX(0);
   transition: transform 0.26s cubic-bezier(0.32, 0.72, 0.25, 1);
   will-change: transform;
@@ -204,7 +215,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(250, 250, 250, 0.2),
+    color-mix(in srgb, var(--text) 22%, transparent),
     transparent
   );
   z-index: 20;
@@ -229,15 +240,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #858585;
-  background: rgba(10, 10, 10, 0.55);
+  color: var(--text-muted);
+  background: var(--onb-raise);
   backdrop-filter: blur(8px);
   transition: color 0.15s ease, background 0.15s ease;
 }
 
 .prime-onb-skip:hover {
-  color: #fafafa;
-  background: #0a0a0a;
+  color: var(--text);
+  background: var(--onb-deep);
 }
 
 .prime-onb-skip-sr {
@@ -252,8 +263,8 @@
   height: 300px;
   width: 100%;
   position: relative;
-  background: #111111;
-  border-bottom: 1px solid rgba(250, 250, 250, 0.05);
+  background: var(--onb-visual);
+  border-bottom: 1px solid var(--border);
   overflow: hidden;
 }
 
@@ -263,7 +274,7 @@
   left: 0;
   right: 0;
   height: 48px;
-  background: linear-gradient(to top, #161616, transparent);
+  background: linear-gradient(to top, var(--onb-shell), transparent);
   z-index: 10;
   pointer-events: none;
 }
@@ -276,13 +287,14 @@
   justify-content: space-between;
   padding: 22px 28px 28px;
   min-height: 0;
+  background: var(--onb-shell);
 }
 
 .prime-onb-title {
   margin: 0 0 12px;
   font-size: 20px;
   font-weight: 600;
-  color: #fafafa;
+  color: var(--text);
   line-height: 1.25;
   letter-spacing: -0.02em;
   text-align: center;
@@ -291,7 +303,7 @@
 .prime-onb-desc {
   margin: 0;
   font-size: 14.5px;
-  color: #858585;
+  color: var(--text-dim);
   line-height: 1.55;
   letter-spacing: 0.02em;
   text-align: center;
@@ -330,17 +342,17 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  background: rgba(133, 133, 133, 0.35);
+  background: color-mix(in srgb, var(--text-muted) 52%, var(--onb-shell));
   transition: width 0.25s ease, background 0.25s ease;
 }
 
 .prime-onb-dot:hover {
-  background: rgba(133, 133, 133, 0.65);
+  background: color-mix(in srgb, var(--text-muted) 72%, var(--onb-shell));
 }
 
 .prime-onb-dot.is-active {
   width: 24px;
-  background: #fafafa;
+  background: var(--text);
 }
 
 .prime-onb-dot:not(.is-active) {
@@ -353,7 +365,7 @@
   font-size: 15px;
   padding: 14px 16px;
   border-radius: var(--radius, 4px);
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -368,17 +380,19 @@
 }
 
 .prime-onb-cta--default {
-  background: #fafafa;
-  color: #000000;
+  background: color-mix(in srgb, var(--text) 8%, var(--onb-surface));
+  color: var(--text);
+  border: 1px solid var(--border-strong);
 }
 
 .prime-onb-cta--default:hover {
-  background: #e8e8e8;
+  background: color-mix(in srgb, var(--text) 14%, var(--onb-surface));
 }
 
 .prime-onb-cta--final {
   background: var(--ob-lime);
-  color: #000000;
+  color: var(--accent-on);
+  border: 1px solid transparent;
   box-shadow: 0 0 22px rgba(208, 255, 0, 0.2);
 }
 
@@ -436,7 +450,7 @@
   padding: 0;
   border-radius: 4px;
   background: var(--ob-lime);
-  border: 1px solid #0a0a0a;
+  border: 1px solid var(--ft-black);
   box-shadow: 0 0 28px rgba(208, 255, 0, 0.14), 0 0 40px var(--ob-lime-mist);
 }
 
@@ -457,7 +471,7 @@
   height: 36px;
   border-radius: 10px;
   background: var(--ob-lime);
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border);
   display: grid;
   place-items: center;
   box-sizing: border-box;
@@ -476,7 +490,7 @@
   height: 15px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #0a0a0a;
+  border: 2px solid var(--border-strong);
   display: block;
 }
 
@@ -484,7 +498,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(to bottom, #111111, #161616);
+  background: linear-gradient(to bottom, var(--onb-visual), var(--onb-shell));
 }
 
 .prime-onb-welcome::before {
@@ -515,7 +529,7 @@
 .prime-onb-icon-row {
   display: flex;
   gap: 10px;
-  color: rgba(250, 250, 250, 0.38);
+  color: var(--text-dim);
 }
 
 .prime-onb-trigger {
@@ -524,7 +538,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: #111111;
+  background: var(--onb-visual);
 }
 
 .prime-onb-trigger-inner {
@@ -549,8 +563,8 @@
 
 .prime-onb-trigger-bubble {
   flex: 1;
-  background: #1c1c1c;
-  border: 1px solid rgba(250, 250, 250, 0.06);
+  background: var(--onb-raise);
+  border: 1px solid var(--border);
   border-radius: 4px 4px 4px 2px;
   padding: 12px;
 }
@@ -558,7 +572,7 @@
 .prime-onb-skel {
   height: 6px;
   border-radius: 999px;
-  background: rgba(250, 250, 250, 0.14);
+  background: color-mix(in srgb, var(--text-muted) 32%, var(--onb-visual));
   margin-bottom: 8px;
 }
 
@@ -587,7 +601,7 @@
 
 .prime-onb-trigger-placeholder {
   font-size: 13px;
-  color: rgba(250, 250, 250, 0.38);
+  color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -596,7 +610,7 @@
 .prime-onb-caret {
   width: 2px;
   height: 12px;
-  background: #fafafa;
+  background: var(--text);
   animation: prime-onb-blink 1s step-end infinite;
 }
 
@@ -618,13 +632,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--accent-on);
+}
+
+.prime-onb-send-fab svg {
+  stroke: currentColor;
 }
 
 .prime-onb-auth {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #111111;
+  background: var(--onb-visual);
 }
 
 .prime-onb-auth-glow {
@@ -651,7 +670,7 @@
   transform: translateX(-50%);
   width: 2px;
   height: 40px;
-  color: rgba(250, 250, 250, 0.2);
+  color: var(--text-muted);
 }
 
 .prime-onb-auth-card {
@@ -659,20 +678,20 @@
   z-index: 2;
   width: 208px;
   margin-top: 28px;
-  background: #1c1c1c;
-  border: 1px solid rgba(250, 250, 250, 0.1);
+  background: var(--onb-raise);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-1);
 }
 
 .prime-onb-auth-row-usdc {
   width: 100%;
-  background: #0a0a0a;
-  border: 1px solid rgba(250, 250, 250, 0.06);
+  background: var(--onb-deep);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 8px 10px;
   display: flex;
@@ -701,8 +720,9 @@
 .prime-onb-auth-sign-btn {
   width: 100%;
   height: 34px;
-  background: #fafafa;
-  color: #000;
+  background: color-mix(in srgb, var(--text) 8%, var(--onb-surface));
+  color: var(--text);
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   font-size: 12px;
   font-weight: 700;
@@ -731,7 +751,7 @@
   align-items: center;
   justify-content: center;
   padding: 14px;
-  background: linear-gradient(to top right, #0a0a0a, #111111);
+  background: linear-gradient(to top right, var(--onb-visual), var(--onb-shell));
 }
 
 .prime-onb-escrow::before {
@@ -755,19 +775,18 @@
   z-index: 2;
   width: 100%;
   max-width: 260px;
-  border: 1px solid var(--ob-lime-border);
-  background: rgba(22, 22, 22, 0.88);
-  backdrop-filter: blur(10px);
+  border: 1px solid var(--ob-lime-border-card);
+  background: var(--onb-raise);
   border-radius: 4px;
   padding: 14px;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-1);
 }
 
 .prime-onb-escrow-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(250, 250, 250, 0.1);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 10px;
   margin-bottom: 10px;
 }
@@ -775,15 +794,19 @@
 .prime-onb-escrow-head span {
   font-size: 13px;
   font-weight: 600;
-  color: #fafafa;
+  color: var(--text);
 }
 
 .prime-onb-dot-pulse {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--ob-lime);
+  background: var(--ob-lime-on-elevated);
   animation: prime-onb-pulse-dot 1.4s ease-in-out infinite;
+}
+
+.prime-onb-escrow-card .prime-onb-dot-pulse {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ft-lime) 35%, transparent);
 }
 
 @keyframes prime-onb-pulse-dot {
@@ -808,14 +831,14 @@
     to top,
     rgba(208, 255, 0, 0.05),
     rgba(208, 255, 0, 0.08),
-    #111111
+    var(--onb-visual)
   );
 }
 
 .prime-onb-refund-pill {
   background: rgba(208, 255, 0, 0.1);
-  border: 1px solid var(--ob-lime);
-  color: var(--ob-lime);
+  border: 1px solid var(--ob-lime-on-elevated);
+  color: var(--ob-lime-on-elevated);
   padding: 8px 16px;
   border-radius: 999px;
   font-family: var(--font-mono);
@@ -832,13 +855,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #111111;
+  background: var(--onb-visual);
 }
 
 .prime-onb-memory-card {
   width: 144px;
-  background: #1c1c1c;
-  border: 1px solid var(--ob-lime-border);
+  background: var(--onb-raise);
+  border: 1px solid var(--ob-lime-border-card);
   border-radius: 8px;
   padding: 10px 12px;
   box-shadow: 0 0 20px rgba(208, 255, 0, 0.08);
@@ -859,7 +882,7 @@
   top: 2px;
   width: 12px;
   height: 12px;
-  background: #000;
+  background: var(--accent-on);
   border-radius: 50%;
 }
 
@@ -870,15 +893,15 @@
   justify-content: center;
   gap: 18px;
   padding: 22px;
-  background: linear-gradient(to bottom left, #0a0a0a, #111111);
+  background: linear-gradient(to bottom left, var(--onb-visual), var(--onb-shell));
 }
 
 .prime-onb-auto-timer {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  border: 2px solid #1c1c1c;
-  background: #0a0a0a;
+  border: 2px solid var(--border-strong);
+  background: var(--onb-shell);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -886,7 +909,7 @@
   box-shadow: 0 0 18px rgba(208, 255, 0, 0.1), 0 0 32px var(--ob-lime-mist);
 }
 
-.prime-onb-auto-timer-clock {
+.prime-onb-auto-timer-dim {
   position: relative;
   z-index: 2;
   pointer-events: none;
@@ -910,8 +933,8 @@
 }
 
 .prime-onb-privacy-shield {
-  background: #1c1c1c;
-  border: 1px solid var(--ob-lime-border);
+  background: var(--onb-surface);
+  border: 1px solid var(--ob-lime-border-card);
   padding: 14px;
   border-radius: 4px;
   box-shadow: 0 10px 28px rgba(208, 255, 0, 0.1);
@@ -927,12 +950,12 @@
 .prime-onb-memory-head span:first-child {
   font-size: 12px;
   font-weight: 600;
-  color: #fafafa;
+  color: var(--text);
 }
 
 .prime-onb-memory-hint {
   font-size: 10px;
-  color: #858585;
+  color: var(--text-dim);
   line-height: 1.35;
 }
 
@@ -1010,20 +1033,20 @@
 .prime-onb-auto-badge {
   position: relative;
   z-index: 2;
-  background: #1c1c1c;
-  border: 1px solid rgba(250, 250, 250, 0.1);
+  background: var(--onb-raise);
+  border: 1px solid var(--border);
   padding: 6px 12px;
   border-radius: 4px;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-1);
 }
 
 .prime-onb-auto-badge span:last-child {
   font-size: 12px;
   font-family: var(--font-mono);
-  color: #fafafa;
+  color: var(--text);
   letter-spacing: 0.04em;
 }
 
@@ -1033,7 +1056,7 @@
   align-items: center;
   justify-content: center;
   padding: 22px;
-  background: #111111;
+  background: var(--onb-visual);
 }
 
 .prime-onb-privacy-stack {
@@ -1052,11 +1075,15 @@
   gap: 8px;
   font-size: 12px;
   font-family: var(--font-mono);
-  color: #858585;
-  border: 1px solid rgba(250, 250, 250, 0.1);
-  background: #0a0a0a;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  background: var(--onb-shell);
   padding: 6px 12px;
   border-radius: 4px;
+}
+
+.prime-onb-privacy-chip-label {
+  opacity: 0.85;
 }
 
 .prime-onb-rewards-wrap {
@@ -1094,7 +1121,7 @@
   font-size: 15px;
   font-family: var(--font-mono);
   font-weight: 700;
-  color: var(--ob-lime);
+  color: var(--ob-lime-on-elevated);
 }
 
 .prime-onb-rewards-sub {
@@ -1103,7 +1130,7 @@
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 600;
-  color: #858585;
+  color: var(--text-dim);
 }
 
 .prime-onb-escrow-row {
@@ -1119,18 +1146,18 @@
 
 .prime-onb-escrow-mono {
   font-family: var(--font-mono);
-  color: #fafafa;
+  color: var(--text);
 }
 
 .prime-onb-escrow-cost {
-  background: #0a0a0a;
+  background: var(--onb-deep);
   padding: 8px;
   border-radius: 4px;
-  border: 1px solid rgba(250, 250, 250, 0.06);
+  border: 1px solid var(--border);
 }
 
 .prime-onb-escrow-cost-amount {
-  color: var(--ob-lime);
+  color: var(--ob-lime-on-elevated);
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -1145,36 +1172,41 @@
   align-items: center;
   gap: 4px;
   margin-bottom: 20px;
-  color: rgba(208, 255, 0, 0.38);
+  color: color-mix(in srgb, var(--ob-lime-on-elevated) 52%, var(--onb-visual));
 }
 
 .prime-onb-refund-wallet {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: #1c1c1c;
-  border: 1px solid rgba(250, 250, 250, 0.18);
+  background: var(--onb-raise);
+  border: 1px solid var(--border-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+}
+
+.prime-onb-refund-wallet svg {
+  stroke: currentColor;
 }
 
 .prime-onb-mono-amount {
   font-size: 13px;
   font-family: var(--font-mono);
-  color: #fafafa;
+  color: var(--text);
 }
 
 .prime-onb-label-usdc {
   font-size: 12px;
-  color: #fafafa;
+  color: var(--text);
   font-weight: 500;
 }
 
 .prime-onb-auth-label {
   font-size: 12px;
-  color: #858585;
+  color: var(--text-dim);
   margin-bottom: 4px;
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -1184,7 +1216,7 @@
 .prime-onb-auth-title {
   font-size: 14px;
   font-weight: 700;
-  color: #fafafa;
+  color: var(--text);
   margin-bottom: 12px;
   text-align: center;
 }
@@ -1195,7 +1227,7 @@
   margin: 0;
   font-size: 11px;
   font-weight: 500;
-  color: rgba(133, 133, 133, 0.85);
+  color: var(--text-dim);
   text-align: center;
   letter-spacing: 0.02em;
 }
@@ -1269,4 +1301,140 @@
     gap: 10px;
     margin-top: 8px;
   }
+}
+
+/* Theme helpers (from PrimeOnboardingModal.tsx — avoid inline theme colors) */
+.prime-onb-auth-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--onb-shell);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
+.prime-onb-escrow-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prime-onb-escrow-muted {
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.prime-onb-refund-stack {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.prime-onb-memory-stack {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.prime-onb-memory-deco-ring-outer {
+  color: var(--text-muted);
+}
+
+.prime-onb-memory-deco-ring-inner {
+  color: var(--text);
+}
+
+.prime-onb-memory-deco-ring-outer circle,
+.prime-onb-memory-deco-ring-inner circle {
+  stroke: currentColor;
+}
+
+.prime-onb-auto-timer-dim {
+  color: var(--text-muted);
+}
+
+.prime-onb-auto-timer-dim circle,
+.prime-onb-auto-timer-dim path {
+  stroke: currentColor;
+}
+
+.prime-onb-auto-timer-ring-bg {
+  stroke: color-mix(in srgb, var(--ft-lime) 18%, transparent);
+}
+
+.prime-onb-auto-timer-ring-fg {
+  stroke: var(--ft-lime);
+}
+
+.prime-onb-privacy-paper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.1;
+  color: var(--text-muted);
+}
+
+.prime-onb-privacy-paper path {
+  stroke: currentColor;
+}
+
+.prime-onb-v.prime-onb-rewards {
+  background: var(--onb-visual);
+  overflow: hidden;
+}
+
+.prime-onb-rewards-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prime-onb-icon-lime {
+  color: var(--ob-lime-on-elevated);
+}
+
+.prime-onb-icon-lime svg {
+  stroke: currentColor;
+}
+
+.prime-onb-privacy-chip .prime-onb-icon-lime svg {
+  stroke: currentColor;
+}
+
+/* Softer scrim on light canvas (same idea as .rewards-detail-dialog::backdrop) */
+:root[data-theme="light"] .prime-onb-overlay {
+  background: color-mix(in srgb, #1a1a1a 30%, transparent);
+  --onb-shell: #ffffff;
+  --onb-visual: #f0f2f6;
+  --onb-raise: #e8eaef;
+  --onb-deep: #dde1e9;
+  --onb-surface: #ffffff;
+  --ob-lime-on-elevated: #2a3d00;
+  --ob-lime-border-card: color-mix(in srgb, var(--ft-lime) 48%, #1f1f1f);
+}
+
+:root[data-theme="light"] .prime-onb-overlay .prime-onb-refund-pill {
+  background: color-mix(in srgb, var(--ft-lime) 16%, var(--onb-shell));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="light"] .prime-onb-overlay .prime-onb-auto-timer-ring-fg {
+  stroke: var(--ob-lime-on-elevated);
+}
+
+:root[data-theme="light"] .prime-onb-overlay .prime-onb-auto-timer-ring-bg {
+  stroke: color-mix(in srgb, var(--ob-lime-on-elevated) 24%, transparent);
 }
