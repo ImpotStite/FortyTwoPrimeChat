@@ -667,6 +667,9 @@ kbd {
   border-radius: 4px;
   background: transparent;
   box-shadow: none;
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
 }
 
 .rewards-detail-dialog::backdrop {
@@ -688,8 +691,8 @@ kbd {
 
 .rewards-detail-dialog-close-x {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 16px;
+  right: 16px;
   z-index: 30;
   display: flex;
   align-items: center;
@@ -721,7 +724,6 @@ kbd {
   .rewards-detail-split {
     flex-direction: row;
     align-items: stretch;
-    min-height: 400px;
   }
 }
 
@@ -730,14 +732,14 @@ kbd {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 26px 22px 20px;
+  padding: 32px 32px 28px;
   background: var(--bg-elev-1);
   border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
 }
 
 @media (min-width: 768px) {
   .rewards-detail-left {
-    width: 300px;
+    width: 320px;
     border-bottom: none;
     border-right: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
   }
@@ -747,18 +749,9 @@ kbd {
   min-width: 0;
 }
 
-.rewards-detail-left-mark {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid var(--border);
-  margin-bottom: 14px;
-}
-
 .rewards-detail-left-title {
-  margin: 0 0 22px;
-  font-size: 1.15rem;
+  margin: 0 0 2.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.02em;
@@ -767,9 +760,9 @@ kbd {
 .rewards-detail-estimate-label {
   font-size: 13px;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .rewards-detail-estimate-row {
@@ -781,7 +774,7 @@ kbd {
 
 .rewards-detail-estimate-num {
   font-family: var(--font-mono);
-  font-size: 2.1rem;
+  font-size: 2.25rem;
   font-weight: 700;
   color: var(--ft-lime);
   font-variant-numeric: tabular-nums;
@@ -789,7 +782,7 @@ kbd {
 }
 
 .rewards-detail-estimate-unit {
-  font-size: 1.05rem;
+  font-size: 1.125rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -797,8 +790,8 @@ kbd {
 }
 
 .rewards-detail-disclaimer {
-  margin-top: 20px;
-  padding-left: 14px;
+  margin-top: 2.5rem;
+  padding-left: 16px;
   border-left: 2px solid var(--ft-lime);
 }
 
@@ -810,16 +803,16 @@ kbd {
 }
 
 .rewards-detail-left-foot {
-  margin-top: 24px;
-  padding-top: 20px;
+  margin-top: 0;
+  padding-top: 24px;
   border-top: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
 }
 
 .rewards-detail-left-foot-title {
-  margin: 0 0 12px;
+  margin: 0 0 16px;
   font-size: 13px;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
 }
 
@@ -834,7 +827,7 @@ kbd {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-radius: 2px;
   border: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
   background: var(--bg-elev-2);
@@ -860,10 +853,10 @@ kbd {
 .rewards-detail-right {
   flex: 1;
   min-width: 0;
-  padding: 24px 20px 26px;
+  padding: 32px 32px 32px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 40px;
   overflow-y: auto;
   max-height: min(80vh, 720px);
 }
@@ -885,7 +878,7 @@ kbd {
   align-items: flex-end;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
 
 .rewards-launch-timeline-title {
@@ -913,7 +906,7 @@ kbd {
 }
 
 .rewards-launch-timeline-desc {
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-muted);
@@ -921,11 +914,11 @@ kbd {
 
 .rewards-launch-timeline-board {
   position: relative;
-  padding: 22px 14px 18px;
+  padding: 24px 24px 22px;
   border-radius: 4px;
   border: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
   background: var(--bg-elev-1);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .rewards-launch-timeline-board--claimed {
@@ -945,19 +938,19 @@ kbd {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex: 1;
   min-width: 0;
 }
 
 .rewards-launch-day-box {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
   font-family: var(--font-mono);
   font-weight: 600;
   color: var(--text-muted);
@@ -994,9 +987,9 @@ kbd {
 
 .rewards-launch-track {
   position: absolute;
-  left: 22px;
-  right: 22px;
-  top: 36px;
+  left: 32px;
+  right: 32px;
+  top: 40px;
   height: 2px;
   z-index: 1;
   pointer-events: none;
@@ -1034,12 +1027,12 @@ kbd {
 .rewards-launch-claimed-ribbon {
   transform: rotate(-18deg);
   max-width: 92%;
-  padding: 8px 16px;
+  padding: 6px 12px;
   border-radius: 2px;
   border: 1px solid var(--border-strong);
   background: var(--bg-elev-3);
   box-shadow: var(--shadow-1);
-  font-size: clamp(0.72rem, 2.8vw, 0.88rem);
+  font-size: clamp(0.65rem, 2.5vw, 0.8rem);
   font-weight: 800;
   letter-spacing: 0.08em;
   line-height: 1.2;
@@ -1053,7 +1046,7 @@ kbd {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 14px;
+  padding: 16px;
   border-radius: 2px;
   border: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
   background: var(--bg-elev-1);
@@ -1072,7 +1065,7 @@ kbd {
 }
 
 .rewards-launch-bonus-amt {
-  font-size: 1.1rem;
+  font-size: 1.125rem;
   font-family: var(--font-mono);
   font-weight: 700;
   color: var(--ft-lime);
@@ -1085,7 +1078,7 @@ kbd {
 }
 
 .rewards-detail-rate-heading {
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   font-size: 15px;
   font-weight: 600;
   color: var(--text);
@@ -1095,7 +1088,7 @@ kbd {
 .rewards-detail-rate-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 16px;
 }
 
 @media (min-width: 640px) {
@@ -1108,20 +1101,21 @@ kbd {
 .rewards-detail-rate-card {
   position: relative;
   margin: 0;
-  padding: 14px 14px 12px;
+  padding: 16px;
   border-radius: 2px;
   border: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
   background: var(--bg-elev-1);
 }
 
 .rewards-detail-rate-card--muted {
-  opacity: 0.72;
+  opacity: 0.6;
 }
 
 .rewards-detail-rate-card--active {
   border-color: var(--ft-lime);
   background: color-mix(in srgb, var(--ft-lime) 8%, var(--bg-elev-1));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ft-lime) 25%, transparent);
+  padding-top: 28px;
 }
 
 :root[data-theme="light"] .rewards-detail-rate-card--active {
@@ -1156,12 +1150,12 @@ kbd {
 }
 
 .rewards-detail-rate-mult {
-  font-size: 1.65rem;
+  font-size: 1.5rem;
   font-family: var(--font-mono);
   font-weight: 700;
   color: var(--text);
   line-height: 1;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .rewards-detail-rate-mult--lime {
@@ -1169,9 +1163,9 @@ kbd {
 }
 
 .rewards-detail-rate-for {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
-  margin-bottom: 8px;
+  margin: 0;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1180,7 +1174,7 @@ kbd {
 }
 
 .rewards-detail-rate-desc {
-  margin: 0;
+  margin: 16px 0 0;
   font-size: 13px;
   line-height: 1.45;
   color: var(--text-muted);

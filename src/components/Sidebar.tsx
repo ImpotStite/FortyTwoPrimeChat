@@ -492,13 +492,6 @@ export function Sidebar({
                 <div className="rewards-detail-split">
                   <aside className="rewards-detail-left">
                     <div className="rewards-detail-left-inner">
-                      <img
-                        className="rewards-detail-left-mark"
-                        src="/fortytwo-prime-mark.png"
-                        width={40}
-                        height={40}
-                        alt=""
-                      />
                       <h2 id="rewards-detail-title" className="rewards-detail-left-title">
                         Rewards & Streak
                       </h2>
