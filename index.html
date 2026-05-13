@@ -17,8 +17,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- WalletConnect explorer (LCP chain); keep preconnect count low -->
+    <link rel="preconnect" href="https://explorer-api.walletconnect.com" crossorigin />
+    <!-- Deferred font CSS: dns-prefetch avoids unused preconnect warnings vs full preconnect -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <!-- Non-render-blocking: Codystar + Press Start 2P (prime loader only) -->
     <link
       href="https://fonts.googleapis.com/css2?family=Codystar&family=Press+Start+2P&display=swap"

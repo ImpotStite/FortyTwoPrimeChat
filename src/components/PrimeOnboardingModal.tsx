@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { FortytwoSign } from "./Icons";
 import "./PrimeOnboardingModal.css";
 
-/** Framed steps use the 192px asset; avoids downloading the 774×774 mark for ~62px display. */
-const FT_MARK_FRAMED = "/fortytwo-prime-icon-192.png";
+/** Framed steps: responsive src (128 default) vs 192 for high-DPR / larger paint. */
+const FT_MARK_FRAMED_SRC = "/fortytwo-prime-icon-128.png";
+const FT_MARK_FRAMED_SRCSET =
+  "/fortytwo-prime-icon-128.png 128w, /fortytwo-prime-icon-192.png 192w";
 const USDC_LOGO = "/usdc-logo.png";
 const MONAD_LOGO = "/monad-logo.png";
 
@@ -207,12 +209,15 @@ function FortytwoMarkFramed({
       className={`${frameClass}${glow ? " prime-onb-animate-glow" : ""}${className ? ` ${className}` : ""}`.trim()}
     >
       <img
-        src={FT_MARK_FRAMED}
+        src={FT_MARK_FRAMED_SRC}
+        srcSet={FT_MARK_FRAMED_SRCSET}
+        sizes="64px"
         alt=""
-        width={124}
-        height={124}
+        width={128}
+        height={128}
         className={`prime-onb-img-ft-inset prime-onb-img-ft-inset--${variant}`}
         decoding="async"
+        fetchPriority="low"
       />
     </div>
   );

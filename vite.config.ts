@@ -18,6 +18,41 @@ function readBody(req: IncomingMessage): Promise<Uint8Array> {
 
 const DEFAULT_PRODUCTION_SITE = "https://forty-two-prime-chat.vercel.app";
 
+/** Main Vite CSS links are render-blocking; defer paint until loaded (FOUC risk is minimal). */
+function makeViteStylesheetsNonBlocking(html: string): string {
+  return html.replace(
+    /<link rel="stylesheet"([^>]+)>/gi,
+    (full, attrs: string) => {
+      const a = attrs;
+      if (!a.includes('href="/assets/') || /\bmedia\s*=/.test(full)) {
+        return full;
+      }
+      return `<link rel="stylesheet"${a} media="print" onload="this.media='all'">`;
+    }
+  );
+}
+
+/** Hoist bundled CSS + module script early in <head> so the network starts in parallel. */
+function hoistViteHeadAssets(html: string): string {
+  const linkRe =
+    /<link rel="stylesheet"[^>]*href="\/assets\/[^"]+\.css"[^>]*>/i;
+  const scriptRe =
+    /<script type="module"[^>]*src="\/assets\/[^"]+\.js"[^>]*><\/script>/i;
+  const linkMatch = html.match(linkRe);
+  const scriptMatch = html.match(scriptRe);
+  if (!linkMatch?.[0] || !scriptMatch?.[0]) {
+    return html;
+  }
+  const linkTag = linkMatch[0];
+  const scriptTag = scriptMatch[0];
+  let out = html.replace(linkTag, "").replace(scriptTag, "");
+  out = out.replace(
+    /<meta charset="UTF-8" \/>/i,
+    `<meta charset="UTF-8" />\n    ${linkTag}\n    ${scriptTag}`
+  );
+  return out;
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const siteUrl = (
@@ -32,7 +67,12 @@ export default defineConfig(({ mode }) => {
       {
         name: "inject-site-url-html",
         transformIndexHtml(html) {
-          return html.replaceAll("__SITE_URL__", siteUrl);
+          let out = html.replaceAll("__SITE_URL__", siteUrl);
+          if (mode === "production") {
+            out = makeViteStylesheetsNonBlocking(out);
+            out = hoistViteHeadAssets(out);
+          }
+          return out;
         },
       },
       react(),
