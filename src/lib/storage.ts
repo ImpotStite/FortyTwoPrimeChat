@@ -75,7 +75,7 @@ function normalizeConversation(raw: unknown): Conversation {
   };
 }
 
-export function normalizeConversations(raw: unknown[]): Conversation[] {
+function normalizeConversations(raw: unknown[]): Conversation[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((x) => normalizeConversation(x));
 }

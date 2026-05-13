@@ -18,7 +18,7 @@ function parseFallbackModelsFromEnv(): string[] {
   return raw.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-export function resolveFallbackChain(primary: string): string[] {
+function resolveFallbackChain(primary: string): string[] {
   const fromEnv = parseFallbackModelsFromEnv();
   const chain =
     fromEnv.length > 0
@@ -66,7 +66,7 @@ function buildApiContent(
   return blocks;
 }
 
-export interface StreamOptions {
+interface StreamOptions {
   model: string;
   messages: ChatMessage[];
   signal?: AbortSignal;

@@ -1,4 +1,4 @@
-export type Role = "system" | "user" | "assistant";
+type Role = "system" | "user" | "assistant";
 
 export interface ImageAttachment {
   id: string;
@@ -65,8 +65,3 @@ export interface OpenRouterModel {
 }
 
 export type Theme = "dark" | "light";
-
-export interface Preferences {
-  theme: Theme;
-  defaultModel: string;
-}

@@ -98,14 +98,9 @@ api/
   mcp.ts             # Vercel Edge proxy to Fortytwo MCP
   openrouter.ts      # Vercel Edge proxy to OpenRouter (holds OPENROUTER_API_KEY)
 public/
-  manifest.webmanifest, sw.js, icons, brand assets
-scripts/
-  crop-brand-mark.py # Optional: tight crop for logo PNG (needs Python + Pillow + numpy)
+  manifest.webmanifest, sw.js, icons, brand assets (`/images/*` for loader sprites)
 ```
 
-## Notes / tooling
-
-- Regenerating cropped logo assets: run `python scripts/crop-brand-mark.py <src.png> public/fortytwo-prime-mark.png` (requires Python with **Pillow** and **numpy**), then regenerate `favicon-32.png`, `apple-touch-icon.png`, and manifest icons as needed.
 ## Language
 
 All user-visible UI strings and this README are **English**. See `.cursor/rules/english-language.mdc`.

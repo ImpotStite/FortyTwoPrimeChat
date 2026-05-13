@@ -363,7 +363,7 @@ function ensureMcpInitialized(signal?: AbortSignal): Promise<void> {
   return mcpReady;
 }
 
-export async function mcpInitialize(signal?: AbortSignal): Promise<unknown> {
+async function mcpInitialize(signal?: AbortSignal): Promise<unknown> {
   const res = await fetch(ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -378,19 +378,6 @@ export async function mcpInitialize(signal?: AbortSignal): Promise<unknown> {
   });
   if (!res.ok) {
     throw new Error(`initialize failed: ${res.status} ${res.statusText}`);
-  }
-  return res.json();
-}
-
-export async function mcpListTools(signal?: AbortSignal): Promise<unknown> {
-  const res = await fetch(ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(rpcCall("tools/list", {})),
-    signal,
-  });
-  if (!res.ok) {
-    throw new Error(`tools/list failed: ${res.status} ${res.statusText}`);
   }
   return res.json();
 }

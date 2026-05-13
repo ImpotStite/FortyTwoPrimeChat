@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { UsdcMark } from "./Icons";
 
-export type ToastKind = "info" | "success" | "warning" | "error";
+type ToastKind = "info" | "success" | "warning" | "error";
 
 export interface ToastInput {
   kind?: ToastKind;

@@ -93,7 +93,7 @@ async function getRefundTransferLogs(
   return out;
 }
 
-export interface RefundLog {
+interface RefundLog {
   txHash: Hex;
   logIndex: number;
   blockNumber: bigint;
