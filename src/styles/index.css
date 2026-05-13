@@ -1779,6 +1779,19 @@ kbd {
   z-index: 0;
 }
 
+/* Shown while code-split Prime onboarding chunk loads (first-time users). */
+.prime-onb-lazy-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: color-mix(in srgb, var(--ft-black) 76%, transparent);
+  pointer-events: all;
+}
+
+:root[data-theme="light"] .prime-onb-lazy-fallback {
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+}
+
 /* Fortytwo Prime: network loading scene (creatures + canvas) */
 
 .prime-network-loader {

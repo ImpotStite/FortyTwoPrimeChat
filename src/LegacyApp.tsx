@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Message } from "./components/Message";
 import { Composer } from "./components/Composer";
@@ -25,13 +25,18 @@ import {
   markTestOnboardingCompleted,
 } from "./lib/primeOnboarding";
 import { ErrorActionBar } from "./components/ErrorActionBar";
-import { PrimeOnboardingModal } from "./components/PrimeOnboardingModal";
 import type {
   ChatMessage,
   Conversation,
   ImageAttachment,
   OpenRouterModel,
 } from "./types";
+
+const PrimeOnboardingModal = lazy(() =>
+  import("./components/PrimeOnboardingModal").then((m) => ({
+    default: m.PrimeOnboardingModal,
+  }))
+);
 
 const ENV_MODEL =
   (import.meta.env.VITE_OPENROUTER_MODEL as string | undefined) ||
@@ -677,7 +682,17 @@ export default function LegacyApp() {
       </main>
 
       {legacyOnboardingOpen ? (
-        <PrimeOnboardingModal onClose={dismissLegacyOnboarding} />
+        <Suspense
+          fallback={
+            <div
+              className="prime-onb-lazy-fallback"
+              aria-busy="true"
+              aria-live="polite"
+            />
+          }
+        >
+          <PrimeOnboardingModal onClose={dismissLegacyOnboarding} />
+        </Suspense>
       ) : null}
     </div>
   );

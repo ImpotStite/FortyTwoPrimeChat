@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -74,11 +76,16 @@ import {
 import { ErrorActionBar } from "./components/ErrorActionBar";
 import { PrimeNetworkLoader } from "./components/PrimeNetworkLoader";
 import { MemoryToggle } from "./components/MemoryToggle";
-import { PrimeOnboardingModal } from "./components/PrimeOnboardingModal";
 import type {
   ChatMessage,
   Conversation,
 } from "./types";
+
+const PrimeOnboardingModal = lazy(() =>
+  import("./components/PrimeOnboardingModal").then((m) => ({
+    default: m.PrimeOnboardingModal,
+  }))
+);
 
 /** Base URL of the Monad mainnet block explorer. */
 const MONAD_EXPLORER_BASE = "https://monadvision.com";
@@ -1547,7 +1554,17 @@ export default function PrimeApp() {
       />
 
       {primeOnboardingOpen ? (
-        <PrimeOnboardingModal onClose={dismissPrimeOnboarding} />
+        <Suspense
+          fallback={
+            <div
+              className="prime-onb-lazy-fallback"
+              aria-busy="true"
+              aria-live="polite"
+            />
+          }
+        >
+          <PrimeOnboardingModal onClose={dismissPrimeOnboarding} />
+        </Suspense>
       ) : null}
 
       {/* Hidden but keeps user variable referenced so it stays in scope for future use. */}

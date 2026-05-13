@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { FortytwoSign } from "./Icons";
 import "./PrimeOnboardingModal.css";
 
-/** Same asset and framing patterns as the main app (Welcome, rewards row, assistant bubble). */
-const FT_MARK = "/fortytwo-prime-mark.png";
+/** Framed steps use the 192px asset; avoids downloading the 774×774 mark for ~62px display. */
+const FT_MARK_FRAMED = "/fortytwo-prime-icon-192.png";
 const USDC_LOGO = "/usdc-logo.png";
 const MONAD_LOGO = "/monad-logo.png";
 
@@ -207,8 +207,10 @@ function FortytwoMarkFramed({
       className={`${frameClass}${glow ? " prime-onb-animate-glow" : ""}${className ? ` ${className}` : ""}`.trim()}
     >
       <img
-        src={FT_MARK}
+        src={FT_MARK_FRAMED}
         alt=""
+        width={124}
+        height={124}
         className={`prime-onb-img-ft-inset prime-onb-img-ft-inset--${variant}`}
         decoding="async"
       />

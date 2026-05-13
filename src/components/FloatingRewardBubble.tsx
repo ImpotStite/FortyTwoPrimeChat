@@ -6,7 +6,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-const FOR_MARK = "/fortytwo-prime-mark.png";
+const FOR_MARK = "/fortytwo-prime-icon-192.png";
 
 type BubbleStyle = CSSProperties;
 

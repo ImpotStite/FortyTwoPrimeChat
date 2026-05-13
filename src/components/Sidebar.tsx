@@ -336,9 +336,9 @@ export function Sidebar({
           <div className="brand-mark">
             <img
               className="brand-mark-img"
-              src="/fortytwo-prime-mark.png"
-              width={38}
-              height={38}
+              src="/fortytwo-prime-icon-192.png"
+              width={76}
+              height={76}
               alt=""
             />
           </div>
@@ -411,9 +411,9 @@ export function Sidebar({
             <div className="sidebar-rewards-head">
               <img
                 className="sidebar-rewards-mark"
-                src="/fortytwo-prime-mark.png"
-                width={32}
-                height={32}
+                src="/fortytwo-prime-icon-192.png"
+                width={64}
+                height={64}
                 alt=""
               />
               <div className="sidebar-rewards-text">

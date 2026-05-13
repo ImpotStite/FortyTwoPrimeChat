@@ -5,7 +5,7 @@
  * white "$" cuff. Drawn in pure SVG so it scales with `font-size: currentColor`
  * neighbours and doesn't pull a bitmap.
  *
- * Fortytwo: `FortytwoSign` renders the bundled `public/fortytwo-prime-mark.png`.
+ * Fortytwo: `FortytwoSign` uses the 192px app icon (sufficient for inline sizes).
  */
 
 interface SizedProps {
@@ -52,7 +52,7 @@ export function FortytwoSign({
 }: SizedProps) {
   return (
     <img
-      src="/fortytwo-prime-mark.png"
+      src="/fortytwo-prime-icon-192.png"
       width={size}
       height={size}
       alt={title}

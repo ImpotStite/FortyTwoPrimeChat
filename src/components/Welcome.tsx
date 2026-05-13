@@ -31,9 +31,9 @@ export function Welcome({ onPick, modelLabel }: Props) {
       <div className="welcome-logo">
         <img
           className="welcome-logo-img"
-          src="/fortytwo-prime-mark.png"
-          width={64}
-          height={64}
+          src="/fortytwo-prime-icon-192.png"
+          width={128}
+          height={128}
           alt="Fortytwo Prime"
         />
       </div>
