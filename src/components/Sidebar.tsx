@@ -416,37 +416,37 @@ export function Sidebar({
           }`}
           aria-live="polite"
         >
-          <div className="sidebar-rewards-card">
-            <div className="sidebar-rewards-card-head">
-              <span className="sidebar-rewards-card-dot" aria-hidden />
-              <span className="sidebar-rewards-card-brand">Rewards</span>
+          <div className="sidebar-rewards-tier-wrap sidebar-rewards-tier-wrap--plain">
+            <div className="sidebar-rewards-head">
               <img
-                className="sidebar-rewards-card-mark"
+                className="sidebar-rewards-mark"
                 src="/fortytwo-prime-mark.png"
-                width={24}
-                height={24}
+                width={32}
+                height={32}
                 alt=""
               />
-            </div>
-            <div
-              className={`sidebar-rewards-card-balance${
-                rewardsHighlight ? " sidebar-rewards-card-balance--hot" : ""
-              }`}
-            >
-              <span className="sidebar-rewards-card-for-num">{forPointsDisplay}</span>
-              <span className="sidebar-rewards-card-for-unit">FOR</span>
+              <div className="sidebar-rewards-text">
+                <div className="sidebar-rewards-label">Rewards</div>
+                <div
+                  className={`sidebar-rewards-value${
+                    rewardsHighlight ? " sidebar-rewards-value--hot" : ""
+                  }`}
+                >
+                  {forPointsDisplay} FOR
+                </div>
+              </div>
             </div>
             {rewardsPrime ? (
-              <>
-                <div className="sidebar-rewards-card-streak" role="status">
-                  <span className="sidebar-rewards-card-streak-label">Day streak</span>
-                  <span className="sidebar-rewards-card-streak-value">
+              <div className="sidebar-rewards-compact">
+                <div className="sidebar-rewards-compact-streak" role="status">
+                  <span className="sidebar-rewards-streak-label">Day streak</span>
+                  <span className="sidebar-rewards-streak-value">
                     {rewardsPrime.snapshot.currentStreakDays} / {STREAK_REQUIRED_DAYS}
                   </span>
                 </div>
                 <button
                   type="button"
-                  className="sidebar-rewards-card-details"
+                  className="sidebar-rewards-details-btn"
                   onClick={openRewardsDetail}
                   aria-expanded={rewardsDetailOpen}
                   aria-haspopup="dialog"
@@ -454,7 +454,7 @@ export function Sidebar({
                 >
                   Details
                 </button>
-              </>
+              </div>
             ) : null}
           </div>
 
