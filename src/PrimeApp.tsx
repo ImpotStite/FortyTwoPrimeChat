@@ -988,7 +988,14 @@ export default function PrimeApp({
       }
 
       const text = (overrideText ?? input).trim();
-      if (!text || (!opts?.bypassBusyGuard && isLoading) || !active) return;
+      if (
+        !text ||
+        (!opts?.bypassBusyGuard && isLoading) ||
+        !active ||
+        activeId == null
+      ) {
+        return;
+      }
       if (!authenticated || !address) {
         const msg = "Connect your wallet first.";
         const a = primeErrorActions(msg);
@@ -1015,26 +1022,28 @@ export default function PrimeApp({
         model: "fortytwo-prime",
       };
 
-      const isFirstMessage = active.messages.length === 0;
-      const newTitle = isFirstMessage ? text.slice(0, 60) : active.title;
-      const newMessages = [...active.messages, userMsg, assistantMsg];
-
-      updateActive((c) => ({
-        ...c,
-        title: newTitle,
-        messages: newMessages,
-        updatedAt: Date.now(),
-      }));
+      let wireMessages: ChatMessage[] = [];
+      updateActive((c) => {
+        const isFirstMessage = c.messages.length === 0;
+        const newTitle = isFirstMessage ? text.slice(0, 60) : c.title;
+        wireMessages = [...c.messages, userMsg, assistantMsg];
+        return {
+          ...c,
+          title: newTitle,
+          messages: wireMessages,
+          updatedAt: Date.now(),
+        };
+      });
 
       setInput("");
 
       const wireQuery = buildPrimeWireQuery({
         memoryEnabled,
-        messages: newMessages,
+        messages: wireMessages,
         assistantMessageId: assistantMsg.id,
         currentUserMessage: text,
       });
-      const ok = await runStream(active.id, assistantMsg.id, wireQuery);
+      const ok = await runStream(activeId, assistantMsg.id, wireQuery);
       if (
         automationLoop &&
         ok &&
@@ -1050,6 +1059,7 @@ export default function PrimeApp({
     },
     [
       active,
+      activeId,
       address,
       authenticated,
       automationLoop,
@@ -1075,18 +1085,8 @@ export default function PrimeApp({
 
   const handleEditUser = useCallback(
     async (messageId: string, newContent: string) => {
-      if (!active) return;
-      const idx = active.messages.findIndex((m) => m.id === messageId);
-      if (idx < 0) return;
-      const user = active.messages[idx];
-      if (user.role !== "user") return;
+      if (!activeId) return;
 
-      const truncated = active.messages.slice(0, idx);
-      const editedUser: ChatMessage = {
-        ...user,
-        content: newContent,
-        edited: true,
-      };
       const assistantMsg: ChatMessage = {
         id: uid("m_"),
         role: "assistant",
@@ -1094,37 +1094,45 @@ export default function PrimeApp({
         createdAt: Date.now(),
         model: "fortytwo-prime",
       };
-      const next = [...truncated, editedUser, assistantMsg];
 
-      updateActive((c) => ({
-        ...c,
-        messages: next,
-        updatedAt: Date.now(),
-      }));
+      let wireNext: ChatMessage[] | null = null;
+      updateActive((c) => {
+        const idx = c.messages.findIndex((m) => m.id === messageId);
+        if (idx < 0) return c;
+        const user = c.messages[idx];
+        if (user.role !== "user") return c;
+
+        const truncated = c.messages.slice(0, idx);
+        const editedUser: ChatMessage = {
+          ...user,
+          content: newContent,
+          edited: true,
+        };
+        wireNext = [...truncated, editedUser, assistantMsg];
+        return {
+          ...c,
+          messages: wireNext,
+          updatedAt: Date.now(),
+        };
+      });
+
+      if (!wireNext) return;
 
       const wireQuery = buildPrimeWireQuery({
         memoryEnabled,
-        messages: next,
+        messages: wireNext,
         assistantMessageId: assistantMsg.id,
         currentUserMessage: newContent,
       });
-      await runStream(active.id, assistantMsg.id, wireQuery);
+      await runStream(activeId, assistantMsg.id, wireQuery);
     },
-    [active, memoryEnabled, runStream, updateActive]
+    [activeId, memoryEnabled, runStream, updateActive]
   );
 
   const handleRegenerate = useCallback(
     async (messageId: string) => {
-      if (!active) return;
-      const idx = active.messages.findIndex((m) => m.id === messageId);
-      if (idx < 0 || active.messages[idx].role !== "assistant") return;
-      // Find preceding user message to replay its query.
-      const prevUser = [...active.messages.slice(0, idx)]
-        .reverse()
-        .find((m) => m.role === "user");
-      if (!prevUser) return;
+      if (!activeId) return;
 
-      const history = active.messages.slice(0, idx);
       const newAssistant: ChatMessage = {
         id: uid("m_"),
         role: "assistant",
@@ -1132,23 +1140,39 @@ export default function PrimeApp({
         createdAt: Date.now(),
         model: "fortytwo-prime",
       };
-      const next = [...history, newAssistant];
 
-      updateActive((c) => ({
-        ...c,
-        messages: next,
-        updatedAt: Date.now(),
-      }));
+      let wireNext: ChatMessage[] | null = null;
+      let replayUserText = "";
+
+      updateActive((c) => {
+        const idx = c.messages.findIndex((m) => m.id === messageId);
+        if (idx < 0 || c.messages[idx].role !== "assistant") return c;
+        const prevUser = [...c.messages.slice(0, idx)]
+          .reverse()
+          .find((m) => m.role === "user");
+        if (!prevUser) return c;
+
+        replayUserText = prevUser.content;
+        const history = c.messages.slice(0, idx);
+        wireNext = [...history, newAssistant];
+        return {
+          ...c,
+          messages: wireNext,
+          updatedAt: Date.now(),
+        };
+      });
+
+      if (!wireNext || !replayUserText) return;
 
       const wireQuery = buildPrimeWireQuery({
         memoryEnabled,
-        messages: next,
+        messages: wireNext,
         assistantMessageId: newAssistant.id,
-        currentUserMessage: prevUser.content,
+        currentUserMessage: replayUserText,
       });
-      await runStream(active.id, newAssistant.id, wireQuery);
+      await runStream(activeId, newAssistant.id, wireQuery);
     },
-    [active, memoryEnabled, runStream, updateActive]
+    [activeId, memoryEnabled, runStream, updateActive]
   );
 
   const handleDeleteMessage = (messageId: string) => {
