@@ -1486,6 +1486,14 @@ kbd {
   background: var(--bg-elev-1);
 }
 
+.app[data-page="automation"] .main {
+  background: color-mix(in srgb, var(--ft-lime) 4%, var(--bg-elev-1));
+}
+
+:root[data-theme="light"] .app[data-page="automation"] .main {
+  background: color-mix(in srgb, var(--ft-lime) 6%, var(--bg-elev-1));
+}
+
 .topbar {
   height: 64px;
   border-bottom: 1px solid var(--border);
@@ -1500,10 +1508,82 @@ kbd {
   min-width: 0;
 }
 
+.automation-loop-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px 10px 18px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--ft-lime) 10%, var(--bg-elev-1));
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  position: sticky;
+  top: 64px;
+  z-index: 4;
+}
+
+.automation-loop-bar-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--text-dim);
+  opacity: 0.9;
+}
+
+.automation-loop-bar--halted {
+  background: var(--bg-elev-2);
+}
+
+.automation-loop-bar-text {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.automation-loop-bar-stop {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elev-1);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.automation-loop-bar-stop:hover {
+  background: var(--bg-elev-2);
+}
+
 .topbar-title {
   flex: 1;
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   letter-spacing: -0.03em;
+}
+
+.topbar-mode-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--ft-lime) 14%, var(--bg-elev-2));
+  color: var(--text);
+}
+
+.topbar-title-chat {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2510,6 +2590,33 @@ kbd {
   height: 100%;
   display: block;
   object-fit: cover;
+}
+
+.welcome--automation .welcome-logo {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ft-lime) 35%, transparent),
+    var(--shadow-1);
+}
+
+.welcome-pill {
+  display: inline-flex;
+  margin: 0 auto 10px auto;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--ft-lime) 12%, var(--bg-elev-1));
+  color: var(--text);
+}
+
+.welcome--automation .welcome-title {
+  margin-top: 0;
+}
+
+.welcome--automation .suggestion {
+  border-color: color-mix(in srgb, var(--ft-lime) 22%, var(--border));
 }
 
 .welcome-title {

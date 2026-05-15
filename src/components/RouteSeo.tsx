@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { SEO_PRIME, SEO_TEST } from "../lib/seoCopy";
+import { SEO_AUTOMATION, SEO_PRIME, SEO_TEST } from "../lib/seoCopy";
 
 function canonicalBase(): string {
   const fromEnv = import.meta.env.VITE_SITE_URL?.trim().replace(/\/$/, "");
@@ -71,8 +71,19 @@ export function RouteSeo(): null {
       pathname === "/" ? `${base}/` : `${base}${pathname}`;
 
     const isTest = pathname === "/test" || pathname.startsWith("/test/");
-    const title = isTest ? SEO_TEST.title : SEO_PRIME.title;
-    const description = isTest ? SEO_TEST.description : SEO_PRIME.description;
+    const isAutomation =
+      pathname === "/automatisation" ||
+      pathname.startsWith("/automatisation/");
+    const title = isTest
+      ? SEO_TEST.title
+      : isAutomation
+        ? SEO_AUTOMATION.title
+        : SEO_PRIME.title;
+    const description = isTest
+      ? SEO_TEST.description
+      : isAutomation
+        ? SEO_AUTOMATION.description
+        : SEO_PRIME.description;
 
     document.title = title;
     setMetaAttr("name", "description", description);
@@ -84,7 +95,7 @@ export function RouteSeo(): null {
 
     setCanonical(canonical);
 
-    if (isTest) {
+    if (isTest || isAutomation) {
       setRobots("noindex, nofollow");
     } else {
       setRobots(null);

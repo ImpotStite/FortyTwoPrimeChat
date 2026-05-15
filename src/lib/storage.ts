@@ -2,6 +2,8 @@ import type { ChatMessage, Conversation, ImageAttachment } from "../types";
 
 const KEY = "fortytwo-prime-chat:conversations";
 const PRIME_KEY = "fortytwo-prime-chat:prime-conversations";
+/** Isolated Prime chat history for `/automatisation` (stress / loop mode). */
+const PRIME_AUTOMATION_KEY = "fortytwo-prime-chat:prime-conversations-automation";
 
 function rid(prefix: string) {
   return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 9)}`;
@@ -114,4 +116,12 @@ export function loadPrimeConversations(): Conversation[] {
 
 export function savePrimeConversations(convs: Conversation[]): void {
   saveToKey(PRIME_KEY, convs);
+}
+
+export function loadPrimeConversationsAutomation(): Conversation[] {
+  return loadFromKey(PRIME_AUTOMATION_KEY);
+}
+
+export function savePrimeConversationsAutomation(convs: Conversation[]): void {
+  saveToKey(PRIME_AUTOMATION_KEY, convs);
 }

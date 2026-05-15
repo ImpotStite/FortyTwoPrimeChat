@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { Analytics } from "@vercel/analytics/react";
 import { RouteSeo } from "./components/RouteSeo";
@@ -11,19 +11,26 @@ import "highlight.js/styles/github-dark.css";
 import "katex/dist/katex.min.css";
 import "./styles/index.css";
 
+function PrimeLayout() {
+  return (
+    <PrivyProvider appId={PRIVY_APP_ID} config={privyConfig}>
+      <Outlet />
+    </PrivyProvider>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <RouteSeo />
       <Routes>
-        <Route
-          path="/"
-          element={
-            <PrivyProvider appId={PRIVY_APP_ID} config={privyConfig}>
-              <PrimeApp />
-            </PrivyProvider>
-          }
-        />
+        <Route element={<PrimeLayout />}>
+          <Route path="/" element={<PrimeApp />} />
+          <Route
+            path="/automatisation"
+            element={<PrimeApp automationLoop />}
+          />
+        </Route>
         <Route path="/test" element={<LegacyApp />} />
       </Routes>
     </BrowserRouter>

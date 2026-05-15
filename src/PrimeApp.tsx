@@ -19,7 +19,9 @@ import { useChatAutoScroll } from "./hooks/useChatAutoScroll";
 import { uid } from "./lib/id";
 import {
   loadPrimeConversations,
+  loadPrimeConversationsAutomation,
   savePrimeConversations,
+  savePrimeConversationsAutomation,
 } from "./lib/storage";
 import {
   askPrime,
@@ -124,11 +126,11 @@ const PENDING_REPLY_TOAST = {
 /** Toast duration for "Session launched"; loader waits until this elapses. */
 const SESSION_LAUNCHED_TOAST_MS = 4500;
 
-function newConversation(): Conversation {
+function newConversation(overrides?: { title?: string }): Conversation {
   const now = Date.now();
   return {
     id: uid("c_"),
-    title: "New chat",
+    title: overrides?.title ?? "New chat",
     messages: [],
     createdAt: now,
     updatedAt: now,
@@ -141,7 +143,14 @@ function shortAddress(addr?: string | null): string {
   return addr.slice(0, 6) + "…" + addr.slice(-4);
 }
 
-export default function PrimeApp() {
+export type PrimeAppProps = {
+  /** When true, after each successful reply the same user message is sent again (see `/automatisation`). */
+  automationLoop?: boolean;
+};
+
+export default function PrimeApp({
+  automationLoop = false,
+}: PrimeAppProps) {
   const { theme, toggle: toggleTheme } = useTheme();
   const { ready, authenticated, login, logout, user, linkWallet } = usePrivy();
   const { wallets } = useWallets();
@@ -186,6 +195,13 @@ export default function PrimeApp() {
   const sessionIdRef = useRef<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  /** Halts automation resend chain (Stop or user leaves route via unmount). */
+  const automationLoopHaltedRef = useRef(false);
+  /** Bumps when user stops, new chat, or switches conversation — ignores pending auto-resend timeouts. */
+  const automationScheduleGenRef = useRef(0);
+  const handleSubmitRef = useRef<
+    (overrideText?: string, opts?: { bypassBusyGuard?: boolean }) => Promise<void>
+  >(async () => {});
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastFailedPrimeRef = useRef<{
     conversationId: string;
@@ -205,6 +221,8 @@ export default function PrimeApp() {
     { id: string; amountLabel: string }[]
   >([]);
   const [rewardsHighlight, setRewardsHighlight] = useState(false);
+  /** UI: automation bar; false while looping, true after Stop until next manual send. */
+  const [automationLoopHalted, setAutomationLoopHalted] = useState(false);
 
   const onRewardFlyComplete = useCallback((id: string) => {
     setRewardFlights((prev) => prev.filter((x) => x.id !== id));
@@ -224,20 +242,31 @@ export default function PrimeApp() {
 
   // ---- Init: load conversations + cached session for the current wallet ----
   useEffect(() => {
-    const stored = loadPrimeConversations();
+    const stored = automationLoop
+      ? loadPrimeConversationsAutomation()
+      : loadPrimeConversations();
     if (stored.length > 0) {
       setConversations(stored);
       setActiveId(stored[0].id);
     } else {
-      const c = newConversation();
+      const c = newConversation({
+        title: automationLoop ? "Repeat test" : "New chat",
+      });
       setConversations([c]);
       setActiveId(c.id);
     }
-  }, []);
+    if (automationLoop) {
+      automationLoopHaltedRef.current = false;
+      setAutomationLoopHalted(false);
+    }
+  }, [automationLoop]);
 
   useEffect(() => {
-    if (conversations.length > 0) savePrimeConversations(conversations);
-  }, [conversations]);
+    if (conversations.length > 0) {
+      if (automationLoop) savePrimeConversationsAutomation(conversations);
+      else savePrimeConversations(conversations);
+    }
+  }, [automationLoop, conversations]);
 
   useEffect(() => {
     if (!address) {
@@ -451,12 +480,17 @@ export default function PrimeApp() {
       });
       return;
     }
-    const c = newConversation();
+    if (automationLoop) {
+      automationScheduleGenRef.current += 1;
+    }
+    const c = newConversation({
+      title: automationLoop ? "Repeat test" : "New chat",
+    });
     setConversations((prev) => [c, ...prev]);
     setActiveId(c.id);
     setInput("");
     setSurfaceError(null);
-  }, [isLoading, toasts]);
+  }, [automationLoop, isLoading, toasts]);
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -469,18 +503,23 @@ export default function PrimeApp() {
         });
         return;
       }
+      if (automationLoop && id !== activeId) {
+        automationScheduleGenRef.current += 1;
+      }
       setActiveId(id);
       setSurfaceError(null);
       setSidebarOpen(false);
     },
-    [activeId, isLoading, toasts]
+    [activeId, automationLoop, isLoading, toasts]
   );
 
   const handleDelete = (id: string) => {
     setConversations((prev) => {
       const next = prev.filter((c) => c.id !== id);
       if (next.length === 0) {
-        const c = newConversation();
+        const c = newConversation({
+          title: automationLoop ? "Repeat test" : "New chat",
+        });
         setActiveId(c.id);
         return [c];
       }
@@ -511,6 +550,11 @@ export default function PrimeApp() {
     setAllowPrimeStreamVisual(true);
     setPrimeProgressPhase(null);
     setIsLoading(false);
+    if (automationLoop) {
+      automationLoopHaltedRef.current = true;
+      setAutomationLoopHalted(true);
+      automationScheduleGenRef.current += 1;
+    }
   };
 
   const handleDisconnectWallet = useCallback(() => {
@@ -614,7 +658,7 @@ export default function PrimeApp() {
       conversationId: string,
       assistantId: string,
       wireQuery: string
-    ) => {
+    ): Promise<boolean> => {
       if (!address) {
         const msg = "Connect your wallet to continue.";
         const a = primeErrorActions(msg);
@@ -626,7 +670,7 @@ export default function PrimeApp() {
         });
         setPrimeProgressPhase(null);
         setIsLoading(false);
-        return;
+        return false;
       }
       const ctrl = new AbortController();
       abortRef.current = ctrl;
@@ -673,7 +717,7 @@ export default function PrimeApp() {
         deferPrimeStreamLoaderRef.current = false;
         setAllowPrimeStreamVisual(true);
         setPrimeProgressPhase(null);
-        return;
+        return false;
       }
 
       lastFailedPrimeRef.current = {
@@ -682,6 +726,7 @@ export default function PrimeApp() {
         wireQuery,
       };
 
+      let streamCompletedOk = false;
       try {
         for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
           if (attempt > 0) {
@@ -850,11 +895,13 @@ export default function PrimeApp() {
             }
             lastError = null;
             lastFailedPrimeRef.current = null;
+            streamCompletedOk = true;
             break;
           } catch (e) {
             if (ctrl.signal.aborted) {
               lastError = null;
               lastFailedPrimeRef.current = null;
+              streamCompletedOk = false;
               break;
             }
             const err = e as Error;
@@ -867,6 +914,7 @@ export default function PrimeApp() {
         }
 
         if (lastError) {
+          streamCompletedOk = false;
           const msg = lastError.message || "Unknown error";
           const a = primeErrorActions(msg);
           setSurfaceError({
@@ -901,6 +949,7 @@ export default function PrimeApp() {
             });
         }
       }
+      return streamCompletedOk;
     },
     [address, buildSigner]
   );
@@ -929,9 +978,17 @@ export default function PrimeApp() {
   // ---- Submit / Edit / Regenerate ----
 
   const handleSubmit = useCallback(
-    async (overrideText?: string) => {
+    async (
+      overrideText?: string,
+      opts?: { bypassBusyGuard?: boolean }
+    ) => {
+      if (automationLoop && !opts?.bypassBusyGuard) {
+        automationLoopHaltedRef.current = false;
+        setAutomationLoopHalted(false);
+      }
+
       const text = (overrideText ?? input).trim();
-      if (!text || isLoading || !active) return;
+      if (!text || (!opts?.bypassBusyGuard && isLoading) || !active) return;
       if (!authenticated || !address) {
         const msg = "Connect your wallet first.";
         const a = primeErrorActions(msg);
@@ -977,10 +1034,44 @@ export default function PrimeApp() {
         assistantMessageId: assistantMsg.id,
         currentUserMessage: text,
       });
-      await runStream(active.id, assistantMsg.id, wireQuery);
+      const ok = await runStream(active.id, assistantMsg.id, wireQuery);
+      if (
+        automationLoop &&
+        ok &&
+        !automationLoopHaltedRef.current
+      ) {
+        const scheduleGen = automationScheduleGenRef.current;
+        window.setTimeout(() => {
+          if (scheduleGen !== automationScheduleGenRef.current) return;
+          if (!automationLoop || automationLoopHaltedRef.current) return;
+          void handleSubmitRef.current?.(text, { bypassBusyGuard: true });
+        }, 0);
+      }
     },
-    [active, address, authenticated, input, isLoading, memoryEnabled, runStream, updateActive]
+    [
+      active,
+      address,
+      authenticated,
+      automationLoop,
+      input,
+      isLoading,
+      memoryEnabled,
+      runStream,
+      updateActive,
+    ]
   );
+
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
+  }, [handleSubmit]);
+
+  useEffect(() => {
+    return () => {
+      if (automationLoop) {
+        automationScheduleGenRef.current += 1;
+      }
+    };
+  }, [automationLoop]);
 
   const handleEditUser = useCallback(
     async (messageId: string, newContent: string) => {
@@ -1155,6 +1246,7 @@ export default function PrimeApp() {
   return (
     <div
       className={`app ${sidebarOpen ? "sidebar-open" : ""}`}
+      data-page={automationLoop ? "automation" : "prime"}
       data-theme={theme}
     >
       <Sidebar
@@ -1166,6 +1258,12 @@ export default function PrimeApp() {
         onRename={handleRename}
         onTogglePin={handleTogglePin}
         modelLabel="Fortytwo Prime"
+        brandTitle={automationLoop ? "Automation" : undefined}
+        brandSubtitle={
+          automationLoop
+            ? "Fortytwo Prime · repeat after each reply"
+            : undefined
+        }
         navLocked={isLoading}
         navLockTitle={PENDING_REPLY_TOAST.description}
         forPoints={rewardsSnapshot.displayTotalFor}
@@ -1200,7 +1298,14 @@ export default function PrimeApp() {
             <BurgerIcon />
           </button>
           <div className="topbar-title">
-            {active?.title || "New chat"}
+            {automationLoop ? (
+              <span className="topbar-mode-badge" title="Automation route">
+                Loop
+              </span>
+            ) : null}
+            <span className="topbar-title-chat">
+              {active?.title || (automationLoop ? "Repeat test" : "New chat")}
+            </span>
           </div>
           <div className="topbar-tools">
             <div className="topbar-tools-cluster">
@@ -1330,6 +1435,64 @@ export default function PrimeApp() {
           </div>
         </header>
 
+        {automationLoop && (
+          <div
+            className={`automation-loop-bar${
+              automationLoopHalted ? " automation-loop-bar--halted" : ""
+            }`}
+            role="region"
+            aria-label="Automation mode"
+          >
+            <div className="automation-loop-bar-icon" aria-hidden>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M17 1l4 4-4 4"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M3 11V9a4 4 0 0 1 4-4h14"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M7 23l-4-4 4-4"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M21 13v2a4 4 0 0 1-4 4H3"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <p className="automation-loop-bar-text">
+              {automationLoopHalted
+                ? "Automation stopped. Send a message to resume repeating after each reply."
+                : "Live loop: after each successful reply, the same user message is sent again until you press Stop or an error occurs. Every turn bills like a normal chat."}
+            </p>
+            {!automationLoopHalted && (
+              <button
+                type="button"
+                className="automation-loop-bar-stop"
+                onClick={handleStop}
+                aria-label="Stop automation"
+              >
+                Stop
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="messages-wrap">
           <div
             className={`messages${
@@ -1343,6 +1506,7 @@ export default function PrimeApp() {
             {!active || active.messages.length === 0 ? (
               <Welcome
                 modelLabel="Fortytwo Prime"
+                variant={automationLoop ? "automation" : "default"}
                 onPick={(p) => {
                   setInput(p);
                   if (authenticated) void handleSubmit(p);
@@ -1417,8 +1581,9 @@ export default function PrimeApp() {
         {!authenticated && (
           <div className="wallet-hint-bar" role="status">
             <p>
-              Connect your wallet (MetaMask, Rabby, WalletConnect…) to start
-              chatting. You'll need USDC on Monad.
+              {automationLoop
+                ? "Connect your wallet to run the repeat loop. You need USDC on Monad; each iteration uses your session like a normal message."
+                : "Connect your wallet (MetaMask, Rabby, WalletConnect…) to start chatting. You'll need USDC on Monad."}
             </p>
             <div className="wallet-hint-actions">
               <button
@@ -1458,6 +1623,12 @@ export default function PrimeApp() {
           statusLine={composerStatusLine}
           disabled={!active || !authenticated}
           visionAllowed={false}
+          automationMode={automationLoop}
+          inputPlaceholder={
+            automationLoop
+              ? "Message to repeat after each successful reply…"
+              : undefined
+          }
           onError={(msg) =>
             setSurfaceError({
               message: msg,

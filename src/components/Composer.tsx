@@ -18,6 +18,10 @@ const COMPOSER_HINT_FULL =
   "Fortytwo Prime can't be wrong but double-check important information anyways.";
 const COMPOSER_HINT_NARROW =
   "Double-check important information yourself.";
+const COMPOSER_HINT_AUTOMATION_FULL =
+  "Automation: the same text is resent after each successful reply until you stop or an error. Verify important facts yourself.";
+const COMPOSER_HINT_AUTOMATION_NARROW =
+  "Same prompt repeats after each reply until Stop or error.";
 
 const NARROW_MQ = "(max-width: 640px)";
 
@@ -52,6 +56,14 @@ interface Props {
   disabled?: boolean;
   visionAllowed: boolean;
   onError?: (msg: string) => void;
+  /** When set, used as the textarea placeholder (e.g. automation route). */
+  inputPlaceholder?: string;
+  /** Override footer hint on wide viewports. */
+  hintWide?: string;
+  /** Override footer hint on narrow viewports. */
+  hintNarrow?: string;
+  /** When true, use automation-specific footer hints if hints are not passed. */
+  automationMode?: boolean;
 }
 
 export function Composer({
@@ -66,10 +78,24 @@ export function Composer({
   disabled,
   visionAllowed,
   onError,
+  inputPlaceholder,
+  hintWide,
+  hintNarrow,
+  automationMode = false,
 }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const narrowViewport = useNarrowViewport640();
+
+  const resolvedHintWide =
+    hintWide ??
+    (automationMode ? COMPOSER_HINT_AUTOMATION_FULL : COMPOSER_HINT_FULL);
+  const resolvedHintNarrow =
+    hintNarrow ??
+    (automationMode ? COMPOSER_HINT_AUTOMATION_NARROW : COMPOSER_HINT_NARROW);
+  const resolvedPlaceholder =
+    inputPlaceholder ??
+    (narrowViewport ? COMPOSER_PLACEHOLDER_NARROW : COMPOSER_PLACEHOLDER_WIDE);
 
   useEffect(() => {
     const el = ref.current;
@@ -175,11 +201,7 @@ export function Composer({
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={onKeyDown}
             onPaste={onPaste}
-            placeholder={
-              narrowViewport
-                ? COMPOSER_PLACEHOLDER_NARROW
-                : COMPOSER_PLACEHOLDER_WIDE
-            }
+            placeholder={resolvedPlaceholder}
             title={COMPOSER_INPUT_HINT}
             disabled={disabled}
           />
@@ -213,9 +235,9 @@ export function Composer({
       ) : null}
       <div
         className="composer-hint"
-        title={COMPOSER_HINT_FULL}
+        title={resolvedHintWide}
       >
-        {narrowViewport ? COMPOSER_HINT_NARROW : COMPOSER_HINT_FULL}
+        {narrowViewport ? resolvedHintNarrow : resolvedHintWide}
       </div>
     </div>
   );

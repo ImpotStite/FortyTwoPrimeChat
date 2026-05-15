@@ -134,6 +134,10 @@ interface Props {
   onRename: (id: string, title: string) => void;
   onTogglePin: (id: string) => void;
   modelLabel: string;
+  /** Overrides default "Prime Chat" in the sidebar brand block. */
+  brandTitle?: string;
+  /** Overrides default `modelLabel` line under the brand title. */
+  brandSubtitle?: string;
   /** When true, switching chats / new chat is blocked (e.g. Fortytwo reply in flight). */
   navLocked?: boolean;
   /** Tooltip / `aria-label` detail while `navLocked`. */
@@ -161,6 +165,8 @@ export function Sidebar({
   onRename,
   onTogglePin,
   modelLabel,
+  brandTitle,
+  brandSubtitle,
   navLocked = false,
   navLockTitle = "Navigation is temporarily disabled.",
   forPoints = 0,
@@ -343,9 +349,9 @@ export function Sidebar({
             />
           </div>
           <div className="brand-text">
-            <div className="brand-title">Prime Chat</div>
-            <div className="brand-sub" title={modelLabel}>
-              {modelLabel}
+            <div className="brand-title">{brandTitle ?? "Prime Chat"}</div>
+            <div className="brand-sub" title={brandSubtitle ?? modelLabel}>
+              {brandSubtitle ?? modelLabel}
             </div>
           </div>
         </div>

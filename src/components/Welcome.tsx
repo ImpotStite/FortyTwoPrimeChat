@@ -1,6 +1,8 @@
 interface Props {
   onPick: (prompt: string) => void;
   modelLabel: string;
+  /** Stress / repeat mode: copy and starter prompts match `/automatisation`. */
+  variant?: "default" | "automation";
 }
 
 const SUGGESTIONS = [
@@ -24,10 +26,31 @@ const SUGGESTIONS = [
   },
 ];
 
-export function Welcome({ onPick, modelLabel }: Props) {
+const AUTOMATION_SUGGESTIONS = [
+  {
+    title: "Ping",
+    prompt: "Reply with the single word: pong.",
+  },
+  {
+    title: "One line",
+    prompt: "Say hello in exactly one short sentence.",
+  },
+  {
+    title: "Math check",
+    prompt: "What is 2 + 2? Answer with just the number.",
+  },
+  {
+    title: "Timestamp",
+    prompt: "Reply with the current UTC time as HH:MM only.",
+  },
+];
+
+export function Welcome({ onPick, modelLabel, variant = "default" }: Props) {
   const isPrime = modelLabel === "Fortytwo Prime";
+  const isAutomation = variant === "automation";
+  const picks = isAutomation ? AUTOMATION_SUGGESTIONS : SUGGESTIONS;
   return (
-    <div className="welcome">
+    <div className={`welcome${isAutomation ? " welcome--automation" : ""}`}>
       <div className="welcome-logo">
         <img
           className="welcome-logo-img"
@@ -37,21 +60,38 @@ export function Welcome({ onPick, modelLabel }: Props) {
           alt="Fortytwo Prime"
         />
       </div>
-      <h1 className="welcome-title">How can I help you today?</h1>
-      <p className="welcome-sub">
-        {isPrime ? (
-          <>
-            Powered by <strong>Fortytwo Prime</strong> · pay-per-use in USDC on
-            Monad.
-          </>
-        ) : (
-          <>
-            Connected to <code>{modelLabel}</code> via OpenRouter.
-          </>
-        )}
-      </p>
+      {isAutomation ? (
+        <>
+          <p className="welcome-pill" role="status">
+            Automation · repeat mode
+          </p>
+          <h1 className="welcome-title">Choose a prompt to run in a loop</h1>
+          <p className="welcome-sub">
+            After each <strong>successful</strong> Fortytwo Prime reply, the{" "}
+            <strong>same</strong> message is sent again automatically. Use{" "}
+            <strong>Stop</strong> in the bar above anytime. Each turn uses your
+            session and USDC on Monad like normal chat.
+          </p>
+        </>
+      ) : (
+        <>
+          <h1 className="welcome-title">How can I help you today?</h1>
+          <p className="welcome-sub">
+            {isPrime ? (
+              <>
+                Powered by <strong>Fortytwo Prime</strong> · pay-per-use in USDC
+                on Monad.
+              </>
+            ) : (
+              <>
+                Connected to <code>{modelLabel}</code> via OpenRouter.
+              </>
+            )}
+          </p>
+        </>
+      )}
       <div className="suggestions">
-        {SUGGESTIONS.map((s) => (
+        {picks.map((s) => (
           <button
             type="button"
             key={s.title}

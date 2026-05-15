@@ -89,6 +89,9 @@ Allow: /
 # Internal OpenRouter playground (also noindex when the app loads)
 Disallow: /test
 
+# Automation stress-test route (also noindex when the app loads)
+Disallow: /automatisation
+
 Sitemap: ${siteUrl}/sitemap.xml
 `;
           const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
