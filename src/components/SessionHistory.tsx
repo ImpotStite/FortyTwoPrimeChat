@@ -31,6 +31,7 @@ const REASON_LABEL: Record<CloseReason, string> = {
   "410": "session gone",
   manual: "ended manually",
   error: "error",
+  refund: "refund on-chain",
 };
 
 function shortHash(h?: string): string {

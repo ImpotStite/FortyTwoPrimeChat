@@ -1,10 +1,10 @@
 /**
  * Per-wallet history of Fortytwo Prime billing sessions.
  *
- * A record is appended when a session opens (settle TX confirmed) and
- * patched on closure (idle / hard cap / 410 / refund detected via on-chain
- * Transfer event). The list is the source of truth for the "Past sessions"
- * UI and any cost analytics we surface.
+ * A record is appended when a session opens (settle TX confirmed) and patched
+ * on closure (idle / hard cap / 410 / error / manual) or when a refund Transfer
+ * is observed (closes still-open rows with reason `refund`). The list is the
+ * source of truth for the Past sessions UI and cost analytics.
  */
 
 import { FORTYTWO_X402_ESCROW_MONAD } from "./usdc";
@@ -18,7 +18,8 @@ export type CloseReason =
   | "402" // server requested re-payment
   | "410" // server reports session gone
   | "manual" // user disconnected wallet / cleared session
-  | "error"; // unrecoverable error during streaming
+  | "error" // unrecoverable error during streaming
+  | "refund"; // on-chain refund tx observed (session settled)
 
 export interface PrimeSessionRecord {
   /** sessionId returned by the server (header `x-session-id`). */

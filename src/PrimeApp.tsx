@@ -341,6 +341,13 @@ export default function PrimeApp({
           amount: log.value.toString(),
         });
         if (!applied) return;
+        if (!target.closedAt) {
+          markSessionClosed(address, target.id, "refund");
+        }
+        if (sessionIdRef.current === target.id) {
+          clearSession(address);
+          setSession(null);
+        }
         setHistoryRecords(loadSessionHistory(address));
         toasts.push({
           kind: "success",
