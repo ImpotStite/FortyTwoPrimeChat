@@ -4464,13 +4464,8 @@ kbd {
 }
 
 .sh-chain-item--id .sh-session-id-row {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-}
-
-.sh-chain-item--id .sh-copy-btn {
-  width: fit-content;
+  flex-direction: row;
+  align-items: center;
 }
 
 .sh-session-id-row {

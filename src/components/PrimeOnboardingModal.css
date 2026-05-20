@@ -500,7 +500,7 @@
   height: 24px;
   border-radius: 50%;
   display: block;
-  shape-rendering: geometricPrecision;
+  object-fit: contain;
 }
 
 .prime-onb-img-monad-badge {
