@@ -4037,16 +4037,8 @@ kbd {
   border-left: 3px solid var(--sh-pos);
 }
 
-.sh-card--tone-error {
+.sh-card--tone-closed {
   border-left: 3px solid var(--sh-neg);
-}
-
-.sh-card--tone-refund {
-  border-left: 3px solid var(--sh-refund);
-}
-
-.sh-card--tone-neutral {
-  border-left: 3px solid var(--border);
 }
 
 .sh-card-summary {
@@ -4085,14 +4077,9 @@ kbd {
   animation: sh-pulse 1.8s ease-in-out infinite;
 }
 
-.sh-card--tone-error .sh-card-dot {
+.sh-card--tone-closed .sh-card-dot {
   background: var(--sh-neg);
   box-shadow: 0 0 0 3px var(--sh-neg-bg);
-}
-
-.sh-card--tone-refund .sh-card-dot {
-  background: var(--sh-refund);
-  box-shadow: 0 0 0 3px var(--sh-refund-bg);
 }
 
 @keyframes sh-pulse {
@@ -4214,16 +4201,10 @@ kbd {
   color: var(--sh-pos);
 }
 
-.sh-card-badge--error {
+.sh-card-badge--closed {
   background: var(--sh-neg-bg);
   border-color: var(--sh-neg-border);
   color: var(--sh-neg);
-}
-
-.sh-card-badge--refund {
-  background: var(--sh-refund-bg);
-  border-color: var(--sh-refund-border);
-  color: var(--sh-refund);
 }
 
 .sh-card-chevron {
@@ -4266,6 +4247,23 @@ kbd {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px 16px;
+}
+
+.sh-section-reason {
+  padding-top: 10px;
+  gap: 6px;
+}
+
+.sh-field--span {
+  width: 100%;
+}
+
+.sh-field-value--wrap {
+  display: block;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.45;
 }
 
 .sh-field {

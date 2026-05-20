@@ -35,13 +35,36 @@ const REASON_LABEL: Record<CloseReason, string> = {
   refund: "refund on-chain",
 };
 
-type Tone = "active" | "neutral" | "error" | "refund";
+/** Hard session wall clock cap (matches server hard-cap semantics). */
+const HARD_CAP_MS = 60 * 60 * 1000;
 
-function toneFor(r: PrimeSessionRecord): Tone {
-  if (!r.closedAt) return "active";
-  if (r.closeReason === "error") return "error";
-  if (r.closeReason === "refund" || r.refundTxHash) return "refund";
-  return "neutral";
+type SessionTone = "active" | "closed";
+
+/**
+ * Sessions past the 60 min wall clock cap are treated as closed in the list UI
+ * even if `closedAt` was never written to storage.
+ */
+function stalePastHardCap(r: PrimeSessionRecord, now: number = Date.now()): boolean {
+  if (r.closedAt) return false;
+  return now - r.openedAt >= HARD_CAP_MS;
+}
+
+function effectivelyOpen(r: PrimeSessionRecord, now: number = Date.now()): boolean {
+  return !r.closedAt && !stalePastHardCap(r, now);
+}
+
+/** Close timestamp for display when the row is shown as closed. */
+function effectiveClosedAt(
+  r: PrimeSessionRecord,
+  now: number = Date.now()
+): number | undefined {
+  if (r.closedAt) return r.closedAt;
+  if (stalePastHardCap(r, now)) return r.openedAt + HARD_CAP_MS;
+  return undefined;
+}
+
+function sessionTone(r: PrimeSessionRecord, now: number = Date.now()): SessionTone {
+  return effectivelyOpen(r, now) ? "active" : "closed";
 }
 
 function shortHash(h?: string): string {
@@ -198,9 +221,12 @@ function SessionCard({
   const [expanded, setExpanded] = useState(false);
   const [idCopied, setIdCopied] = useState(false);
   const panelId = useId();
+  const now = Date.now();
 
-  const tone = toneFor(r);
-  const isOpen = !r.closedAt;
+  const tone = sessionTone(r, now);
+  const isLive = effectivelyOpen(r, now);
+  const closedAtEff = effectiveClosedAt(r, now);
+  const staleCap = stalePastHardCap(r, now);
   const payTo = effectivePayTo(r);
   const tokIn = r.tokensIn ?? 0;
   const tokOut = r.tokensOut ?? 0;
@@ -213,7 +239,10 @@ function SessionCard({
     : 0n;
   const refunded = r.refundedAmount ? BigInt(r.refundedAmount) : 0n;
   const awaitingRefund =
-    !!r.closedAt && !!r.settleTxHash && !r.refundTxHash && onChainSpent === 0n;
+    !!closedAtEff &&
+    !!r.settleTxHash &&
+    !r.refundTxHash &&
+    onChainSpent === 0n;
 
   /** Headline amount shown in the collapsed row (cost-first). */
   let headlineKind: "spent" | "api" | "live" | "pending" | "empty" = "empty";
@@ -221,10 +250,10 @@ function SessionCard({
   if (onChainSpent > 0n) {
     headlineKind = "spent";
     headlineValue = formatTokenAmount(onChainSpent.toString(), 6, 4);
-  } else if (isOpen && apiSpent > 0n) {
+  } else if (isLive && apiSpent > 0n) {
     headlineKind = "api";
     headlineValue = formatTokenAmount(apiSpent.toString(), 6, 4);
-  } else if (isOpen) {
+  } else if (isLive) {
     headlineKind = "live";
   } else if (awaitingRefund) {
     headlineKind = "pending";
@@ -236,9 +265,12 @@ function SessionCard({
     headlineValue = "0.00";
   }
 
-  const reasonLabel = isOpen
-    ? "active"
-    : REASON_LABEL[r.closeReason ?? "manual"];
+  const badgeLabel = isLive ? "active" : "closed";
+
+  const recordedReasonLabel =
+    staleCap && !r.closedAt
+      ? "60min cap (inferred)"
+      : REASON_LABEL[r.closeReason ?? "manual"];
 
   const linkAddr = (addr: string, label: string) =>
     addressHref ? (
@@ -308,13 +340,13 @@ function SessionCard({
 
         <span className="sh-card-meta">
           <span className="sh-card-when" title={fmtTime(r.openedAt)}>
-            {timeAgo(r.openedAt)}
+            {timeAgo(r.openedAt, now)}
           </span>
           <span className="sh-card-sep" aria-hidden>
             ·
           </span>
           <span className="sh-card-duration">
-            {fmtDuration(r.openedAt, r.closedAt)}
+            {fmtDuration(r.openedAt, closedAtEff)}
           </span>
         </span>
 
@@ -323,7 +355,7 @@ function SessionCard({
         </span>
 
         <span className={`sh-card-badge sh-card-badge--${tone}`}>
-          {reasonLabel}
+          {badgeLabel}
         </span>
 
         <span className="sh-card-chevron" aria-hidden>
@@ -350,21 +382,33 @@ function SessionCard({
           <div className="sh-field">
             <span className="sh-field-label">Opened</span>
             <span className="sh-field-value">{fmtTime(r.openedAt)}</span>
-            <span className="sh-field-sub">{timeAgo(r.openedAt)}</span>
+            <span className="sh-field-sub">{timeAgo(r.openedAt, now)}</span>
           </div>
           <div className="sh-field">
             <span className="sh-field-label">Closed</span>
             <span className="sh-field-value">
-              {r.closedAt ? fmtTime(r.closedAt) : "–"}
+              {closedAtEff ? fmtTime(closedAtEff) : "–"}
             </span>
-            {r.closedAt && (
-              <span className="sh-field-sub">{timeAgo(r.closedAt)}</span>
+            {closedAtEff && (
+              <span className="sh-field-sub">
+                {timeAgo(closedAtEff, now)}
+                {staleCap && !r.closedAt ? " · inferred" : ""}
+              </span>
             )}
           </div>
           <div className="sh-field">
             <span className="sh-field-label">Duration</span>
             <span className="sh-field-value">
-              {fmtDuration(r.openedAt, r.closedAt)}
+              {fmtDuration(r.openedAt, closedAtEff)}
+            </span>
+          </div>
+        </div>
+
+        <div className="sh-section sh-section-reason">
+          <div className="sh-field sh-field--span">
+            <span className="sh-field-label">Recorded close reason</span>
+            <span className="sh-field-value sh-field-value--wrap">
+              {recordedReasonLabel}
             </span>
           </div>
         </div>
