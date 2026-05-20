@@ -4245,7 +4245,7 @@ kbd {
 
 .sh-section-timeline {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px 16px;
 }
 
@@ -4281,20 +4281,6 @@ kbd {
 .sh-field-sub {
   font-size: 10.5px;
   color: var(--text-muted);
-}
-
-.sh-field-value--duration {
-  flex-wrap: wrap;
-  gap: 4px 6px;
-}
-
-.sh-field-value-sep {
-  color: var(--text-muted);
-}
-
-.sh-field-msgs {
-  color: var(--text-dim);
-  font-weight: 500;
 }
 
 /* Amounts row */

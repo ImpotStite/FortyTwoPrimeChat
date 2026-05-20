@@ -375,15 +375,14 @@ function SessionCard({
           </div>
           <div className="sh-field">
             <span className="sh-field-label">Duration</span>
-            <span className="sh-field-value sh-field-value--duration">
-              <span>{fmtDuration(r.openedAt, closedAtEff)}</span>
-              <span className="sh-field-value-sep" aria-hidden>
-                ·
-              </span>
-              <span className="sh-field-msgs">
-                {msgs.toLocaleString("en-US")}{" "}
-                {msgs === 1 ? "message" : "messages"}
-              </span>
+            <span className="sh-field-value">
+              {fmtDuration(r.openedAt, closedAtEff)}
+            </span>
+          </div>
+          <div className="sh-field">
+            <span className="sh-field-label">Messages</span>
+            <span className="sh-field-value">
+              {msgs.toLocaleString("en-US")}
             </span>
           </div>
         </div>
