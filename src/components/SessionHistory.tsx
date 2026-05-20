@@ -325,12 +325,10 @@ function SessionCard({
           <span className="sh-card-duration">
             {fmtDuration(r.openedAt, closedAtEff)}
           </span>
-          <span className="sh-card-sep" aria-hidden>
-            ·
-          </span>
-          <span className="sh-card-msgs">
-            {msgs} {msgs === 1 ? "msg" : "msgs"}
-          </span>
+        </span>
+
+        <span className="sh-card-msgs">
+          {msgs} {msgs === 1 ? "msg" : "msgs"}
         </span>
 
         <span className={`sh-card-badge sh-card-badge--${tone}`}>
@@ -377,8 +375,15 @@ function SessionCard({
           </div>
           <div className="sh-field">
             <span className="sh-field-label">Duration</span>
-            <span className="sh-field-value">
-              {fmtDuration(r.openedAt, closedAtEff)}
+            <span className="sh-field-value sh-field-value--duration">
+              <span>{fmtDuration(r.openedAt, closedAtEff)}</span>
+              <span className="sh-field-value-sep" aria-hidden>
+                ·
+              </span>
+              <span className="sh-field-msgs">
+                {msgs.toLocaleString("en-US")}{" "}
+                {msgs === 1 ? "message" : "messages"}
+              </span>
             </span>
           </div>
         </div>
@@ -431,17 +436,6 @@ function SessionCard({
               </div>
             )}
           </div>
-
-          {msgs > 0 && (
-            <div className="sh-usage-row">
-              <div className="sh-usage-msgs">
-                <span className="sh-field-label">Messages</span>
-                <span className="sh-field-value">
-                  {msgs.toLocaleString("en-US")}
-                </span>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="sh-section sh-section-chain">
