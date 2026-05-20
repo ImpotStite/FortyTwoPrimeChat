@@ -11,7 +11,6 @@ import { UsdcMark } from "./Icons";
 import {
   effectivePayTo,
   formatTokenAmount,
-  type CloseReason,
   type PrimeSessionRecord,
 } from "../lib/primeHistory";
 
@@ -24,16 +23,6 @@ interface Props {
   addressHref?: (addr: string) => string;
   onClear?: () => void;
 }
-
-const REASON_LABEL: Record<CloseReason, string> = {
-  idle: "idle 10min",
-  "hard-cap": "60min cap",
-  "402": "re-payment",
-  "410": "session gone",
-  manual: "ended manually",
-  error: "error",
-  refund: "refund on-chain",
-};
 
 /** Hard session wall clock cap (matches server hard-cap semantics). */
 const HARD_CAP_MS = 60 * 60 * 1000;
@@ -267,11 +256,6 @@ function SessionCard({
 
   const badgeLabel = isLive ? "active" : "closed";
 
-  const recordedReasonLabel =
-    staleCap && !r.closedAt
-      ? "60min cap (inferred)"
-      : REASON_LABEL[r.closeReason ?? "manual"];
-
   const linkAddr = (addr: string, label: string) =>
     addressHref ? (
       <a
@@ -400,15 +384,6 @@ function SessionCard({
             <span className="sh-field-label">Duration</span>
             <span className="sh-field-value">
               {fmtDuration(r.openedAt, closedAtEff)}
-            </span>
-          </div>
-        </div>
-
-        <div className="sh-section sh-section-reason">
-          <div className="sh-field sh-field--span">
-            <span className="sh-field-label">Recorded close reason</span>
-            <span className="sh-field-value sh-field-value--wrap">
-              {recordedReasonLabel}
             </span>
           </div>
         </div>

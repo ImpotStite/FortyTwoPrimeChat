@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { FortytwoSign } from "./Icons";
+import { FortytwoSign, UsdcMark } from "./Icons";
 import "./PrimeOnboardingModal.css";
 
 /** Framed steps: responsive src (128 default) vs 192 for high-DPR / larger paint. */
 const FT_MARK_FRAMED_SRC = "/fortytwo-prime-icon-128.png";
 const FT_MARK_FRAMED_SRCSET =
   "/fortytwo-prime-icon-128.png 128w, /fortytwo-prime-icon-192.png 192w";
-const USDC_LOGO = "/usdc-logo.png";
 const MONAD_LOGO = "/monad-logo.png";
 
 function IconRefresh({ className, size = 24 }: { className?: string; size?: number }) {
@@ -292,13 +291,10 @@ function VisualAuth() {
         <div className="prime-onb-auth-row-usdc">
           <div className="prime-onb-auth-usdc-label">
             <div className="prime-onb-auth-badge-wrap">
-              <img
-                src={USDC_LOGO}
-                alt=""
-                width={24}
-                height={24}
+              <UsdcMark
+                size={24}
                 className="prime-onb-img-usdc"
-                decoding="async"
+                decorative
               />
               <img
                 src={MONAD_LOGO}
