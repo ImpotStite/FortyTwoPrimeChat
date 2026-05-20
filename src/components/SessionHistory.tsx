@@ -339,12 +339,12 @@ function SessionCard({
         </span>
       </button>
 
+      {expanded && (
       <div
         id={panelId}
         role="region"
         aria-label="Session details"
         className="sh-card-panel"
-        hidden={!expanded}
       >
         <div className="sh-section sh-section-timeline">
           <div className="sh-field">
@@ -517,30 +517,28 @@ function SessionCard({
                 <span className="session-history-mono">–</span>
               )}
             </div>
-            <div className="sh-chain-item">
-              <span className="sh-field-label">Network</span>
-              <span className="sh-chain-network">{r.network}</span>
+            <div className="sh-chain-item sh-chain-item--id">
+              <span className="sh-field-label">Session ID</span>
+              <div className="sh-session-id-row">
+                <code className="sh-session-id" title={r.id}>
+                  {shortSessionId(r.id)}
+                </code>
+                <button
+                  type="button"
+                  className="sh-copy-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void copySessionId();
+                  }}
+                >
+                  {idCopied ? "Copied" : "Copy ID"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-
-        <div className="sh-section sh-section-id">
-          <span className="sh-field-label">Session ID</span>
-          <code className="sh-session-id" title={r.id}>
-            {shortSessionId(r.id)}
-          </code>
-          <button
-            type="button"
-            className="sh-copy-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              void copySessionId();
-            }}
-          >
-            {idCopied ? "Copied" : "Copy ID"}
-          </button>
-        </div>
       </div>
+      )}
     </div>
   );
 }

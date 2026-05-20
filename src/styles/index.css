@@ -4478,13 +4478,24 @@ kbd {
   min-width: 0;
 }
 
-.sh-chain-network {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.sh-chain-item--id {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.sh-session-id-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.sh-session-id-row .sh-session-id {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* Session ID + copy */
