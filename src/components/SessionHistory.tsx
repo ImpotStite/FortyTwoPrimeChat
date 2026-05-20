@@ -217,9 +217,6 @@ function SessionCard({
   const closedAtEff = effectiveClosedAt(r, now);
   const staleCap = stalePastHardCap(r, now);
   const payTo = effectivePayTo(r);
-  const tokIn = r.tokensIn ?? 0;
-  const tokOut = r.tokensOut ?? 0;
-  const tokTotal = tokIn + tokOut;
   const msgs = r.messageCount ?? 0;
 
   const onChainSpent = r.spentAmount ? BigInt(r.spentAmount) : 0n;
@@ -283,10 +280,6 @@ function SessionCard({
     }
   };
 
-  // Proportional in/out usage bar (only when we have tokens).
-  const inPct = tokTotal > 0 ? Math.round((tokIn / tokTotal) * 100) : 0;
-  const outPct = tokTotal > 0 ? 100 - inPct : 0;
-
   return (
     <div
       className={`sh-card sh-card--tone-${tone} ${
@@ -332,10 +325,12 @@ function SessionCard({
           <span className="sh-card-duration">
             {fmtDuration(r.openedAt, closedAtEff)}
           </span>
-        </span>
-
-        <span className="sh-card-msgs">
-          {msgs} {msgs === 1 ? "msg" : "msgs"}
+          <span className="sh-card-sep" aria-hidden>
+            ·
+          </span>
+          <span className="sh-card-msgs">
+            {msgs} {msgs === 1 ? "msg" : "msgs"}
+          </span>
         </span>
 
         <span className={`sh-card-badge sh-card-badge--${tone}`}>
@@ -437,42 +432,14 @@ function SessionCard({
             )}
           </div>
 
-          {(tokTotal > 0 || msgs > 0) && (
+          {msgs > 0 && (
             <div className="sh-usage-row">
               <div className="sh-usage-msgs">
                 <span className="sh-field-label">Messages</span>
-                <span className="sh-field-value">{msgs.toLocaleString("en-US")}</span>
+                <span className="sh-field-value">
+                  {msgs.toLocaleString("en-US")}
+                </span>
               </div>
-              {tokTotal > 0 && (
-                <div className="sh-usage-tokens">
-                  <div className="sh-usage-tokens-head">
-                    <span className="sh-field-label">Tokens</span>
-                    <span className="sh-usage-tokens-total">
-                      {tokTotal.toLocaleString("en-US")}
-                    </span>
-                  </div>
-                  <div className="sh-usage-bar" aria-hidden>
-                    <span
-                      className="sh-usage-bar-in"
-                      style={{ width: `${inPct}%` }}
-                    />
-                    <span
-                      className="sh-usage-bar-out"
-                      style={{ width: `${outPct}%` }}
-                    />
-                  </div>
-                  <div className="sh-usage-tokens-legend">
-                    <span>
-                      <span className="sh-legend-dot sh-legend-dot--in" /> in{" "}
-                      {tokIn.toLocaleString("en-US")}
-                    </span>
-                    <span>
-                      <span className="sh-legend-dot sh-legend-dot--out" /> out{" "}
-                      {tokOut.toLocaleString("en-US")}
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
