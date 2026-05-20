@@ -1,11 +1,12 @@
 /**
  * Modal listing past Fortytwo Prime billing sessions for the connected wallet.
  *
- * Each row shows: opened/closed timestamps, close reason, in/out token
- * tallies, message count, spent/refunded USDC, addresses/TX links, session id.
+ * Layout: stat tiles + sparkline at the top, accordion cards below (cost-first
+ * collapsed view, on-chain details on expand). Same props as before so the
+ * surrounding app (PrimeApp.tsx) is untouched.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { UsdcMark } from "./Icons";
 import {
   effectivePayTo,
@@ -34,6 +35,15 @@ const REASON_LABEL: Record<CloseReason, string> = {
   refund: "refund on-chain",
 };
 
+type Tone = "active" | "neutral" | "error" | "refund";
+
+function toneFor(r: PrimeSessionRecord): Tone {
+  if (!r.closedAt) return "active";
+  if (r.closeReason === "error") return "error";
+  if (r.closeReason === "refund" || r.refundTxHash) return "refund";
+  return "neutral";
+}
+
 function shortHash(h?: string): string {
   if (!h) return "–";
   const clean = h.startsWith("0x") ? h : `0x${h}`;
@@ -57,6 +67,11 @@ function fmtTime(ts: number): string {
   });
 }
 
+function fmtDateShort(ts: number): string {
+  const d = new Date(ts);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 function fmtDuration(open: number, close?: number): string {
   if (!close) return "open";
   const ms = close - open;
@@ -68,7 +83,110 @@ function fmtDuration(open: number, close?: number): string {
   return `${h}h ${m}m`;
 }
 
-function SessionDetailRow({
+function timeAgo(ts: number, now: number = Date.now()): string {
+  const diff = now - ts;
+  if (diff < 0) return "just now";
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d}d ago`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(mo / 12)}y ago`;
+}
+
+/** Spent USDC for a record in base units bigint (on-chain > API estimate > 0). */
+function recordSpentBaseUnits(r: PrimeSessionRecord): bigint {
+  try {
+    if (r.spentAmount) return BigInt(r.spentAmount);
+    if (r.apiReportedSpentBaseUnits) return BigInt(r.apiReportedSpentBaseUnits);
+  } catch {
+    /* ignore */
+  }
+  return 0n;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Sparkline                                                                  */
+/* -------------------------------------------------------------------------- */
+
+function Sparkline({ records }: { records: PrimeSessionRecord[] }) {
+  const data = useMemo(() => {
+    const sorted = [...records].sort((a, b) => a.openedAt - b.openedAt);
+    return sorted.map((r) => ({
+      ts: r.openedAt,
+      value: Number(recordSpentBaseUnits(r)) / 1e6,
+    }));
+  }, [records]);
+
+  const max = useMemo(
+    () => data.reduce((m, d) => (d.value > m ? d.value : m), 0),
+    [data]
+  );
+
+  if (data.length === 0 || max <= 0) return null;
+
+  const W = 160;
+  const H = 36;
+  const gap = 2;
+  const n = data.length;
+  const barW = Math.max(2, (W - gap * (n - 1)) / n);
+
+  return (
+    <div className="session-history-spark" aria-hidden>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width="100%"
+        height={H}
+        preserveAspectRatio="none"
+        role="img"
+      >
+        <line
+          x1="0"
+          y1={H - 0.5}
+          x2={W}
+          y2={H - 0.5}
+          stroke="currentColor"
+          strokeOpacity="0.18"
+          strokeWidth="1"
+        />
+        {data.map((d, i) => {
+          const h = max > 0 ? Math.max(1.5, (d.value / max) * (H - 4)) : 0;
+          const x = i * (barW + gap);
+          const y = H - h;
+          return (
+            <rect
+              key={`${d.ts}-${i}`}
+              x={x}
+              y={y}
+              width={barW}
+              height={h}
+              rx={Math.min(1.5, barW / 2)}
+              className="session-history-spark-bar"
+            >
+              <title>
+                {`${fmtDateShort(d.ts)} — ${d.value.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 4,
+                })} USDC`}
+              </title>
+            </rect>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Session card (accordion)                                                   */
+/* -------------------------------------------------------------------------- */
+
+function SessionCard({
   r,
   explorerHref,
   addressHref,
@@ -77,12 +195,50 @@ function SessionDetailRow({
   explorerHref: (txHash: string) => string;
   addressHref?: (addr: string) => string;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const [idCopied, setIdCopied] = useState(false);
+  const panelId = useId();
+
+  const tone = toneFor(r);
   const isOpen = !r.closedAt;
   const payTo = effectivePayTo(r);
   const tokIn = r.tokensIn ?? 0;
   const tokOut = r.tokensOut ?? 0;
+  const tokTotal = tokIn + tokOut;
   const msgs = r.messageCount ?? 0;
+
+  const onChainSpent = r.spentAmount ? BigInt(r.spentAmount) : 0n;
+  const apiSpent = r.apiReportedSpentBaseUnits
+    ? BigInt(r.apiReportedSpentBaseUnits)
+    : 0n;
+  const refunded = r.refundedAmount ? BigInt(r.refundedAmount) : 0n;
+  const awaitingRefund =
+    !!r.closedAt && !!r.settleTxHash && !r.refundTxHash && onChainSpent === 0n;
+
+  /** Headline amount shown in the collapsed row (cost-first). */
+  let headlineKind: "spent" | "api" | "live" | "pending" | "empty" = "empty";
+  let headlineValue = "";
+  if (onChainSpent > 0n) {
+    headlineKind = "spent";
+    headlineValue = formatTokenAmount(onChainSpent.toString(), 6, 4);
+  } else if (isOpen && apiSpent > 0n) {
+    headlineKind = "api";
+    headlineValue = formatTokenAmount(apiSpent.toString(), 6, 4);
+  } else if (isOpen) {
+    headlineKind = "live";
+  } else if (awaitingRefund) {
+    headlineKind = "pending";
+  } else if (apiSpent > 0n) {
+    headlineKind = "api";
+    headlineValue = formatTokenAmount(apiSpent.toString(), 6, 4);
+  } else {
+    headlineKind = "spent";
+    headlineValue = "0.00";
+  }
+
+  const reasonLabel = isOpen
+    ? "active"
+    : REASON_LABEL[r.closeReason ?? "manual"];
 
   const linkAddr = (addr: string, label: string) =>
     addressHref ? (
@@ -111,180 +267,287 @@ function SessionDetailRow({
     }
   };
 
+  // Proportional in/out usage bar (only when we have tokens).
+  const inPct = tokTotal > 0 ? Math.round((tokIn / tokTotal) * 100) : 0;
+  const outPct = tokTotal > 0 ? 100 - inPct : 0;
+
   return (
     <div
-      className={`session-history-row ${isOpen ? "is-open" : ""}`}
+      className={`sh-card sh-card--tone-${tone} ${
+        expanded ? "is-expanded" : ""
+      }`}
     >
-      <div className="session-history-row-head">
-        <span className="session-history-when">{fmtTime(r.openedAt)}</span>
-        <span className="session-history-duration">
-          {fmtDuration(r.openedAt, r.closedAt)}
-        </span>
-        <span
-          className={`session-history-reason${
-            isOpen
-              ? " is-active"
-              : r.closeReason === "error"
-                ? " is-error"
-                : ""
-          }`}
-        >
-          {isOpen ? "active" : REASON_LABEL[r.closeReason ?? "manual"]}
-        </span>
-      </div>
+      <button
+        type="button"
+        className="sh-card-summary"
+        aria-expanded={expanded}
+        aria-controls={panelId}
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <span className="sh-card-dot" aria-hidden />
 
-      <div className="session-history-row-body">
-        <div className="session-history-detail-grid session-history-detail-grid--pair">
-          <div className="session-history-detail-block">
-            <span className="session-history-detail-label">Opened</span>
-            <span className="session-history-detail-value">
-              {fmtTime(r.openedAt)}
-            </span>
+        <span className="sh-card-cost">
+          {headlineKind === "live" && (
+            <span className="sh-card-cost-live">Live</span>
+          )}
+          {headlineKind === "pending" && (
+            <span className="sh-card-cost-pending">Pending</span>
+          )}
+          {(headlineKind === "spent" || headlineKind === "api") && (
+            <>
+              <UsdcMark size={14} aria-hidden />
+              <span className="sh-card-cost-value">{headlineValue}</span>
+              {headlineKind === "api" && (
+                <span className="sh-card-cost-tag" title="API-reported estimate">
+                  est.
+                </span>
+              )}
+            </>
+          )}
+        </span>
+
+        <span className="sh-card-meta">
+          <span className="sh-card-when" title={fmtTime(r.openedAt)}>
+            {timeAgo(r.openedAt)}
+          </span>
+          <span className="sh-card-sep" aria-hidden>
+            ·
+          </span>
+          <span className="sh-card-duration">
+            {fmtDuration(r.openedAt, r.closedAt)}
+          </span>
+        </span>
+
+        <span className="sh-card-msgs">
+          {msgs} {msgs === 1 ? "msg" : "msgs"}
+        </span>
+
+        <span className={`sh-card-badge sh-card-badge--${tone}`}>
+          {reasonLabel}
+        </span>
+
+        <span className="sh-card-chevron" aria-hidden>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M6 9l6 6 6-6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </button>
+
+      <div
+        id={panelId}
+        role="region"
+        aria-label="Session details"
+        className="sh-card-panel"
+        hidden={!expanded}
+      >
+        <div className="sh-section sh-section-timeline">
+          <div className="sh-field">
+            <span className="sh-field-label">Opened</span>
+            <span className="sh-field-value">{fmtTime(r.openedAt)}</span>
+            <span className="sh-field-sub">{timeAgo(r.openedAt)}</span>
           </div>
-          <div className="session-history-detail-block">
-            <span className="session-history-detail-label">Closed</span>
-            <span className="session-history-detail-value">
+          <div className="sh-field">
+            <span className="sh-field-label">Closed</span>
+            <span className="sh-field-value">
               {r.closedAt ? fmtTime(r.closedAt) : "–"}
             </span>
+            {r.closedAt && (
+              <span className="sh-field-sub">{timeAgo(r.closedAt)}</span>
+            )}
+          </div>
+          <div className="sh-field">
+            <span className="sh-field-label">Duration</span>
+            <span className="sh-field-value">
+              {fmtDuration(r.openedAt, r.closedAt)}
+            </span>
           </div>
         </div>
 
-        {(tokIn > 0 || tokOut > 0 || msgs > 0) && (
-          <div
-            className="session-history-tokens"
-            title="Token counts from MCP usage for this session."
-          >
-            <div className="session-history-tokens-row">
-              {(tokIn > 0 || tokOut > 0) && (
-                <span className="session-history-tokens-inout">
-                  ↑ {tokIn.toLocaleString("en-US")} in · ↓{" "}
-                  {tokOut.toLocaleString("en-US")} out
+        <div className="sh-section sh-section-usage">
+          <div className="sh-amounts">
+            {onChainSpent > 0n && (
+              <div className="sh-amount sh-amount--neg" title="On-chain: authorized − refunded">
+                <span className="sh-amount-label">Spent on-chain</span>
+                <span className="sh-amount-value">
+                  <UsdcMark size={12} />{" "}
+                  {formatTokenAmount(onChainSpent.toString(), 6, 4)}
                 </span>
-              )}
-              {msgs > 0 && (
-                <span className="session-history-tokens-msgs">
-                  {msgs} {msgs === 1 ? "message" : "messages"}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="session-history-amounts">
-          {r.apiReportedSpentBaseUnits &&
-            BigInt(r.apiReportedSpentBaseUnits) > 0n && (
-              <span
-                className="session-history-spent"
+              </div>
+            )}
+            {apiSpent > 0n && (
+              <div
+                className="sh-amount sh-amount--neutral"
                 title="If the MCP payload includes USDC fields in usage metadata"
               >
-                ≈ <UsdcMark size={12} />{" "}
-                {formatTokenAmount(r.apiReportedSpentBaseUnits, 6, 4)} API est.
-                spent
-              </span>
+                <span className="sh-amount-label">Spent (API est.)</span>
+                <span className="sh-amount-value">
+                  <UsdcMark size={12} />{" "}
+                  {formatTokenAmount(apiSpent.toString(), 6, 4)}
+                </span>
+              </div>
             )}
-          {r.spentAmount && BigInt(r.spentAmount) > 0n && (
-            <span className="session-history-spent" title="On-chain: authorized − refunded">
-              ↦ <UsdcMark size={12} /> {formatTokenAmount(r.spentAmount, 6, 4)}{" "}
-              spent
-            </span>
-          )}
-          {r.refundedAmount && BigInt(r.refundedAmount) > 0n && (
-            <span title="Refunded" className="session-history-pos">
-              + <UsdcMark size={12} />{" "}
-              {formatTokenAmount(r.refundedAmount, 6, 4)} refunded
-            </span>
-          )}
-          {r.closedAt &&
-            !r.refundTxHash &&
-            r.settleTxHash &&
-            !(r.spentAmount && BigInt(r.spentAmount) > 0n) && (
-              <span className="session-history-pending">
-                On-chain release pending…
-              </span>
+            {refunded > 0n && (
+              <div className="sh-amount sh-amount--pos" title="Refunded">
+                <span className="sh-amount-label">Refunded</span>
+                <span className="sh-amount-value">
+                  + <UsdcMark size={12} />{" "}
+                  {formatTokenAmount(refunded.toString(), 6, 4)}
+                </span>
+              </div>
             )}
+            {r.authorizedAmount && (
+              <div className="sh-amount sh-amount--muted" title="Authorized for this session">
+                <span className="sh-amount-label">Authorized</span>
+                <span className="sh-amount-value">
+                  <UsdcMark size={12} />{" "}
+                  {formatTokenAmount(r.authorizedAmount, 6, 4)}
+                </span>
+              </div>
+            )}
+            {awaitingRefund && (
+              <div className="sh-amount sh-amount--pending">
+                <span className="sh-amount-label">Release</span>
+                <span className="sh-amount-value">On-chain release pending…</span>
+              </div>
+            )}
+          </div>
+
+          {(tokTotal > 0 || msgs > 0) && (
+            <div className="sh-usage-row">
+              <div className="sh-usage-msgs">
+                <span className="sh-field-label">Messages</span>
+                <span className="sh-field-value">{msgs.toLocaleString("en-US")}</span>
+              </div>
+              {tokTotal > 0 && (
+                <div className="sh-usage-tokens">
+                  <div className="sh-usage-tokens-head">
+                    <span className="sh-field-label">Tokens</span>
+                    <span className="sh-usage-tokens-total">
+                      {tokTotal.toLocaleString("en-US")}
+                    </span>
+                  </div>
+                  <div className="sh-usage-bar" aria-hidden>
+                    <span
+                      className="sh-usage-bar-in"
+                      style={{ width: `${inPct}%` }}
+                    />
+                    <span
+                      className="sh-usage-bar-out"
+                      style={{ width: `${outPct}%` }}
+                    />
+                  </div>
+                  <div className="sh-usage-tokens-legend">
+                    <span>
+                      <span className="sh-legend-dot sh-legend-dot--in" /> in{" "}
+                      {tokIn.toLocaleString("en-US")}
+                    </span>
+                    <span>
+                      <span className="sh-legend-dot sh-legend-dot--out" /> out{" "}
+                      {tokOut.toLocaleString("en-US")}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="session-history-chain-grid">
-          <div className="session-history-chain-item">
-            <span className="session-history-detail-label">Wallet</span>
-            {linkAddr(r.walletAddress, shortHash(r.walletAddress))}
-          </div>
-          <div className="session-history-chain-item">
-            <span className="session-history-detail-label">USDC</span>
-            <span className="session-history-chain-value">
-              {r.asset ? (
-                <>
-                  <UsdcMark size={12} aria-hidden />
-                  {linkAddr(r.asset, shortHash(r.asset))}
-                </>
+        <div className="sh-section sh-section-chain">
+          <div className="sh-chain-grid">
+            <div className="sh-chain-item">
+              <span className="sh-field-label">Wallet</span>
+              {linkAddr(r.walletAddress, shortHash(r.walletAddress))}
+            </div>
+            <div className="sh-chain-item">
+              <span className="sh-field-label">USDC</span>
+              <span className="sh-chain-value">
+                {r.asset ? (
+                  <>
+                    <UsdcMark size={12} aria-hidden />
+                    {linkAddr(r.asset, shortHash(r.asset))}
+                  </>
+                ) : (
+                  <span className="session-history-mono">–</span>
+                )}
+              </span>
+            </div>
+            <div className="sh-chain-item">
+              <span className="sh-field-label">Escrow</span>
+              {payTo ? (
+                linkAddr(payTo, shortHash(payTo))
               ) : (
                 <span className="session-history-mono">–</span>
               )}
-            </span>
-          </div>
-          <div className="session-history-chain-item">
-            <span className="session-history-detail-label">Escrow</span>
-            {payTo ? (
-              linkAddr(payTo, shortHash(payTo))
-            ) : (
-              <span className="session-history-mono">–</span>
-            )}
-          </div>
-
-          <div className="session-history-chain-item">
-            <span className="session-history-detail-label">Settle TX</span>
-            {r.settleTxHash ? (
-              <a
-                href={explorerHref(r.settleTxHash)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="session-history-mono-link session-history-tx-link"
-                title={r.settleTxHash}
-              >
-                {shortHash(r.settleTxHash)}
-              </a>
-            ) : (
-              <span className="session-history-mono">–</span>
-            )}
-          </div>
-          <div
-            className="session-history-chain-item session-history-chain-item--spacer"
-            aria-hidden
-          />
-          <div className="session-history-chain-item">
-            <span className="session-history-detail-label">Refund TX</span>
-            {r.refundTxHash ? (
-              <a
-                href={explorerHref(r.refundTxHash)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="session-history-mono-link session-history-tx-link"
-                title={r.refundTxHash}
-              >
-                {shortHash(r.refundTxHash)}
-              </a>
-            ) : (
-              <span className="session-history-mono">–</span>
-            )}
+            </div>
+            <div className="sh-chain-item">
+              <span className="sh-field-label">Settle TX</span>
+              {r.settleTxHash ? (
+                <a
+                  href={explorerHref(r.settleTxHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="session-history-mono-link"
+                  title={r.settleTxHash}
+                >
+                  {shortHash(r.settleTxHash)}
+                </a>
+              ) : (
+                <span className="session-history-mono">–</span>
+              )}
+            </div>
+            <div className="sh-chain-item">
+              <span className="sh-field-label">Refund TX</span>
+              {r.refundTxHash ? (
+                <a
+                  href={explorerHref(r.refundTxHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="session-history-mono-link"
+                  title={r.refundTxHash}
+                >
+                  {shortHash(r.refundTxHash)}
+                </a>
+              ) : (
+                <span className="session-history-mono">–</span>
+              )}
+            </div>
+            <div className="sh-chain-item">
+              <span className="sh-field-label">Network</span>
+              <span className="sh-chain-network">{r.network}</span>
+            </div>
           </div>
         </div>
 
-        <div className="session-history-session-id">
-          <code className="session-history-id-code" title={r.id}>
+        <div className="sh-section sh-section-id">
+          <span className="sh-field-label">Session ID</span>
+          <code className="sh-session-id" title={r.id}>
             {shortSessionId(r.id)}
           </code>
           <button
             type="button"
-            className="session-history-copy-id"
-            onClick={() => void copySessionId()}
+            className="sh-copy-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              void copySessionId();
+            }}
           >
-            {idCopied ? "Copied" : "Copy session ID"}
+            {idCopied ? "Copied" : "Copy ID"}
           </button>
         </div>
       </div>
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Main modal                                                                  */
+/* -------------------------------------------------------------------------- */
 
 export function SessionHistory({
   open,
@@ -318,7 +581,8 @@ export function SessionHistory({
         if (r.apiReportedSpentBaseUnits)
           apiSpent += BigInt(r.apiReportedSpentBaseUnits);
         messages += r.messageCount ?? 0;
-        if (r.closedAt && !r.refundTxHash && r.settleTxHash) awaitingRefundCount += 1;
+        if (r.closedAt && !r.refundTxHash && r.settleTxHash)
+          awaitingRefundCount += 1;
       }
     } catch {
       /* ignore malformed amounts */
@@ -337,7 +601,7 @@ export function SessionHistory({
   const absRemainder =
     totals.remainder < 0n ? -totals.remainder : totals.remainder;
 
-  const spentOnChainLabel =
+  const spentLabel =
     totals.spent > 0n
       ? formatTokenAmount(totals.spent.toString(), 6, 4)
       : totals.awaitingRefundCount > 0
@@ -358,19 +622,28 @@ export function SessionHistory({
 
   if (!open) return null;
 
+  const count = records.length;
+
   return (
     <div className="modal-scrim" onClick={onClose}>
       <div
-        className="modal session-history"
+        className="modal sh-modal"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label="Past sessions"
       >
-        <div className="session-history-header">
-          <h2 className="modal-title">Past sessions</h2>
+        <header className="sh-header">
+          <div className="sh-header-title">
+            <h2 className="modal-title sh-title">Past sessions</h2>
+            <span className="sh-subtitle">
+              {count === 0
+                ? "No sessions yet"
+                : `${count} ${count === 1 ? "session" : "sessions"}`}
+            </span>
+          </div>
           <button
             type="button"
-            className="icon-btn"
+            className="icon-btn sh-close-x"
             onClick={onClose}
             aria-label="Close"
             title="Close"
@@ -384,71 +657,95 @@ export function SessionHistory({
               />
             </svg>
           </button>
-        </div>
+        </header>
 
-        {records.length === 0 ? (
-          <p className="modal-text session-history-empty">
-            No past sessions yet, they'll appear here after your first paid
-            message.
-          </p>
+        {count === 0 ? (
+          <div className="sh-empty">
+            <div className="sh-empty-icon" aria-hidden>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M3 12a9 9 0 1 0 3-6.7M3 5v4h4M12 7v5l3 2"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <p className="sh-empty-title">No past sessions yet</p>
+            <p className="sh-empty-sub">
+              They will appear here after your first paid message.
+            </p>
+          </div>
         ) : (
           <>
-            <div className="session-history-totals">
-              <div className="session-history-total">
-                <span
-                  className="session-history-total-label"
-                  title="USDC kept by the network after escrow release (authorized − refunded on-chain)."
-                >
-                  Spent
-                </span>
-                <span
-                  className={`session-history-total-value${
-                    spentOnChainLabel === "Pending" ? " is-pending" : ""
-                  }`}
-                >
-                  <UsdcMark size={12} /> {spentOnChainLabel}
-                </span>
-              </div>
-              {apiSpentLabel && (
-                <div className="session-history-total">
-                  <span
-                    className="session-history-total-label"
-                    title="Sum of per-call charges if the MCP response includes USDC fields in _meta.usage."
+            <section className="sh-summary">
+              <dl className="sh-stats">
+                <div className="sh-stat sh-stat--spent">
+                  <dt
+                    className="sh-stat-label"
+                    title="USDC kept by the network after escrow release (authorized − refunded on-chain)."
                   >
-                    Spent (est.)
-                  </span>
-                  <span className="session-history-total-value">
-                    <UsdcMark size={12} /> {apiSpentLabel}
-                  </span>
+                    Spent
+                  </dt>
+                  <dd
+                    className={`sh-stat-value${
+                      spentLabel === "Pending" ? " is-pending" : ""
+                    }`}
+                  >
+                    <UsdcMark size={14} aria-hidden />
+                    <span>{spentLabel}</span>
+                  </dd>
                 </div>
-              )}
-              <div className="session-history-total">
-                <span
-                  className="session-history-total-label"
-                  title="USDC returned to your wallet after the session closed."
-                >
-                  Refunded
-                </span>
-                <span
-                  className={`session-history-total-value${
-                    refundedLabel === "Pending" ? " is-pending" : ""
-                  }`}
-                >
-                  <UsdcMark size={12} /> {refundedLabel}
-                </span>
-              </div>
-              <div className="session-history-total">
-                <span className="session-history-total-label">Messages</span>
-                <span className="session-history-total-value">
-                  {totals.messages.toLocaleString("en-US")}
-                </span>
-              </div>
-            </div>
+
+                <div className="sh-stat sh-stat--refunded">
+                  <dt
+                    className="sh-stat-label"
+                    title="USDC returned to your wallet after the session closed."
+                  >
+                    Refunded
+                  </dt>
+                  <dd
+                    className={`sh-stat-value${
+                      refundedLabel === "Pending" ? " is-pending" : ""
+                    }`}
+                  >
+                    <UsdcMark size={14} aria-hidden />
+                    <span>{refundedLabel}</span>
+                  </dd>
+                </div>
+
+                <div className="sh-stat sh-stat--messages">
+                  <dt className="sh-stat-label">Messages</dt>
+                  <dd className="sh-stat-value">
+                    <span>{totals.messages.toLocaleString("en-US")}</span>
+                  </dd>
+                </div>
+
+                {apiSpentLabel && (
+                  <div className="sh-stat sh-stat--est">
+                    <dt
+                      className="sh-stat-label"
+                      title="Sum of per-call USDC charges if the MCP response includes them in _meta.usage."
+                    >
+                      Spent (est.)
+                    </dt>
+                    <dd className="sh-stat-value">
+                      <UsdcMark size={14} aria-hidden />
+                      <span>{apiSpentLabel}</span>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+
+              <Sparkline records={records} />
+            </section>
+
             {totals.auth > 0n &&
               totals.remainder !== 0n &&
               absRemainder <= 50_000n && (
                 <p
-                  className="session-history-totals-note"
+                  className="sh-note"
                   title={`Exact remainder: ${formatTokenAmount(
                     absRemainder.toString(),
                     6,
@@ -460,9 +757,9 @@ export function SessionHistory({
                 </p>
               )}
 
-            <div className="session-history-list">
+            <div className="sh-list">
               {records.map((r) => (
-                <SessionDetailRow
+                <SessionCard
                   key={r.id}
                   r={r}
                   explorerHref={explorerHref}
@@ -473,11 +770,11 @@ export function SessionHistory({
           </>
         )}
 
-        <div className="modal-actions">
-          {onClear && records.length > 0 && (
+        <footer className="sh-footer">
+          {onClear && count > 0 && (
             <button
               type="button"
-              className="btn-ghost"
+              className="btn-ghost sh-clear-btn"
               onClick={() => {
                 if (confirm("Delete the local session history?")) onClear();
               }}
@@ -487,12 +784,12 @@ export function SessionHistory({
           )}
           <button
             type="button"
-            className="primary-btn session-history-close-btn"
+            className="primary-btn sh-close-btn"
             onClick={onClose}
           >
             Close
           </button>
-        </div>
+        </footer>
       </div>
     </div>
   );
