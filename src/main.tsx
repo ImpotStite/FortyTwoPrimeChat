@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { RouteSeo } from "./components/RouteSeo";
 import LegacyApp from "./LegacyApp";
 import PrimeApp from "./PrimeApp";
@@ -35,6 +36,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       </Routes>
     </BrowserRouter>
     <Analytics />
+    <SpeedInsights />
   </React.StrictMode>
 );
 
