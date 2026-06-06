@@ -26,6 +26,7 @@ import {
 import {
   askPrime,
   clearSession,
+  loadPersistedMcpTools,
   loadSession,
   PRIME_SESSION_IDLE_MS,
   saveSession,
@@ -53,9 +54,15 @@ import {
   markSessionClosed,
   primeSessionChainId,
   recordSessionRefund,
+  recordTimeoutRefundClaim,
   type CloseReason,
   type PrimeSessionRecord,
 } from "./lib/primeHistory";
+import {
+  checkTimeoutRefundEligibility,
+  claimTimeoutRefund,
+  formatRefundCountdown,
+} from "./lib/escrowRefund";
 import {
   applySilentStreakBonusIfEligible,
   computeRewardsSnapshot,
@@ -216,6 +223,15 @@ export default function PrimeApp({
    */
   const deferPrimeStreamLoaderRef = useRef(false);
 
+  const [timeoutRefundUi, setTimeoutRefundUi] = useState<
+    | { kind: "hidden" }
+    | { kind: "checking" }
+    | { kind: "waiting"; countdown: string }
+    | { kind: "claimable"; amountDisplay: string }
+    | { kind: "claiming" }
+    | { kind: "released" }
+  >({ kind: "hidden" });
+
   const [rewardsRevision, setRewardsRevision] = useState(0);
   const [rewardFlights, setRewardFlights] = useState<
     { id: string; amountLabel: string }[]
@@ -239,6 +255,11 @@ export default function PrimeApp({
     () => computeRewardsSnapshot(address, historyRecords),
     [address, historyRecords, rewardsRevision]
   );
+
+  // Warm MCP tools cache from prior visits (tools/list runs on first askPrime).
+  useEffect(() => {
+    void loadPersistedMcpTools();
+  }, []);
 
   // ---- Init: load conversations + cached session for the current wallet ----
   useEffect(() => {
@@ -658,6 +679,23 @@ export default function PrimeApp({
     };
   }, [wallet, address]);
 
+  const buildWalletClient = useCallback(async () => {
+    if (!wallet || !address) {
+      throw new Error("No wallet connected");
+    }
+    try {
+      await wallet.switchChain(monad.id);
+    } catch {
+      /* may already be on Monad */
+    }
+    const provider = await wallet.getEthereumProvider();
+    return createWalletClient({
+      account: address,
+      chain: monad,
+      transport: custom(provider),
+    });
+  }, [wallet, address]);
+
   // ---- Streaming runner ----
 
   const runStream = useCallback(
@@ -791,6 +829,12 @@ export default function PrimeApp({
                     settleTxHash: s.paymentTxHash,
                     asset: s.asset,
                     payTo: s.payTo,
+                    paymentNetwork: s.paymentAuth?.network ?? s.network,
+                    paymentClient: s.paymentAuth?.client,
+                    paymentNonce: s.paymentAuth?.nonce,
+                    escrowId: s.escrowId,
+                    paymentSignatureB64: s.paymentSignatureB64,
+                    paymentResponseB64: s.paymentResponseB64,
                   });
                   setHistoryRecords(loadSessionHistory(address));
                 }
@@ -1274,6 +1318,140 @@ export default function PrimeApp({
     return historyRecords.find((r) => r.id === session.sessionId);
   }, [session, historyRecords]);
 
+  const activeEscrowId =
+    activeRecord?.escrowId ?? session?.escrowId ?? undefined;
+
+  // Poll x402Escrow for timeout-refund eligibility when a session closed without refund.
+  useEffect(() => {
+    if (!address || !activeEscrowId) {
+      setTimeoutRefundUi({ kind: "hidden" });
+      return;
+    }
+    if (activeRecord?.refundTxHash || activeRecord?.timeoutRefundTxHash) {
+      setTimeoutRefundUi({ kind: "hidden" });
+      return;
+    }
+    const sessionExpired =
+      sessionState.effectiveExpiresAt != null &&
+      sessionState.effectiveExpiresAt - Date.now() <= 0;
+    const recordClosed = activeRecord?.closedAt != null;
+    if (!sessionExpired && !recordClosed) {
+      setTimeoutRefundUi({ kind: "hidden" });
+      return;
+    }
+
+    let cancelled = false;
+    const escrowId = activeEscrowId as Hex;
+
+    const tick = async () => {
+      if (cancelled) return;
+      setTimeoutRefundUi((prev) =>
+        prev.kind === "claiming" ? prev : { kind: "checking" }
+      );
+      try {
+        const elig = await checkTimeoutRefundEligibility(escrowId);
+        if (cancelled) return;
+        if (elig.status === "claimable") {
+          setTimeoutRefundUi({
+            kind: "claimable",
+            amountDisplay: formatTokenAmount(elig.amount.toString()),
+          });
+        } else if (elig.status === "waiting") {
+          setTimeoutRefundUi({
+            kind: "waiting",
+            countdown: formatRefundCountdown(elig.secondsLeft),
+          });
+        } else if (elig.status === "released") {
+          setTimeoutRefundUi({ kind: "released" });
+        } else {
+          setTimeoutRefundUi({ kind: "hidden" });
+        }
+      } catch {
+        if (!cancelled) setTimeoutRefundUi({ kind: "hidden" });
+      }
+    };
+
+    void tick();
+    const handle = window.setInterval(tick, 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(handle);
+    };
+  }, [
+    address,
+    activeEscrowId,
+    activeRecord?.closedAt,
+    activeRecord?.refundTxHash,
+    activeRecord?.timeoutRefundTxHash,
+    sessionState.effectiveExpiresAt,
+  ]);
+
+  const handleClaimTimeoutRefund = useCallback(async () => {
+    const escrowId = activeEscrowId as Hex | undefined;
+    const sessionId = session?.sessionId ?? activeRecord?.id;
+    if (!address || !escrowId || !sessionId) return;
+    setTimeoutRefundUi({ kind: "claiming" });
+    try {
+      const wc = await buildWalletClient();
+      const hash = await claimTimeoutRefund(wc, escrowId);
+      const elig = await checkTimeoutRefundEligibility(escrowId);
+      const amount =
+        elig.status === "claimable" ? elig.amount.toString() : undefined;
+      recordTimeoutRefundClaim(address, sessionId, {
+        txHash: hash,
+        amount,
+      });
+      if (sessionIdRef.current === sessionId) {
+        clearSession(address);
+        setSession(null);
+      }
+      setHistoryRecords(loadSessionHistory(address));
+      toasts.push({
+        kind: "success",
+        title: "Timeout refund claimed",
+        description:
+          "USDC was returned via refundAfterTimeout on the escrow contract.",
+        txHash: hash,
+        durationMs: 12_000,
+      });
+      readUsdcBalance(address)
+        .then((b) => setUsdcBalance(b))
+        .catch(() => {
+          /* ignore */
+        });
+      setTimeoutRefundUi({ kind: "hidden" });
+    } catch (err) {
+      try {
+        const elig = await checkTimeoutRefundEligibility(escrowId);
+        if (elig.status === "claimable") {
+          setTimeoutRefundUi({
+            kind: "claimable",
+            amountDisplay: formatTokenAmount(elig.amount.toString()),
+          });
+        } else {
+          setTimeoutRefundUi({ kind: "hidden" });
+        }
+      } catch {
+        setTimeoutRefundUi({ kind: "hidden" });
+      }
+      toasts.push({
+        kind: "error",
+        title: "Refund claim failed",
+        description:
+          (err as Error).message ||
+          "Could not send refundAfterTimeout. Try again later.",
+        durationMs: 10_000,
+      });
+    }
+  }, [
+    activeEscrowId,
+    activeRecord?.id,
+    address,
+    buildWalletClient,
+    session?.sessionId,
+    toasts,
+  ]);
+
   return (
     <div
       className={`app ${sidebarOpen ? "sidebar-open" : ""}`}
@@ -1384,6 +1562,9 @@ export default function PrimeApp({
                         ? handleEndSessionLocally
                         : undefined
                     }
+                    escrowId={activeEscrowId}
+                    timeoutRefundUi={timeoutRefundUi}
+                    onClaimTimeoutRefund={handleClaimTimeoutRefund}
                   />
                 </div>
               )}

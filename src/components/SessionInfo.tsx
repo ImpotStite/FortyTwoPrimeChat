@@ -30,6 +30,18 @@ interface Props {
   addressHref?: (address: string) => string;
   /** Optional callback to clear the cached session locally. */
   onEndSessionLocally?: () => void;
+  /** On-chain escrow id for timeout refund fallback. */
+  escrowId?: string;
+  /** UI state for `refundAfterTimeout()` eligibility. */
+  timeoutRefundUi?:
+    | { kind: "hidden" }
+    | { kind: "checking" }
+    | { kind: "waiting"; countdown: string }
+    | { kind: "claimable"; amountDisplay: string }
+    | { kind: "claiming" }
+    | { kind: "released" };
+  /** Claim stuck escrow funds after the on-chain timeout (~90 min). */
+  onClaimTimeoutRefund?: () => void;
 }
 
 function timeAgo(ts?: number): string {
@@ -76,6 +88,9 @@ export function SessionInfo(props: Props) {
     explorerHref,
     addressHref,
     onEndSessionLocally,
+    escrowId,
+    timeoutRefundUi,
+    onClaimTimeoutRefund,
   } = props;
 
   const ref = useRef<HTMLDivElement | null>(null);
@@ -102,6 +117,18 @@ export function SessionInfo(props: Props) {
   const authorizedDisplay = session.authorizedAmountDisplay;
   const refunded = record?.refundedAmount;
   const spent = record?.spentAmount;
+  const apiSpent = record?.apiReportedSpentBaseUnits;
+  let remainingEstimate: string | null = null;
+  if (apiSpent && session.authorizedAmount) {
+    try {
+      const rem = BigInt(session.authorizedAmount) - BigInt(apiSpent);
+      if (rem >= 0n) {
+        remainingEstimate = formatTokenAmount(rem.toString());
+      }
+    } catch {
+      /* ignore */
+    }
+  }
   const messageCount = record?.messageCount ?? 0;
   const tokensIn = record?.tokensIn ?? 0;
   const tokensOut = record?.tokensOut ?? 0;
@@ -176,6 +203,19 @@ export function SessionInfo(props: Props) {
             }
           />
         )}
+        {remainingEstimate && !refunded && sessionStateActive(session, isExpired) && (
+          <Row
+            label="Est. remaining"
+            value={
+              <span
+                className="session-amount"
+                title="API-reported charges only; on-chain escrow is authoritative"
+              >
+                <UsdcMark size={12} /> {remainingEstimate}
+              </span>
+            }
+          />
+        )}
         <Row
           label="Messages"
           value={`${messageCount} ${messageCount === 1 ? "request" : "requests"}`}
@@ -245,7 +285,55 @@ export function SessionInfo(props: Props) {
           />
         )}
         <Row label="Network" value={<code>{session.network}</code>} />
+        {escrowId && (
+          <Row
+            label="Escrow ID"
+            value={<code title={escrowId}>{shortHash(escrowId)}</code>}
+          />
+        )}
       </dl>
+
+      {timeoutRefundUi && timeoutRefundUi.kind !== "hidden" && (
+        <div className="session-timeout-refund" role="status">
+          {timeoutRefundUi.kind === "checking" && (
+            <p className="session-muted">Checking on-chain escrow…</p>
+          )}
+          {timeoutRefundUi.kind === "waiting" && (
+            <p className="session-muted">
+              Timeout refund available in {timeoutRefundUi.countdown} if Fortytwo
+              has not released funds.
+            </p>
+          )}
+          {(timeoutRefundUi.kind === "claimable" ||
+            timeoutRefundUi.kind === "claiming") &&
+            onClaimTimeoutRefund && (
+            <>
+              {timeoutRefundUi.kind === "claimable" && (
+                <p className="session-timeout-refund-hint">
+                  Escrow still locked ({timeoutRefundUi.amountDisplay} USDC). You
+                  can claim a timeout refund on-chain.
+                </p>
+              )}
+              <button
+                type="button"
+                className="btn-ghost session-popover-end"
+                onClick={onClaimTimeoutRefund}
+                disabled={timeoutRefundUi.kind === "claiming"}
+              >
+                {timeoutRefundUi.kind === "claiming"
+                  ? "Claiming…"
+                  : "Claim timeout refund"}
+              </button>
+            </>
+          )}
+          {timeoutRefundUi.kind === "released" && isExpired && !refunded && (
+            <p className="session-muted">
+              No active escrow on-chain. A normal release may still be pending as
+              a USDC transfer.
+            </p>
+          )}
+        </div>
+      )}
 
       {onEndSessionLocally && !isExpired && (
         <div className="session-popover-actions">
@@ -261,6 +349,13 @@ export function SessionInfo(props: Props) {
       )}
     </div>
   );
+}
+
+function sessionStateActive(
+  session: PrimeSession,
+  isExpired: boolean
+): boolean {
+  return !isExpired && !!session.sessionId;
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {

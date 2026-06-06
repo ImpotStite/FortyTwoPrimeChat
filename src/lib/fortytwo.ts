@@ -34,6 +34,7 @@ import {
   type Hex,
   type TypedDataDomain,
 } from "viem";
+import { computeEscrowIdVerified } from "./escrowRefund";
 import { monad, monadHttpTransport } from "./privy";
 
 /**
@@ -51,6 +52,33 @@ const ENDPOINT =
 
 const TOOL_NAME = "ask_fortytwo_prime";
 const SESSION_KEY_PREFIX = "fortytwo:prime:session:";
+const MCP_TOOLS_CACHE_KEY = "fortytwo:prime:mcp-tools";
+
+/** MCP tool descriptor from `tools/list` (free, no payment). */
+export interface McpToolDescriptor {
+  name: string;
+  description?: string;
+  inputSchema?: Record<string, unknown>;
+}
+
+/**
+ * Fields from the signed payment-signature the MCP docs say to persist
+ * (network + client + nonce) for support and timeout refund flows.
+ */
+export interface StoredPaymentAuth {
+  network: string;
+  client: Address;
+  nonce: Hex;
+  maxAmount: string;
+  validAfter: string;
+  validBefore: string;
+}
+
+export interface PaymentSignatureBundle {
+  signatureB64: string;
+  auth: StoredPaymentAuth;
+  escrowId: Hex;
+}
 
 // --------------------------------------------------------------------------
 // Types
@@ -106,6 +134,16 @@ export interface PrimeSession {
    * reload and matches server-side session rules.
    */
   lastActivityAt?: number;
+  /** Base64 `payment-response` header after settle (doc: store for support). */
+  paymentResponseB64?: string;
+  /** Parsed settle tx hash from payment-response (duplicate of paymentTxHash). */
+  paymentResponseTxHash?: string;
+  /** Subset of payment-signature for support / refundAfterTimeout. */
+  paymentAuth?: StoredPaymentAuth;
+  /** Full base64 payment-signature sent on the payment replay. */
+  paymentSignatureB64?: string;
+  /** `keccak256(abi.encodePacked(client, nonce))` from x402Escrow docs. */
+  escrowId?: Hex;
 }
 
 /** Token usage for one tools/call, parsed from `_meta.usage`. */
@@ -352,14 +390,93 @@ const MCP_PROTOCOL_VERSION = "2025-11-25";
 
 let mcpReady: Promise<void> | null = null;
 
-/** One JSON-RPC `initialize` per page load before paid `tools/call` (some MCP stacks expect it). */
-function ensureMcpInitialized(signal?: AbortSignal): Promise<void> {
-  mcpReady ??= mcpInitialize(signal)
-    .then(() => undefined)
-    .catch((e) => {
-      mcpReady = null;
-      throw e;
+let cachedMcpTools: McpToolDescriptor[] | null = null;
+
+/** Last `tools/list` result (empty until MCP init completes). */
+export function getCachedMcpTools(): readonly McpToolDescriptor[] {
+  return cachedMcpTools ?? [];
+}
+
+function persistMcpToolsCache(tools: McpToolDescriptor[]): void {
+  cachedMcpTools = tools;
+  try {
+    localStorage.setItem(MCP_TOOLS_CACHE_KEY, JSON.stringify(tools));
+  } catch {
+    /* quota */
+  }
+}
+
+/** Load tools cache from localStorage (e.g. before first init this session). */
+export function loadPersistedMcpTools(): McpToolDescriptor[] {
+  try {
+    const raw = localStorage.getItem(MCP_TOOLS_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (t): t is McpToolDescriptor =>
+        !!t && typeof (t as McpToolDescriptor).name === "string"
+    );
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Free MCP call: lists tools exposed by Fortytwo (currently `ask_fortytwo_prime`).
+ * @see https://docs.fortytwo.network/docs/mcp-integration
+ */
+export async function listMcpTools(
+  signal?: AbortSignal
+): Promise<McpToolDescriptor[]> {
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(rpcCall("tools/list", {})),
+    signal,
+  });
+  if (!res.ok) {
+    throw new Error(`tools/list failed: ${res.status} ${res.statusText}`);
+  }
+  const json = (await res.json()) as {
+    result?: { tools?: unknown[] };
+    error?: { message?: string };
+  };
+  if (json.error) {
+    throw new Error(json.error.message || "tools/list MCP error");
+  }
+  const raw = json.result?.tools;
+  if (!Array.isArray(raw)) return [];
+  const tools: McpToolDescriptor[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const name = row.name;
+    if (typeof name !== "string" || !name) continue;
+    tools.push({
+      name,
+      description:
+        typeof row.description === "string" ? row.description : undefined,
+      inputSchema:
+        row.inputSchema && typeof row.inputSchema === "object"
+          ? (row.inputSchema as Record<string, unknown>)
+          : undefined,
     });
+  }
+  persistMcpToolsCache(tools);
+  return tools;
+}
+
+/** `initialize` + `tools/list` once per page load before paid `tools/call`. */
+function ensureMcpInitialized(signal?: AbortSignal): Promise<void> {
+  mcpReady ??= (async () => {
+    await mcpInitialize(signal);
+    const tools = await listMcpTools(signal);
+    persistMcpToolsCache(tools);
+  })().catch((e) => {
+    mcpReady = null;
+    throw e;
+  });
   return mcpReady;
 }
 
@@ -645,7 +762,8 @@ function pickMonadAccept(p: PaymentRequired): PaymentAccept | null {
 
 function buildSession(
   res: Response,
-  accept: PaymentAccept
+  accept: PaymentAccept,
+  payment?: PaymentSignatureBundle
 ): PrimeSession | null {
   const sessionId = res.headers.get("x-session-id");
   if (!sessionId) return null;
@@ -656,6 +774,7 @@ function buildSession(
   // `maxTimeoutSeconds` field describes the signature window, not the session
   // lifetime, and must not be used to compute `expiresAt`.
   const openedAt = Date.now();
+  const paymentResponseB64 = res.headers.get("payment-response") ?? undefined;
   const txHash = parsePaymentResponseTxHash(res);
   return {
     sessionId,
@@ -665,6 +784,11 @@ function buildSession(
     network: accept.network,
     openedAt,
     paymentTxHash: txHash,
+    paymentResponseB64,
+    paymentResponseTxHash: txHash,
+    paymentAuth: payment?.auth,
+    paymentSignatureB64: payment?.signatureB64,
+    escrowId: payment?.escrowId,
     asset: accept.asset,
     payTo: accept.payTo,
   };
@@ -826,7 +950,7 @@ async function buildPaymentSignature(
   accept: PaymentAccept,
   address: Address,
   signTypedDataAsync: AskPrimeOptions["signTypedDataAsync"]
-): Promise<string> {
+): Promise<PaymentSignatureBundle> {
   const now = Math.floor(Date.now() / 1000);
   // Stay within the server-advertised window if any (defaults to 90s).
   const window = Math.max(30, (accept.maxTimeoutSeconds ?? 90) - 5);
@@ -907,6 +1031,17 @@ async function buildPaymentSignature(
   const split = parseSignature(signature);
   const v = split.v ?? (split.yParity === 1 ? 28 : 27);
 
+  const auth: StoredPaymentAuth = {
+    network: accept.network,
+    client: address,
+    nonce,
+    maxAmount: accept.amount,
+    validAfter: "0",
+    validBefore: validBefore.toString(),
+  };
+
+  const escrowId = computeEscrowIdVerified(address, nonce);
+
   const payload = {
     x402Version: 2,
     scheme: "exact",
@@ -914,8 +1049,8 @@ async function buildPaymentSignature(
     payload: {
       client: address,
       maxAmount: accept.amount,
-      validAfter: "0",
-      validBefore: validBefore.toString(),
+      validAfter: auth.validAfter,
+      validBefore: auth.validBefore,
       nonce,
       v: Number(v),
       r: split.r,
@@ -923,7 +1058,11 @@ async function buildPaymentSignature(
     },
   };
 
-  return b64encode(payload);
+  return {
+    signatureB64: b64encode(payload),
+    auth,
+    escrowId,
+  };
 }
 
 export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
@@ -1024,7 +1163,7 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
       }
 
       onRequestPhase?.("wallet_payment");
-      const signatureB64 = await buildPaymentSignature(
+      const paymentBundle = await buildPaymentSignature(
         accept,
         address,
         signTypedDataAsync
@@ -1036,7 +1175,7 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
       onRequestPhase?.("confirming_payment");
       const replay = await makeToolsCallRequest({
         query,
-        paymentSignatureB64: signatureB64,
+        paymentSignatureB64: paymentBundle.signatureB64,
         signal,
       });
 
@@ -1049,7 +1188,7 @@ export async function askPrime(opts: AskPrimeOptions): Promise<AskPrimeResult> {
         );
       }
 
-      const built = buildSession(replay, accept);
+      const built = buildSession(replay, accept, paymentBundle);
       if (!built) {
         throw new Error(
           "Fortytwo accepted payment but did not return x-session-id. Try again."

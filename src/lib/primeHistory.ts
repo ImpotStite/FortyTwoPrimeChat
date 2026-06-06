@@ -64,6 +64,19 @@ export interface PrimeSessionRecord {
    * base units). Not always present, on-chain spent/refund remain authoritative.
    */
   apiReportedSpentBaseUnits?: string;
+
+  /** Doc: store payment-signature fields for support / refund flows. */
+  paymentNetwork?: string;
+  paymentClient?: string;
+  paymentNonce?: string;
+  /** `keccak256(abi.encodePacked(client, nonce))`. */
+  escrowId?: string;
+  /** Full base64 payment-signature header from the payment replay. */
+  paymentSignatureB64?: string;
+  /** Raw base64 `payment-response` header after settle. */
+  paymentResponseB64?: string;
+  /** Tx hash from timeout `refundAfterTimeout()` claim (fallback path). */
+  timeoutRefundTxHash?: string;
 }
 
 /** Maximum entries kept per wallet, older sessions are pruned on append. */
@@ -149,6 +162,12 @@ export function appendSessionStarted(
     | "settleTxHash"
     | "asset"
     | "payTo"
+    | "paymentNetwork"
+    | "paymentClient"
+    | "paymentNonce"
+    | "escrowId"
+    | "paymentSignatureB64"
+    | "paymentResponseB64"
   >
 ): PrimeSessionRecord {
   const list = loadSessionHistory(address);
@@ -302,6 +321,49 @@ export function findRefundTargetRecord(
 }
 
 /** Format token base units (USDC = 6 dp) for display. */
+/** Sessions closed without on-chain refund that may need `refundAfterTimeout`. */
+export function listPendingRefundRecords(
+  list: PrimeSessionRecord[]
+): PrimeSessionRecord[] {
+  return list.filter(
+    (r) =>
+      !r.refundTxHash &&
+      !r.timeoutRefundTxHash &&
+      !!r.escrowId &&
+      (r.closedAt != null || r.closeReason != null)
+  );
+}
+
+/** @returns true if storage was updated */
+export function recordTimeoutRefundClaim(
+  address: string,
+  sessionId: string,
+  refund: { txHash: string; amount?: string }
+): boolean {
+  const list = loadSessionHistory(address);
+  const idx = list.findIndex((r) => r.id === sessionId);
+  if (idx < 0) return false;
+  const r = list[idx];
+  if (r.timeoutRefundTxHash || r.refundTxHash) return false;
+  const authorizedBig = safeBig(r.authorizedAmount);
+  const refundedBig = refund.amount ? safeBig(refund.amount) : authorizedBig;
+  const spent =
+    authorizedBig != null && refundedBig != null
+      ? (authorizedBig - refundedBig).toString()
+      : undefined;
+  list[idx] = {
+    ...r,
+    timeoutRefundTxHash: refund.txHash,
+    refundTxHash: refund.txHash,
+    refundedAmount: refund.amount ?? r.authorizedAmount,
+    spentAmount: spent ?? "0",
+    closeReason: r.closeReason ?? "refund",
+    closedAt: r.closedAt ?? Date.now(),
+  };
+  persist(address, list);
+  return true;
+}
+
 export function formatTokenAmount(
   baseUnits: string | undefined,
   decimals = 6,
