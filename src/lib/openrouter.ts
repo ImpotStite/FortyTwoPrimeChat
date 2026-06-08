@@ -4,6 +4,9 @@ import type { ChatMessage, OpenRouterModel, Usage } from "../types";
 const CHAT_COMPLETIONS_PROXY = "/api/openrouter";
 const MODELS_URL = "https://openrouter.ai/api/v1/models";
 
+/** OpenRouter allows at most 3 entries in the `models` fallback array. */
+const MAX_FALLBACK_MODELS = 3;
+
 /**
  * Free text-only models (OpenRouter `max_price=0&input_modalities=text`, Jun 2026).
  * Used when the primary `:free` model is unavailable.
@@ -12,8 +15,6 @@ const DEFAULT_FREE_FALLBACKS = [
   "meta-llama/llama-3.3-70b-instruct:free",
   "qwen/qwen3-next-80b-a3b-instruct:free",
   "openai/gpt-oss-120b:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
-  "qwen/qwen3-coder:free",
 ];
 
 export const DEFAULT_FREE_MODEL = "moonshotai/kimi-k2.6:free";
@@ -34,7 +35,7 @@ function resolveFallbackChain(primary: string): string[] {
       : primary.endsWith(":free")
         ? DEFAULT_FREE_FALLBACKS
         : [];
-  return chain.filter((id) => id !== primary);
+  return chain.filter((id) => id !== primary).slice(0, MAX_FALLBACK_MODELS);
 }
 
 function extractMidStreamError(
