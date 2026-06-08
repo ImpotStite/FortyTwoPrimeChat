@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchModels, isFreeModel, modelSupportsImages } from "../lib/openrouter";
+import {
+  fetchModels,
+  isFreeModel,
+  isTextOnlyModel,
+  modelSupportsImages,
+} from "../lib/openrouter";
 import { shortModelName } from "../lib/format";
 import type { OpenRouterModel } from "../types";
 
@@ -39,7 +44,9 @@ export function ModelPicker({ value, onChange }: Props) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return models
-      .filter((m) => (vision ? modelSupportsImages(m) : true))
+      .filter((m) =>
+        vision ? modelSupportsImages(m) : isTextOnlyModel(m)
+      )
       .filter(
         (m) =>
           !q ||
@@ -76,7 +83,7 @@ export function ModelPicker({ value, onChange }: Props) {
                 checked={vision}
                 onChange={(e) => setVision(e.target.checked)}
               />
-              Vision only
+              Vision models
             </label>
           </div>
           <div className="mp-list">
@@ -117,7 +124,18 @@ export function ModelPicker({ value, onChange }: Props) {
               })}
           </div>
           <div className="mp-footer">
-            {filtered.length} free model(s) · OpenRouter data
+            {filtered.length} free {vision ? "vision" : "text"} model(s) ·{" "}
+            <a
+              href={
+                vision
+                  ? "https://openrouter.ai/models?max_price=0"
+                  : "https://openrouter.ai/models?max_price=0&input_modalities=text"
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              OpenRouter
+            </a>
           </div>
         </div>
       )}

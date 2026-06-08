@@ -12,6 +12,8 @@ import {
   fetchModels,
   isFreeModel,
   modelSupportsImages,
+  DEFAULT_FREE_MODEL,
+  pickAvailableFreeModel,
   streamChatCompletion,
 } from "./lib/openrouter";
 import {
@@ -40,7 +42,7 @@ const PrimeOnboardingModal = lazy(() =>
 
 const ENV_MODEL =
   (import.meta.env.VITE_OPENROUTER_MODEL as string | undefined) ||
-  "google/gemma-4-31b-it:free";
+  DEFAULT_FREE_MODEL;
 
 const SYSTEM_PROMPT =
   "You are a helpful, precise, and concise assistant. Reply in English by default, using Markdown when appropriate (headings, lists, code blocks).";
@@ -150,7 +152,18 @@ export default function LegacyApp() {
 
   useEffect(() => {
     fetchModels()
-      .then((d) => setKnownModels(d.filter(isFreeModel)))
+      .then((d) => {
+        const free = d.filter(isFreeModel);
+        setKnownModels(free);
+        setDefaultModel((current) => pickAvailableFreeModel(current, free));
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.model
+              ? { ...c, model: pickAvailableFreeModel(c.model, free) }
+              : c
+          )
+        );
+      })
       .catch(() => {
         /* offline ok */
       });

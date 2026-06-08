@@ -52,7 +52,7 @@ VITE_MONAD_RPC_URL=https://rpc3.monad.xyz
 
 ```env
 OPENROUTER_API_KEY=sk-or-v1-...
-VITE_OPENROUTER_MODEL=google/gemma-4-31b-it:free
+VITE_OPENROUTER_MODEL=moonshotai/kimi-k2.6:free
 # Optional: VITE_OPENROUTER_FALLBACK_MODELS=...
 ```
 

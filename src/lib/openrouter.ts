@@ -4,11 +4,19 @@ import type { ChatMessage, OpenRouterModel, Usage } from "../types";
 const CHAT_COMPLETIONS_PROXY = "/api/openrouter";
 const MODELS_URL = "https://openrouter.ai/api/v1/models";
 
-const DEFAULT_GEMMA_31B_FALLBACKS = [
-  "google/gemma-4-26b-a4b-it:free",
-  "google/gemma-3-27b-it:free",
-  "google/gemma-2-9b-it:free",
+/**
+ * Free text-only models (OpenRouter `max_price=0&input_modalities=text`, Jun 2026).
+ * Used when the primary `:free` model is unavailable.
+ */
+const DEFAULT_FREE_FALLBACKS = [
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "qwen/qwen3-next-80b-a3b-instruct:free",
+  "openai/gpt-oss-120b:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "qwen/qwen3-coder:free",
 ];
+
+export const DEFAULT_FREE_MODEL = "moonshotai/kimi-k2.6:free";
 
 function parseFallbackModelsFromEnv(): string[] {
   const raw = import.meta.env.VITE_OPENROUTER_FALLBACK_MODELS as
@@ -23,8 +31,8 @@ function resolveFallbackChain(primary: string): string[] {
   const chain =
     fromEnv.length > 0
       ? fromEnv
-      : primary === "google/gemma-4-31b-it:free"
-        ? DEFAULT_GEMMA_31B_FALLBACKS
+      : primary.endsWith(":free")
+        ? DEFAULT_FREE_FALLBACKS
         : [];
   return chain.filter((id) => id !== primary);
 }
@@ -224,6 +232,20 @@ export async function fetchModels(): Promise<OpenRouterModel[]> {
   return json.data;
 }
 
+/** Keeps `preferred` when still free on OpenRouter; otherwise picks the first available fallback. */
+export function pickAvailableFreeModel(
+  preferred: string,
+  models: OpenRouterModel[]
+): string {
+  const free = models.filter(isFreeModel);
+  const ids = new Set(free.map((m) => m.id));
+  if (ids.has(preferred)) return preferred;
+  for (const id of DEFAULT_FREE_FALLBACKS) {
+    if (ids.has(id)) return id;
+  }
+  return free[0]?.id ?? preferred;
+}
+
 export function isFreeModel(m: OpenRouterModel): boolean {
   if (m.id.endsWith(":free")) return true;
   const p = m.pricing;
@@ -234,4 +256,14 @@ export function modelSupportsImages(m: OpenRouterModel): boolean {
   const inputs = m.architecture?.input_modalities;
   if (Array.isArray(inputs)) return inputs.includes("image");
   return !!m.architecture?.modality?.includes("image");
+}
+
+/** Matches OpenRouter filter `input_modalities=text` (text in, no image). */
+export function isTextOnlyModel(m: OpenRouterModel): boolean {
+  const inputs = m.architecture?.input_modalities;
+  if (Array.isArray(inputs)) {
+    return inputs.includes("text") && !inputs.includes("image");
+  }
+  const mod = m.architecture?.modality ?? "";
+  return mod.includes("text") && !mod.includes("image");
 }
