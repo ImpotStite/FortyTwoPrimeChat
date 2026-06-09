@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { FortytwoSign, UsdcMark } from "./Icons";
 import "./PrimeOnboardingModal.css";
 
-/** Framed steps: responsive src (128 default) vs 192 for high-DPR / larger paint. */
 const FT_MARK_FRAMED_SRC = "/fortytwo-prime-icon-128.png";
 const FT_MARK_FRAMED_SRCSET =
   "/fortytwo-prime-icon-128.png 128w, /fortytwo-prime-icon-192.png 192w";
@@ -520,7 +519,6 @@ type StepDef = {
   description: string;
   buttonText: string;
   Visual: () => ReactNode;
-  /** When true, the step uses the follow-gate layout (custom visual, actions, progress). */
   followGate?: boolean;
 };
 

@@ -13,7 +13,6 @@
 
 const FORTYTWO_ENDPOINT = "https://mcp.fortytwo.network/mcp";
 
-/** Reject oversized POST bodies (abuse / accidental huge payloads). */
 const MAX_PROXY_BODY_BYTES = 6 * 1024 * 1024;
 
 const FORWARDED_REQUEST_HEADERS = [

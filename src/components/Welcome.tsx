@@ -1,7 +1,6 @@
 interface Props {
   onPick: (prompt: string) => void;
   modelLabel: string;
-  /** Stress / repeat mode: copy and starter prompts match `/automatisation`. */
   variant?: "default" | "automation";
 }
 

@@ -12,7 +12,6 @@ export function formatCost(usd: number): string {
   return `$${usd.toFixed(2)}`;
 }
 
-/** Same as `formatCost` but prefixed with ~ for list-rate estimates (not an exact charge). */
 export function formatApproximateCost(usd: number): string {
   const s = formatCost(usd);
   if (s === "Free") return s;

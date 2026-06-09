@@ -1,9 +1,3 @@
-/**
- * Client-side FOR points model aligned with Fortytwo MCP Rewards Program
- * (https://docs.fortytwo.network/docs/mcp-program). Not authoritative for
- * on-chain balances, use https://platform.fortytwo.network/account for that.
- */
-
 import type { PrimeSessionRecord } from "./primeHistory";
 
 export const REWARDS_DOCS_URL =
@@ -11,18 +5,13 @@ export const REWARDS_DOCS_URL =
 export const REWARDS_ACCOUNT_URL =
   "https://platform.fortytwo.network/account";
 
-/** Base FOR per MCP request (docs). */
 export const FOR_BASE_PER_REQUEST = 1000;
-/** Assumed early-adopter tier: first 500 agents → 3× for 30 days. */
 export const FOR_MULTIPLIER_FIRST500 = 3;
-/** FOR granted per successful MCP call under the 3× tier. */
 export const FOR_PER_MCP_3X =
   FOR_BASE_PER_REQUEST * FOR_MULTIPLIER_FIRST500;
-/** Illustrative 2× tier for agents 501–2,000 (UI copy; confirm with Fortytwo docs). */
 export const FOR_MULTIPLIER_501_2000 = 2;
 export const FOR_PER_MCP_501_2000 =
   FOR_BASE_PER_REQUEST * FOR_MULTIPLIER_501_2000;
-/** One-time streak bonus (7+ consecutive calendar days with ≥1 launch day). */
 export const FOR_STREAK_BONUS = 10_000;
 export const STREAK_REQUIRED_DAYS = 7;
 
@@ -32,7 +21,6 @@ function storageClaimedKey(address: string): string {
   return KEY_STREAK_CLAIMED + address.toLowerCase();
 }
 
-/** Local calendar date `YYYY-MM-DD`. */
 export function localDateKey(ms: number = Date.now()): string {
   const d = new Date(ms);
   const y = d.getFullYear();
@@ -58,11 +46,6 @@ function nextDayKey(key: string): string {
   return localDateKey(d.getTime());
 }
 
-/**
- * Distinct local calendar days on which at least one Prime session was launched
- * (settled open), derived only from `PrimeSessionRecord.openedAt` in session
- * history. Multiple sessions on the same day collapse to a single date key.
- */
 export function inferActivityDaysFromHistory(
   records: PrimeSessionRecord[]
 ): Set<string> {
@@ -85,11 +68,9 @@ export function markStreakBonusClaimed(address: string): void {
   try {
     localStorage.setItem(storageClaimedKey(address), "1");
   } catch {
-    /* ignore */
   }
 }
 
-/** Longest run of consecutive calendar days in the set. */
 export function maxConsecutiveDayRun(days: Set<string>): number {
   if (days.size === 0) return 0;
   const sorted = [...days].sort();
@@ -106,10 +87,6 @@ export function maxConsecutiveDayRun(days: Set<string>): number {
   return best;
 }
 
-/**
- * “Current” streak: consecutive days with activity ending today, or ending
- * yesterday if today has no activity yet (common daily-streak UX).
- */
 export function currentCalendarStreak(days: Set<string>): number {
   if (days.size === 0) return 0;
   const today = localDateKey();
@@ -184,11 +161,6 @@ export function computeRewardsSnapshot(
   };
 }
 
-/**
- * On wallet load / history refresh: if session history shows a 7-day launch
- * streak and the one-time bonus was not yet recorded, set the claim flag.
- * Returns whether the claim flag was just set.
- */
 export function applySilentStreakBonusIfEligible(
   address: string,
   records: PrimeSessionRecord[]
@@ -206,15 +178,9 @@ export function applySilentStreakBonusIfEligible(
 
 export interface AfterMcpRewardResult {
   snapshot: RewardsSnapshot;
-  /** First-time streak bonus granted on this MCP (show +10k fly). */
   grantStreakBonusFly: boolean;
 }
 
-/**
- * Call after each successful MCP (e.g. after `incrementSessionUsage`).
- * Re-reads streak eligibility from session history (launch days) and may grant
- * the one-time streak bonus when the run crosses the threshold.
- */
 export function recordMcpCallForRewards(
   address: string,
   records: PrimeSessionRecord[]

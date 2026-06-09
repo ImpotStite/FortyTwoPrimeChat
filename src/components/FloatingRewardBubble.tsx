@@ -13,14 +13,9 @@ type BubbleStyle = CSSProperties;
 type Props = {
   targetRef: React.RefObject<HTMLElement | null>;
   onComplete: () => void;
-  /** e.g. "+ 3,000 FOR" */
   amountLabel: string;
 };
 
-/**
- * Full-viewport “chip” that springs in at center, then flies to the Rewards
- * row in the sidebar (fixed positioning + getBoundingClientRect).
- */
 export function FloatingRewardBubble({
   targetRef,
   onComplete,

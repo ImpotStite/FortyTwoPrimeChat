@@ -1,17 +1,7 @@
-/**
- * Per-wallet history of Fortytwo Prime billing sessions.
- *
- * A record is appended when a session opens (settle TX confirmed) and patched
- * on closure (idle / hard cap / 410 / error / manual) or when a refund Transfer
- * is observed (closes still-open rows with reason `refund`). The list is the
- * source of truth for the Past sessions UI and cost analytics.
- */
-
 import { FORTYTWO_X402_ESCROW_MONAD } from "./usdc";
 
 const KEY_PREFIX = "fortytwo-prime-chat:prime-history:";
 
-/** Why a session ended, drives badge colors and tooltips in the UI. */
 export type CloseReason =
   | "idle" // 10min without activity
   | "hard-cap" // 60min from open
@@ -22,64 +12,38 @@ export type CloseReason =
   | "refund"; // on-chain refund tx observed (session settled)
 
 export interface PrimeSessionRecord {
-  /** sessionId returned by the server (header `x-session-id`). */
   id: string;
-  /** Owner wallet address (lowercase), also used as the storage key bucket. */
   walletAddress: string;
-  /** Network identifier (e.g. "eip155:143"). */
   network: string;
-  /** Chain ID number derived from network ("eip155:N" → N). */
   chainId?: number;
-  /** Authorized USDC amount (token base units, decimal string). */
   authorizedAmount: string;
-  /** Display-friendly authorized amount (e.g. "2 USDC"). */
   authorizedAmountDisplay: string;
-  /** Asset contract address signed against (USDC on Monad). */
   asset?: string;
-  /** Escrow recipient (`payTo` from the 402 challenge). */
   payTo?: string;
 
-  /** Timestamps (ms since epoch). */
   openedAt: number;
   closedAt?: number;
   closeReason?: CloseReason;
 
-  /** On-chain settle transaction (USDC leaves wallet). */
   settleTxHash?: string;
-  /** On-chain refund transaction (unused USDC returns). */
   refundTxHash?: string;
-  /** Refunded amount in base units (decimal string). */
   refundedAmount?: string;
-  /** Effective spent amount (authorized - refunded), base units. */
   spentAmount?: string;
 
-  /** Tally of `tools/call` requests that hit the server during this session. */
   messageCount: number;
-  /** Cumulative input tokens reported by the server (`_meta.usage.tokens_in`). */
   tokensIn?: number;
-  /** Cumulative output tokens reported by the server. */
   tokensOut?: number;
-  /**
-   * Sum of optional per-call USDC charges reported in `_meta.usage` (6 decimals,
-   * base units). Not always present, on-chain spent/refund remain authoritative.
-   */
   apiReportedSpentBaseUnits?: string;
 
-  /** Doc: store payment-signature fields for support / refund flows. */
   paymentNetwork?: string;
   paymentClient?: string;
   paymentNonce?: string;
-  /** `keccak256(abi.encodePacked(client, nonce))`. */
   escrowId?: string;
-  /** Full base64 payment-signature header from the payment replay. */
   paymentSignatureB64?: string;
-  /** Raw base64 `payment-response` header after settle. */
   paymentResponseB64?: string;
-  /** Tx hash from timeout `refundAfterTimeout()` claim (fallback path). */
   timeoutRefundTxHash?: string;
 }
 
-/** Maximum entries kept per wallet, older sessions are pruned on append. */
 const MAX_ENTRIES = 100;
 
 function key(addr: string): string {
@@ -92,7 +56,6 @@ function chainIdFromNetwork(network: string | undefined): number | undefined {
   return m ? Number(m[1]) : undefined;
 }
 
-/** Resolved chain id for a stored session row (explicit or parsed from `network`). */
 export function primeSessionChainId(
   r: PrimeSessionRecord
 ): number | undefined {
@@ -142,14 +105,9 @@ function persist(address: string, list: PrimeSessionRecord[]): void {
     const trimmed = list.slice(0, MAX_ENTRIES);
     localStorage.setItem(key(address), JSON.stringify(trimmed));
   } catch {
-    // quota exceeded → ignore silently
   }
 }
 
-/**
- * Append a freshly opened session. Idempotent: replaces any existing record
- * with the same id (rotated session ids on the same payment trigger this).
- */
 export function appendSessionStarted(
   address: string,
   partial: Pick<
@@ -183,14 +141,12 @@ export function appendSessionStarted(
   return record;
 }
 
-/** Increment per-session counters after a successful tools/call. */
 export function incrementSessionUsage(
   address: string,
   sessionId: string,
   delta: {
     tokensIn?: number;
     tokensOut?: number;
-    /** Optional per-call USDC charge in base units (integer string), if API sends it. */
     usdcChargedBaseUnits?: string;
   }
 ): void {
@@ -204,7 +160,6 @@ export function incrementSessionUsage(
     try {
       apiSpent = ((apiSpent ? BigInt(apiSpent) : 0n) + BigInt(add)).toString();
     } catch {
-      /* ignore malformed */
     }
   }
   list[idx] = {
@@ -217,7 +172,6 @@ export function incrementSessionUsage(
   persist(address, list);
 }
 
-/** Close a session locally, call from UI when expiry/410/disconnect is observed. */
 export function markSessionClosed(
   address: string,
   sessionId: string,
@@ -232,7 +186,6 @@ export function markSessionClosed(
   persist(address, list);
 }
 
-/** @returns true if storage was updated */
 export function recordSessionRefund(
   address: string,
   sessionId: string,
@@ -272,15 +225,9 @@ export function clearSessionHistory(address: string): void {
   try {
     localStorage.removeItem(key(address));
   } catch {
-    /* ignore */
   }
 }
 
-/**
- * Pick the history row to attach a refund Transfer(log) to.
- * Prefers the active server session id, else the only matching row, else the
- * most recently closed row awaiting a refund.
- */
 export function findRefundTargetRecord(
   list: PrimeSessionRecord[],
   opts: { sessionId?: string | null; refundFrom: string }
@@ -308,7 +255,6 @@ export function findRefundTargetRecord(
       // On-chain release after opening a *new* session must attach to an older
       // *closed* row, not the active one, sessionIdRef tracks the new session.
       if (match.closedAt == null && otherClosed) {
-        /* fall through to closedAt sort */
       } else {
         return match;
       }
@@ -320,8 +266,6 @@ export function findRefundTargetRecord(
   )[0];
 }
 
-/** Format token base units (USDC = 6 dp) for display. */
-/** Sessions closed without on-chain refund that may need `refundAfterTimeout`. */
 export function listPendingRefundRecords(
   list: PrimeSessionRecord[]
 ): PrimeSessionRecord[] {
@@ -334,7 +278,6 @@ export function listPendingRefundRecords(
   );
 }
 
-/** @returns true if storage was updated */
 export function recordTimeoutRefundClaim(
   address: string,
   sessionId: string,

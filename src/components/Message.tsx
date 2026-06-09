@@ -19,7 +19,6 @@ interface Props {
   message: ChatMessage;
   isStreaming?: boolean;
   isThinking?: boolean;
-  /** Shown under the thinking dots while the assistant is still empty. */
   progressHint?: string;
   isLast?: boolean;
   canRegenerate?: boolean;
@@ -60,7 +59,6 @@ export function Message({
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* empty */
     }
   };
 

@@ -9,7 +9,6 @@ export function newErrorCorrelationId(): string {
   return `err_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** Fortytwo Prime: suggest reconnect vs retry from the error text. */
 export function primeErrorActions(message: string): {
   showReconnect: boolean;
   showRetry: boolean;
@@ -41,7 +40,6 @@ export function primeErrorActions(message: string): {
   };
 }
 
-/** OpenRouter / Legacy: retry unless it looks like a user abort only. */
 export function legacyErrorActions(message: string): { showRetry: boolean } {
   const m = message.toLowerCase();
   const noRetry =

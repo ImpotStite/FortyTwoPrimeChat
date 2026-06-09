@@ -1,11 +1,3 @@
-/**
- * Modal listing past Fortytwo Prime billing sessions for the connected wallet.
- *
- * Layout: stat tiles + sparkline at the top, accordion cards below (cost-first
- * collapsed view, on-chain details on expand). Same props as before so the
- * surrounding app (PrimeApp.tsx) is untouched.
- */
-
 import { useEffect, useId, useMemo, useState } from "react";
 import { UsdcMark } from "./Icons";
 import {
@@ -19,12 +11,10 @@ interface Props {
   onClose: () => void;
   records: PrimeSessionRecord[];
   explorerHref: (txHash: string) => string;
-  /** Optional block explorer URL builder for `0x` addresses (wallet, USDC, escrow). */
   addressHref?: (addr: string) => string;
   onClear?: () => void;
 }
 
-/** Hard session wall clock cap (matches server hard-cap semantics). */
 const HARD_CAP_MS = 60 * 60 * 1000;
 
 type SessionTone = "active" | "closed";
@@ -42,7 +32,6 @@ function effectivelyOpen(r: PrimeSessionRecord, now: number = Date.now()): boole
   return !r.closedAt && !stalePastHardCap(r, now);
 }
 
-/** Close timestamp for display when the row is shown as closed. */
 function effectiveClosedAt(
   r: PrimeSessionRecord,
   now: number = Date.now()
@@ -62,7 +51,6 @@ function shortHash(h?: string): string {
   return `${clean.slice(0, 8)}…${clean.slice(-6)}`;
 }
 
-/** Truncate Fortytwo session id (UUID) for display; full id in `title`. */
 function shortSessionId(id: string): string {
   if (id.length <= 18) return id;
   return `${id.slice(0, 8)}…${id.slice(-6)}`;
@@ -111,20 +99,14 @@ function timeAgo(ts: number, now: number = Date.now()): string {
   return `${Math.floor(mo / 12)}y ago`;
 }
 
-/** Spent USDC for a record in base units bigint (on-chain > API estimate > 0). */
 function recordSpentBaseUnits(r: PrimeSessionRecord): bigint {
   try {
     if (r.spentAmount) return BigInt(r.spentAmount);
     if (r.apiReportedSpentBaseUnits) return BigInt(r.apiReportedSpentBaseUnits);
   } catch {
-    /* ignore */
   }
   return 0n;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Sparkline                                                                  */
-/* -------------------------------------------------------------------------- */
 
 function Sparkline({ records }: { records: PrimeSessionRecord[] }) {
   const data = useMemo(() => {
@@ -194,10 +176,6 @@ function Sparkline({ records }: { records: PrimeSessionRecord[] }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Session card (accordion)                                                   */
-/* -------------------------------------------------------------------------- */
-
 function SessionCard({
   r,
   explorerHref,
@@ -230,7 +208,6 @@ function SessionCard({
     !r.refundTxHash &&
     onChainSpent === 0n;
 
-  /** Headline amount shown in the collapsed row (cost-first). */
   let headlineKind: "spent" | "api" | "live" | "pending" | "empty" = "empty";
   let headlineValue = "";
   if (onChainSpent > 0n) {
@@ -521,10 +498,6 @@ function SessionCard({
     </div>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* Main modal                                                                  */
-/* -------------------------------------------------------------------------- */
 
 export function SessionHistory({
   open,

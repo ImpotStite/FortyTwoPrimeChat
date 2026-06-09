@@ -1,11 +1,3 @@
-/**
- * Click-to-expand popover for the current Fortytwo Prime session.
- *
- * Surfaces the data already captured elsewhere: session id, opened/expires,
- * authorized/spent USDC, settle TX, refund TX (when known), and a running
- * tally of messages + tokens.
- */
-
 import { useEffect, useRef } from "react";
 import { UsdcMark } from "./Icons";
 import {
@@ -17,22 +9,14 @@ import type { PrimeSession } from "../lib/fortytwo";
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** The live session held in PrimeApp state (may be expired). */
   session: PrimeSession | null;
-  /** History row for this session (provides messageCount, tokens, refund). */
   record?: PrimeSessionRecord;
-  /** Effective expiry timestamp (min of hard cap and idle window). */
   effectiveExpiresAt: number | null;
-  /** Wall-clock cause of expiry: "idle" | "cap". */
   expiresReason: "idle" | "cap" | null;
-  /** Builder for explorer links (settle/refund TXs). */
   explorerHref: (txHash: string) => string;
   addressHref?: (address: string) => string;
-  /** Optional callback to clear the cached session locally. */
   onEndSessionLocally?: () => void;
-  /** On-chain escrow id for timeout refund fallback. */
   escrowId?: string;
-  /** UI state for `refundAfterTimeout()` eligibility. */
   timeoutRefundUi?:
     | { kind: "hidden" }
     | { kind: "checking" }
@@ -40,7 +24,6 @@ interface Props {
     | { kind: "claimable"; amountDisplay: string }
     | { kind: "claiming" }
     | { kind: "released" };
-  /** Claim stuck escrow funds after the on-chain timeout (~90 min). */
   onClaimTimeoutRefund?: () => void;
 }
 
@@ -126,7 +109,6 @@ export function SessionInfo(props: Props) {
         remainingEstimate = formatTokenAmount(rem.toString());
       }
     } catch {
-      /* ignore */
     }
   }
   const messageCount = record?.messageCount ?? 0;

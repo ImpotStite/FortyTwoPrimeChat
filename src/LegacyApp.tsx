@@ -55,7 +55,6 @@ const RETRY_PROVIDER_PATTERNS = [
   /timeout/i,
 ];
 
-/** Demo fly chip uses the same 3× tier amount as Prime. */
 
 function newConversation(model: string): Conversation {
   const now = Date.now();
@@ -146,7 +145,6 @@ export default function LegacyApp() {
     try {
       localStorage.setItem(PREF_MODEL_KEY, defaultModel);
     } catch {
-      /* empty */
     }
   }, [defaultModel]);
 
@@ -165,7 +163,6 @@ export default function LegacyApp() {
         );
       })
       .catch(() => {
-        /* offline ok */
       });
   }, []);
 
@@ -293,7 +290,6 @@ export default function LegacyApp() {
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (attempt > 0) await new Promise((r) => setTimeout(r, 600));
         try {
-          // On retry, clear placeholder content again
           if (attempt > 0) {
             updateAssistant((m) => ({ ...m, content: "", error: false }));
           }
@@ -506,7 +502,6 @@ export default function LegacyApp() {
     setDefaultModel(id);
   };
 
-  // ---- Keyboard shortcuts ----
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

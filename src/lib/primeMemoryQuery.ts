@@ -13,7 +13,6 @@ function imageOmittedNote(count: number): string {
   return count === 1 ? "[image omitted]" : `[${count} images omitted]`;
 }
 
-/** One line per message for the history block (English labels). */
 function formatHistoryMessageLine(m: ChatMessage): string {
   const label = m.role === "user" ? "User" : "Assistant";
   let body = (m.content ?? "").trim();
@@ -25,10 +24,6 @@ function formatHistoryMessageLine(m: ChatMessage): string {
   return `${label}: ${body}`;
 }
 
-/**
- * Build the `query` string sent to `ask_fortytwo_prime`.
- * When memory is off or there is no prior turns, returns only the current user text.
- */
 export function buildPrimeWireQuery(opts: {
   memoryEnabled: boolean;
   messages: ChatMessage[];

@@ -48,7 +48,6 @@ export const X402_ESCROW_ABI = [
   },
 ] as const;
 
-/** `escrowId = keccak256(abi.encodePacked(client, nonce))` per x402Escrow docs. */
 export function computeEscrowId(client: Address, nonce: Hex): Hex {
   return keccak256(encodePacked(["address", "bytes32"], [client, nonce]));
 }
@@ -78,7 +77,6 @@ export interface EscrowOnChainView {
   refundAt: bigint;
   canRefund: boolean;
   timeUntilRefund: bigint;
-  /** False when storage slot is empty (`client == address(0)`). */
   active: boolean;
 }
 
@@ -160,7 +158,6 @@ export async function checkTimeoutRefundEligibility(
   };
 }
 
-/** Send `refundAfterTimeout(escrowId)`; caller pays MON gas. */
 export async function claimTimeoutRefund(
   walletClient: WalletClient,
   escrowId: Hex,

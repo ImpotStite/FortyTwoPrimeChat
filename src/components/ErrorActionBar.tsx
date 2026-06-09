@@ -27,7 +27,6 @@ export function ErrorActionBar({
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* ignore */
     }
   };
 

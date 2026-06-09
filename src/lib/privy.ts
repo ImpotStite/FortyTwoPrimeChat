@@ -5,7 +5,6 @@ const RPC_URL =
   (import.meta.env.VITE_MONAD_RPC_URL as string | undefined) ||
   "https://rpc3.monad.xyz";
 
-/** Monad mainnet (chainId 143). Native gas token is MON. */
 export const monad = defineChain({
   id: 143,
   name: "Monad",

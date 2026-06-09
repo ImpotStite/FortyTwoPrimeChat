@@ -6,20 +6,14 @@ import {
   type RefObject,
 } from "react";
 
-/** Distance from bottom (px) still considered "following" the thread. */
 const BOTTOM_THRESHOLD_PX = 100;
 
 export type UseChatAutoScrollOpts = {
   messages: unknown[] | null | undefined;
   activeConversationId: string | null | undefined;
-  /** When a send starts, snap follow mode on so the reply stays in view. */
   isLoading?: boolean;
 };
 
-/**
- * Scroll the message column to bottom on new content when the user is already
- * near the bottom; track scroll to offer "jump to latest" when they scroll up.
- */
 export function useChatAutoScroll(
   scrollRef: RefObject<HTMLDivElement | null>,
   opts: UseChatAutoScrollOpts

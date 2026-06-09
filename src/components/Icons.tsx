@@ -1,21 +1,10 @@
-/**
- * Inline marks used in the Fortytwo Prime UI.
- *
- * USDC: Circle official mark (`public/usdc-logo.png`). Always use this asset,
- * never a redrawn SVG. CSS scales the 224×225 source down for crisp 12–24px UI.
- *
- * Fortytwo: `FortytwoSign` uses the 192px app icon (sufficient for inline sizes).
- */
-
 interface SizedProps {
   size?: number;
   className?: string;
   title?: string;
-  /** When true, hide from assistive tech (use next to visible "USDC" text). */
   decorative?: boolean;
 }
 
-/** Official USDC mark bundled in `public/`. */
 const USDC_LOGO_SRC = "/usdc-logo.png";
 
 export function UsdcMark({
@@ -46,9 +35,6 @@ export function UsdcMark({
   );
 }
 
-/**
- * Fortytwo Prime mark, lime square with black 2×2 dots + bars (bundled PNG).
- */
 export function FortytwoSign({
   size = 18,
   className,

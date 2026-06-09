@@ -51,18 +51,13 @@ interface Props {
   onSubmit: () => void;
   onStop: () => void;
   isLoading: boolean;
-  /** Short status when a request is in flight (e.g. Fortytwo progress). */
   statusLine?: string | null;
   disabled?: boolean;
   visionAllowed: boolean;
   onError?: (msg: string) => void;
-  /** When set, used as the textarea placeholder (e.g. automation route). */
   inputPlaceholder?: string;
-  /** Override footer hint on wide viewports. */
   hintWide?: string;
-  /** Override footer hint on narrow viewports. */
   hintNarrow?: string;
-  /** When true, use automation-specific footer hints if hints are not passed. */
   automationMode?: boolean;
 }
 

@@ -107,7 +107,6 @@ async function copyToClipboard(text: string): Promise<boolean> {
       return true;
     }
   } catch {
-    /* fall through */
   }
   try {
     const ta = document.createElement("textarea");
@@ -134,25 +133,14 @@ interface Props {
   onRename: (id: string, title: string) => void;
   onTogglePin: (id: string) => void;
   modelLabel: string;
-  /** Overrides default "Prime Chat" in the sidebar brand block. */
   brandTitle?: string;
-  /** Overrides default `modelLabel` line under the brand title. */
   brandSubtitle?: string;
-  /** When true, switching chats / new chat is blocked (e.g. Fortytwo reply in flight). */
   navLocked?: boolean;
-  /** Tooltip / `aria-label` detail while `navLocked`. */
   navLockTitle?: string;
-  /** Fortytwo “FOR” style points shown in the Rewards row. */
   forPoints?: number;
-  /** When true, briefly pulse the Rewards row (after a fly animation lands). */
   rewardsHighlight?: boolean;
-  /** Pending fly-to-rewards chips (`id` + label shown on the bubble). */
   rewardFlights?: { id: string; amountLabel: string }[];
   onRewardFlyComplete?: (id: string) => void;
-  /**
-   * When set (Prime route), show MCP program copy, streak, and official links.
-   * Omit on /test (Legacy) for a compact card only.
-   */
   rewardsPrime?: { walletConnected: boolean; snapshot: RewardsSnapshot } | null;
 }
 

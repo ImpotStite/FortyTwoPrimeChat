@@ -8,7 +8,6 @@ function readInitial(): Theme {
     const v = localStorage.getItem(KEY);
     if (v === "dark" || v === "light") return v;
   } catch {
-    /* empty */
   }
   if (typeof window !== "undefined" && window.matchMedia) {
     return window.matchMedia("(prefers-color-scheme: light)").matches
@@ -26,7 +25,6 @@ export function useTheme(): { theme: Theme; toggle: () => void } {
     try {
       localStorage.setItem(KEY, theme);
     } catch {
-      /* empty */
     }
   }, [theme]);
 

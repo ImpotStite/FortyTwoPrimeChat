@@ -57,11 +57,6 @@ function setRobots(content: string | null): void {
   el.setAttribute("content", content);
 }
 
-/**
- * Updates document title, description, Open Graph, Twitter, canonical, and
- * robots for SPA routes (crawlers that execute JS may see this; static tags
- * in index.html remain the default for `/`).
- */
 export function RouteSeo(): null {
   const { pathname } = useLocation();
 

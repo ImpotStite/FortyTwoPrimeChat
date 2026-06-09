@@ -1,21 +1,32 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { RouteSeo } from "./components/RouteSeo";
-import LegacyApp from "./LegacyApp";
-import PrimeApp from "./PrimeApp";
 import { PRIVY_APP_ID, privyConfig } from "./lib/privy";
 import "highlight.js/styles/github-dark.css";
 import "katex/dist/katex.min.css";
 import "./styles/index.css";
 
+const PrimeApp = lazy(() => import("./PrimeApp"));
+const LegacyApp = lazy(() => import("./LegacyApp"));
+
+function RouteFallback() {
+  return (
+    <div className="route-lazy-fallback" role="status" aria-live="polite">
+      Loading…
+    </div>
+  );
+}
+
 function PrimeLayout() {
   return (
     <PrivyProvider appId={PRIVY_APP_ID} config={privyConfig}>
-      <Outlet />
+      <Suspense fallback={<RouteFallback />}>
+        <Outlet />
+      </Suspense>
     </PrivyProvider>
   );
 }
@@ -32,7 +43,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             element={<PrimeApp automationLoop />}
           />
         </Route>
-        <Route path="/test" element={<LegacyApp />} />
+        <Route
+          path="/test"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <LegacyApp />
+            </Suspense>
+          }
+        />
       </Routes>
     </BrowserRouter>
     <Analytics />

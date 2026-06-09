@@ -57,7 +57,6 @@ function normalizeMessage(raw: unknown): ChatMessage {
   };
 }
 
-/** Coerce unknown JSON into valid conversations (avoids runtime crashes on bad imports / legacy data). */
 function normalizeConversation(raw: unknown): Conversation {
   const c = raw as Partial<Conversation>;
   const now = Date.now();
@@ -98,7 +97,6 @@ function saveToKey(key: string, convs: Conversation[]): void {
   try {
     localStorage.setItem(key, JSON.stringify(convs));
   } catch {
-    // quota exceeded or storage unavailable -> ignore
   }
 }
 

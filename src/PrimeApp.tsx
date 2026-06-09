@@ -96,7 +96,6 @@ const PrimeOnboardingModal = lazy(() =>
   }))
 );
 
-/** Base URL of the Monad mainnet block explorer. */
 const MONAD_EXPLORER_BASE = "https://monadvision.com";
 
 function explorerTxHref(txHash: string): string {
@@ -109,7 +108,6 @@ function explorerAddrHref(addr: string): string {
 
 const RETRY_PATTERNS = [/upstream/i, /\b50\d\b/, /timeout/i, /network/i];
 
-/** Persist Memory toggle in localStorage (key). */
 const PRIME_MEMORY_STORAGE_KEY = "fortytwo-prime-memory-enabled";
 const PRIME_PROGRESS_MESSAGES: Record<PrimeRequestPhase, string> = {
   initializing: "Connecting to Fortytwo…",
@@ -130,7 +128,6 @@ const PENDING_REPLY_TOAST = {
     "Wait for Fortytwo to finish the current reply before switching chats or starting a new one.",
 } as const;
 
-/** Toast duration for "Session launched"; loader waits until this elapses. */
 const SESSION_LAUNCHED_TOAST_MS = 4500;
 
 function newConversation(overrides?: { title?: string }): Conversation {
@@ -151,7 +148,6 @@ function shortAddress(addr?: string | null): string {
 }
 
 export type PrimeAppProps = {
-  /** When true, after each successful reply the same user message is sent again (see `/automatisation`). */
   automationLoop?: boolean;
 };
 
@@ -159,7 +155,7 @@ export default function PrimeApp({
   automationLoop = false,
 }: PrimeAppProps) {
   const { theme, toggle: toggleTheme } = useTheme();
-  const { ready, authenticated, login, logout, user, linkWallet } = usePrivy();
+  const { ready, authenticated, login, logout, linkWallet } = usePrivy();
   const { wallets } = useWallets();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -171,7 +167,6 @@ export default function PrimeApp({
   );
   const [primeProgressPhase, setPrimeProgressPhase] =
     useState<PrimeRequestPhase | null>(null);
-  /** When false, hide Fortytwo stream loader / composer status during payment UX. */
   const [allowPrimeStreamVisual, setAllowPrimeStreamVisual] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [session, setSession] = useState<PrimeSession | null>(null);
@@ -181,9 +176,7 @@ export default function PrimeApp({
   const [pendingAmount, setPendingAmount] = useState<string | null>(null);
   const [usdcBalance, setUsdcBalance] = useState<UsdcBalance | null>(null);
   const [usdcLoading, setUsdcLoading] = useState(false);
-  /** Forces session pill label to recompute as wall-clock time advances. */
   const [sessionTimerTick, setSessionTimerTick] = useState(0);
-  /** Last successful exchange (ms), used for the 10min idle timeout. */
   const [lastActivityAt, setLastActivityAt] = useState<number>(() => Date.now());
   const [sessionPopoverOpen, setSessionPopoverOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -202,9 +195,7 @@ export default function PrimeApp({
   const sessionIdRef = useRef<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
-  /** Halts automation resend chain (Stop or user leaves route via unmount). */
   const automationLoopHaltedRef = useRef(false);
-  /** Bumps when user stops, new chat, or switches conversation — ignores pending auto-resend timeouts. */
   const automationScheduleGenRef = useRef(0);
   const handleSubmitRef = useRef<
     (overrideText?: string, opts?: { bypassBusyGuard?: boolean }) => Promise<void>
@@ -237,7 +228,6 @@ export default function PrimeApp({
     { id: string; amountLabel: string }[]
   >([]);
   const [rewardsHighlight, setRewardsHighlight] = useState(false);
-  /** UI: automation bar; false while looping, true after Stop until next manual send. */
   const [automationLoopHalted, setAutomationLoopHalted] = useState(false);
 
   const onRewardFlyComplete = useCallback((id: string) => {
@@ -256,12 +246,10 @@ export default function PrimeApp({
     [address, historyRecords, rewardsRevision]
   );
 
-  // Warm MCP tools cache from prior visits (tools/list runs on first askPrime).
   useEffect(() => {
     void loadPersistedMcpTools();
   }, []);
 
-  // ---- Init: load conversations + cached session for the current wallet ----
   useEffect(() => {
     const stored = automationLoop
       ? loadPrimeConversationsAutomation()
@@ -344,7 +332,6 @@ export default function PrimeApp({
     return Array.from(set) as Address[];
   }, [address, session?.payTo, historyRecords]);
 
-  // ---- On-chain refund watcher (USDC Transfer escrow → user) ----
   useEffect(() => {
     if (!address || refundEscrows.length === 0) return;
     const stop = watchUsdcRefunds({
@@ -380,14 +367,12 @@ export default function PrimeApp({
         readUsdcBalance(address)
           .then((b) => setUsdcBalance(b))
           .catch(() => {
-            /* ignore */
           });
       },
     });
     return stop;
   }, [address, refundEscrows, toasts.push]);
 
-  // ---- Detect local session expiry (idle 10min or hard cap 60min) ----
   useEffect(() => {
     if (!address || !session) return;
     const idleAt = lastActivityAt + PRIME_SESSION_IDLE_MS;
@@ -417,11 +402,9 @@ export default function PrimeApp({
         memoryEnabled ? "1" : "0"
       );
     } catch {
-      /* ignore */
     }
   }, [memoryEnabled]);
 
-  // Poll USDC balance: on connect, after each reply, every 30s.
   useEffect(() => {
     if (!address) {
       setUsdcBalance(null);
@@ -496,7 +479,6 @@ export default function PrimeApp({
     [activeId]
   );
 
-  // ---- Conversation management ----
 
   const handleNew = useCallback(() => {
     if (isLoading) {
@@ -569,7 +551,6 @@ export default function PrimeApp({
   };
 
   const handleStop = () => {
-    // Reject the payment gate if open (Escape during modal); same as Cancel.
     confirmSign(false);
     abortRef.current?.abort();
     abortRef.current = null;
@@ -638,14 +619,11 @@ export default function PrimeApp({
     setHistoryRecords([]);
   }, [address]);
 
-  // ---- Wallet signing helper ----
 
-  /** Build a viem-compatible signTypedData function from the connected wallet. */
   const buildSigner = useCallback(async () => {
     if (!wallet || !address) {
       throw new Error("No wallet connected");
     }
-    // Make sure the wallet is on Monad before signing.
     try {
       await wallet.switchChain(monad.id);
     } catch {
@@ -696,7 +674,6 @@ export default function PrimeApp({
     });
   }, [wallet, address]);
 
-  // ---- Streaming runner ----
 
   const runStream = useCallback(
     async (
@@ -780,7 +757,6 @@ export default function PrimeApp({
           }
           try {
             const cachedSession = address ? loadSession(address) : null;
-            // Local session id used to attribute usage on the same call,
             // closure-stable, unlike the React state which only updates on
             // the next render.
             let activeSessionId = cachedSession?.sessionId ?? null;
@@ -911,8 +887,6 @@ export default function PrimeApp({
                 setAllowPrimeStreamVisual(true);
               },
             });
-            // Final-shot fallback: if streaming didn't emit chunks, drop the full text now.
-            // Surface per-reply token usage (Fortytwo _meta) for the assistant bubble.
             updateAssistant((m) => {
               const u = result.usage;
               const usage: ChatMessage["usage"] | undefined =
@@ -996,7 +970,6 @@ export default function PrimeApp({
           readUsdcBalance(address)
             .then((b) => setUsdcBalance(b))
             .catch(() => {
-              /* ignore */
             });
         }
       }
@@ -1026,7 +999,6 @@ export default function PrimeApp({
     void runStream(ctx.conversationId, ctx.assistantId, ctx.wireQuery);
   }, [runStream]);
 
-  // ---- Submit / Edit / Regenerate ----
 
   const handleSubmit = useCallback(
     async (
@@ -1234,7 +1206,6 @@ export default function PrimeApp({
     }));
   };
 
-  // ---- Keyboard shortcuts ----
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1253,7 +1224,6 @@ export default function PrimeApp({
     return () => window.removeEventListener("keydown", onKey);
   }, [handleNew, isLoading]);
 
-  // ---- Confirm signing modal ----
   const confirmSign = (ok: boolean) => {
     confirmResolverRef.current?.(ok);
     confirmResolverRef.current = null;
@@ -1284,7 +1254,6 @@ export default function PrimeApp({
         effectiveExpiresAt: null,
         reason: null,
       };
-    // Fortytwo closes a session on the *earlier* of the 60min hard cap or
     // 10min idle timeout, mirror that locally so the pill matches reality.
     const idleExpiry = lastActivityAt + PRIME_SESSION_IDLE_MS;
     const effectiveExpiry = Math.min(session.expiresAt, idleExpiry);
@@ -1312,7 +1281,6 @@ export default function PrimeApp({
     };
   }, [session, sessionTimerTick, lastActivityAt]);
 
-  /** Active session record (for popover), null until first reply. */
   const activeRecord = useMemo<PrimeSessionRecord | undefined>(() => {
     if (!session) return undefined;
     return historyRecords.find((r) => r.id === session.sessionId);
@@ -1321,7 +1289,6 @@ export default function PrimeApp({
   const activeEscrowId =
     activeRecord?.escrowId ?? session?.escrowId ?? undefined;
 
-  // Poll x402Escrow for timeout-refund eligibility when a session closed without refund.
   useEffect(() => {
     if (!address || !activeEscrowId) {
       setTimeoutRefundUi({ kind: "hidden" });
@@ -1417,7 +1384,6 @@ export default function PrimeApp({
       readUsdcBalance(address)
         .then((b) => setUsdcBalance(b))
         .catch(() => {
-          /* ignore */
         });
       setTimeoutRefundUi({ kind: "hidden" });
     } catch (err) {
@@ -1949,9 +1915,6 @@ export default function PrimeApp({
           <PrimeOnboardingModal onClose={dismissPrimeOnboarding} />
         </Suspense>
       ) : null}
-
-      {/* Hidden but keeps user variable referenced so it stays in scope for future use. */}
-      {user ? null : null}
     </div>
   );
 }

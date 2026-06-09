@@ -32,7 +32,6 @@ export function CodePre(props: Props) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* empty */
     }
   };
 

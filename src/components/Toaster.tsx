@@ -1,11 +1,3 @@
-/**
- * Lightweight toast queue rendered bottom-right of the viewport.
- *
- * Each toast can carry an on-chain `txHash` that links to the configured
- * block explorer. Used to surface session settle/refund TXs without an
- * extra dependency.
- */
-
 import { useEffect, useMemo, useState } from "react";
 import { UsdcMark } from "./Icons";
 
@@ -15,13 +7,9 @@ export interface ToastInput {
   kind?: ToastKind;
   title: string;
   description?: string;
-  /** Optional: turns into a "View on explorer" link if `explorerUrl` is set. */
   txHash?: string;
-  /** USDC amount (display string e.g. "1.97") shown next to a USDC icon. */
   amount?: string;
-  /** Auto-dismiss timeout (ms). Default 9000; pass 0 to require manual dismiss. */
   durationMs?: number;
-  /** Dock to bottom-left (default is bottom-right). */
   dock?: "left" | "right";
 }
 
@@ -33,7 +21,6 @@ export interface Toast extends ToastInput {
 interface Props {
   toasts: Toast[];
   onDismiss: (id: string) => void;
-  /** Builder for the `<a>` href when a `txHash` is present. */
   explorerHref?: (txHash: string) => string;
 }
 
@@ -147,11 +134,6 @@ export function Toaster({ toasts, onDismiss, explorerHref }: Props) {
   );
 }
 
-/**
- * Tiny hook for managing toasts at the app root. Returns a stable `push`
- * function and the current list. Auto-dismisses based on each toast's
- * `durationMs` (default 9s).
- */
 export function useToasts() {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -181,7 +163,6 @@ export function useToasts() {
     []
   );
 
-  // Auto-dismiss handlers. Each toast schedules its own timer once on mount.
   useEffect(() => {
     if (toasts.length === 0) return;
     const timers = toasts

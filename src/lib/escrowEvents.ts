@@ -56,9 +56,7 @@ function decodeTransferFields(
   }
 }
 
-/** Approximate Monad blocktime (used to bound the lookback window). */
 const POLL_INTERVAL_MS = 12_000;
-/** How far back to scan when starting up (catch refunds that landed while away). */
 const LOOKBACK_BLOCKS = 1_500n;
 /** Narrow block spans for eth_getLogs so public RPC limits are not hit (HTTP 413). */
 const MAX_GET_LOGS_BLOCK_SPAN = 320n;
@@ -112,7 +110,6 @@ export interface WatchOptions {
   escrows: Address[];
   /** Called for each new refund log. */
   onRefund: (log: RefundLog) => void;
-  /** Called once on first error (for dev logging). */
   onError?: (err: unknown) => void;
 }
 

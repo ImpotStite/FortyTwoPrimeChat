@@ -3,7 +3,6 @@ type Role = "system" | "user" | "assistant";
 export interface ImageAttachment {
   id: string;
   type: "image";
-  /** data:image/...;base64,... */
   dataUrl: string;
   name: string;
   size: number;
@@ -15,7 +14,6 @@ export interface Usage {
   prompt_tokens?: number;
   completion_tokens?: number;
   total_tokens?: number;
-  /** Cost in USD (from OpenRouter when `usage.include = true`). */
   cost?: number;
 }
 
@@ -26,10 +24,8 @@ export interface ChatMessage {
   attachments?: ImageAttachment[];
   createdAt: number;
   edited?: boolean;
-  /** Model used for this reply (may differ from the primary model if OpenRouter falls back). */
   model?: string;
   usage?: Usage;
-  /** True when generation failed. */
   error?: boolean;
 }
 
@@ -40,9 +36,7 @@ export interface Conversation {
   createdAt: number;
   updatedAt: number;
   pinned?: boolean;
-  /** Optional per-conversation model override. */
   model?: string;
-  /** Optional custom system prompt for this chat. */
   systemPrompt?: string;
 }
 

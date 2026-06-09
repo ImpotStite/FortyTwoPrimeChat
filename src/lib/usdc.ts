@@ -58,7 +58,6 @@ export interface UsdcBalance {
   display: string;
 }
 
-/** Format with 2 decimals, comma-grouped thousands. */
 function formatDisplay(formatted: string): string {
   const [whole, frac = ""] = formatted.split(".");
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");

@@ -1,4 +1,3 @@
-/** English copy for document meta (aligned with index.html for `/`). */
 export const SEO_PRIME = {
   title: "Fortytwo Prime Chat",
   description:

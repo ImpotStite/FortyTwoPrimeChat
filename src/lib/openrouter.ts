@@ -1,16 +1,11 @@
 import type { ChatMessage, OpenRouterModel, Usage } from "../types";
 
-/** Same-origin Edge Function (`api/openrouter.ts`) or Vite dev middleware, never embeds the API key in the client. */
 const CHAT_COMPLETIONS_PROXY = "/api/openrouter";
 const MODELS_URL = "https://openrouter.ai/api/v1/models";
 
 /** OpenRouter allows at most 3 entries in the `models` fallback array. */
 const MAX_FALLBACK_MODELS = 3;
 
-/**
- * Free text-only models (OpenRouter `max_price=0&input_modalities=text`, Jun 2026).
- * Used when the primary `:free` model is unavailable.
- */
 const DEFAULT_FREE_FALLBACKS = [
   "meta-llama/llama-3.3-70b-instruct:free",
   "qwen/qwen3-next-80b-a3b-instruct:free",
@@ -131,7 +126,6 @@ export async function streamChatCompletion(
       try {
         errText = await response.text();
       } catch {
-        /* empty */
       }
     }
     throw new Error(errText);
@@ -200,7 +194,6 @@ export async function streamChatCompletion(
     onMeta({ model: finalModel, usage: finalUsage });
 }
 
-/** Fetches the model list; caches for 1 hour in sessionStorage. */
 let cachedModels: { ts: number; data: OpenRouterModel[] } | null = null;
 export async function fetchModels(): Promise<OpenRouterModel[]> {
   const TTL = 60 * 60 * 1000;
@@ -216,7 +209,6 @@ export async function fetchModels(): Promise<OpenRouterModel[]> {
       }
     }
   } catch {
-    /* empty */
   }
   const res = await fetch(MODELS_URL);
   if (!res.ok) throw new Error(`HTTP ${res.status} while fetching models`);
@@ -228,12 +220,10 @@ export async function fetchModels(): Promise<OpenRouterModel[]> {
       JSON.stringify({ ts: now, data: json.data })
     );
   } catch {
-    /* empty */
   }
   return json.data;
 }
 
-/** Keeps `preferred` when still free on OpenRouter; otherwise picks the first available fallback. */
 export function pickAvailableFreeModel(
   preferred: string,
   models: OpenRouterModel[]
@@ -259,7 +249,6 @@ export function modelSupportsImages(m: OpenRouterModel): boolean {
   return !!m.architecture?.modality?.includes("image");
 }
 
-/** Matches OpenRouter filter `input_modalities=text` (text in, no image). */
 export function isTextOnlyModel(m: OpenRouterModel): boolean {
   const inputs = m.architecture?.input_modalities;
   if (Array.isArray(inputs)) {
