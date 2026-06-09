@@ -694,31 +694,170 @@ const SWIPE_MIN_PX = 52;
 const SWIPE_DOMINANCE = 1.12;
 const STEP_SLIDE_MS = 260;
 
-type StepAnim =
-  | "idle"
-  | "exit-forward"
-  | "enter-forward-prep"
-  | "enter-forward"
-  | "exit-back"
-  | "enter-back-prep"
-  | "enter-back";
+type SlideDirection = "forward" | "back";
+type SlidePhase = "idle" | "prep" | "active";
 
-function stepPanelClass(phase: StepAnim): string {
-  if (phase === "idle") return "prime-onb-step-panel";
-  return `prime-onb-step-panel prime-onb-step-panel--${phase}`;
+type SlidePair = {
+  from: number;
+  to: number;
+  direction: SlideDirection;
+};
+
+function stepTrackClass(pair: SlidePair | null, phase: SlidePhase): string {
+  if (!pair || phase === "idle") return "prime-onb-step-track";
+  const dir = pair.direction;
+  return `prime-onb-step-track is-sliding is-${dir} is-${phase}`;
+}
+
+type OnboardingStepPanelProps = {
+  stepIndex: number;
+  ownsDialogTitle?: boolean;
+  followPhase: FollowGatePhase;
+  onGoToStep: (idx: number) => void;
+  onNext: () => void;
+  onFollowStart: () => void;
+  onClose: () => void;
+};
+
+function OnboardingStepPanel({
+  stepIndex,
+  ownsDialogTitle = false,
+  followPhase,
+  onGoToStep,
+  onNext,
+  onFollowStart,
+  onClose,
+}: OnboardingStepPanelProps) {
+  const step = STEPS[stepIndex]!;
+  const isLastStep = stepIndex === STEPS.length - 1;
+  const isFollowGate = Boolean(step.followGate);
+  const Visual = step.Visual;
+
+  return (
+    <div className="prime-onb-step-panel">
+      <div className="prime-onb-visual-wrap">
+        {isFollowGate ? <VisualFollowGate phase={followPhase} /> : <Visual />}
+        <div className="prime-onb-visual-fade" />
+      </div>
+
+      <div className="prime-onb-body">
+        <div className="prime-onb-text-block">
+          <h2 id={ownsDialogTitle ? "prime-onb-title" : undefined} className="prime-onb-title">
+            {isFollowGate
+              ? followPhase === "success"
+                ? "Verification complete"
+                : "Join the swarm"
+              : step.title}
+          </h2>
+          <p className="prime-onb-desc">
+            {isFollowGate
+              ? followPhase === "success"
+                ? "Thanks for completing the flow. You can enter Prime Chat whenever you are ready."
+                : step.description
+              : step.description}
+          </p>
+        </div>
+        {isFollowGate ? (
+          <div className="prime-onb-footer prime-onb-footer--follow">
+            <div className="prime-onb-dots">
+              {STEPS.map((s, idx) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`prime-onb-dot${idx === stepIndex ? " is-active" : ""}`}
+                  onClick={() => onGoToStep(idx)}
+                  aria-label={`Go to step ${idx + 1}`}
+                />
+              ))}
+            </div>
+            <p className="prime-onb-swipe-hint">Swipe to change steps</p>
+            <div className="prime-onb-follow-actions">
+              <button
+                type="button"
+                className={`prime-onb-follow-primary${
+                  followPhase === "idle"
+                    ? " is-idle"
+                    : followPhase === "verifying"
+                      ? " is-busy"
+                      : " is-done"
+                }`}
+                onClick={onFollowStart}
+                disabled={followPhase !== "idle"}
+                aria-busy={followPhase === "verifying"}
+              >
+                {followPhase === "idle" && (
+                  <>
+                    <IconBrandX className="prime-onb-follow-primary-icon" />
+                    Follow @fortytwonetwork
+                    <IconExternalLink className="prime-onb-follow-primary-external" />
+                  </>
+                )}
+                {followPhase === "verifying" && (
+                  <>
+                    <IconRefresh className="prime-onb-spin" size={16} />
+                    Verifying…
+                  </>
+                )}
+                {followPhase === "success" && (
+                  <>
+                    <IconCheck size={16} />
+                    Followed successfully
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                className="prime-onb-cta prime-onb-cta--final prime-onb-follow-enter"
+                onClick={onClose}
+                disabled={followPhase !== "success"}
+              >
+                Enter Prime Chat
+                {followPhase === "success" ? <IconChevronRight /> : null}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="prime-onb-footer">
+            <div className="prime-onb-dots">
+              {STEPS.map((s, idx) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`prime-onb-dot${idx === stepIndex ? " is-active" : ""}`}
+                  onClick={() => onGoToStep(idx)}
+                  aria-label={`Go to step ${idx + 1}`}
+                />
+              ))}
+            </div>
+            <p className="prime-onb-swipe-hint">Swipe to change steps</p>
+            <button
+              type="button"
+              className={`prime-onb-cta${isLastStep ? " prime-onb-cta--final" : " prime-onb-cta--default"}`}
+              onClick={onNext}
+            >
+              {step.buttonText}
+              {!isLastStep ? <IconChevronRight /> : <IconCheck />}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isClosing, setIsClosing] = useState(false);
-  const [stepAnim, setStepAnim] = useState<StepAnim>("idle");
+  const [slidePair, setSlidePair] = useState<SlidePair | null>(null);
+  const [slidePhase, setSlidePhase] = useState<SlidePhase>("idle");
   const [followPhase, setFollowPhase] = useState<FollowGatePhase>("idle");
   const [followProgress, setFollowProgress] = useState(0);
 
   const currentStep = STEPS[currentStepIndex]!;
   const isLastStep = currentStepIndex === STEPS.length - 1;
   const isFollowGate = Boolean(currentStep.followGate);
-  const Visual = currentStep.Visual;
+  const isStepTransitioning = slidePair !== null;
+  const dialogTitleStepIndex = slidePair?.to ?? currentStepIndex;
 
   const followTickRef = useRef<number | null>(null);
 
@@ -731,7 +870,6 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const isClosingRef = useRef(false);
-  const stepAnimRef = useRef<StepAnim>("idle");
   const transitionLockRef = useRef(false);
   const stepIndexRef = useRef(0);
   const goToStepRef = useRef<(idx: number) => void>(() => {});
@@ -761,22 +899,22 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
         return;
       }
 
-      const forward = clamped > currentStepIndex;
+      const direction: SlideDirection = clamped > currentStepIndex ? "forward" : "back";
       transitionLockRef.current = true;
-      setStepAnim(forward ? "exit-forward" : "exit-back");
+      setSlidePair({ from: currentStepIndex, to: clamped, direction });
+      setSlidePhase("prep");
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setSlidePhase("active");
+        });
+      });
 
       window.setTimeout(() => {
         setCurrentStepIndex(clamped);
-        setStepAnim(forward ? "enter-forward-prep" : "enter-back-prep");
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            setStepAnim(forward ? "enter-forward" : "enter-back");
-            window.setTimeout(() => {
-              setStepAnim("idle");
-              transitionLockRef.current = false;
-            }, STEP_SLIDE_MS);
-          });
-        });
+        setSlidePair(null);
+        setSlidePhase("idle");
+        transitionLockRef.current = false;
       }, STEP_SLIDE_MS);
     },
     [currentStepIndex]
@@ -842,7 +980,6 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
 
   useEffect(() => {
     isClosingRef.current = isClosing;
-    stepAnimRef.current = stepAnim;
     stepIndexRef.current = currentStepIndex;
     goToStepRef.current = goToStep;
     handleNextRef.current = handleNext;
@@ -862,7 +999,7 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
     const start = touchStartRef.current;
     touchStartRef.current = null;
     if (!start || e.changedTouches.length !== 1) return;
-    if (isClosingRef.current || stepAnimRef.current !== "idle") return;
+    if (isClosingRef.current || transitionLockRef.current) return;
 
     const t = e.changedTouches[0]!;
     const dx = t.clientX - start.x;
@@ -894,7 +1031,7 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="prime-onb-title"
-        aria-busy={stepAnim !== "idle" || followPhase === "verifying"}
+        aria-busy={isStepTransitioning || followPhase === "verifying"}
         onTouchStart={onShellTouchStart}
         onTouchEnd={onShellTouchEnd}
         onTouchCancel={onShellTouchCancel}
@@ -925,111 +1062,65 @@ export function PrimeOnboardingModal({ onClose }: PrimeOnboardingModalProps) {
           )}
         </button>
 
-        <div className={stepPanelClass(stepAnim)}>
-          <div className="prime-onb-visual-wrap">
-            {isFollowGate ? <VisualFollowGate phase={followPhase} /> : <Visual />}
-            <div className="prime-onb-visual-fade" />
-          </div>
-
-          <div className="prime-onb-body">
-            <div className="prime-onb-text-block">
-              <h2 id="prime-onb-title" className="prime-onb-title">
-                {isFollowGate
-                  ? followPhase === "success"
-                    ? "Verification complete"
-                    : "Join the swarm"
-                  : currentStep.title}
-              </h2>
-              <p className="prime-onb-desc">
-                {isFollowGate
-                  ? followPhase === "success"
-                    ? "Thanks for completing the flow. You can enter Prime Chat whenever you are ready."
-                    : currentStep.description
-                  : currentStep.description}
-              </p>
-            </div>
-            {isFollowGate ? (
-              <div className="prime-onb-footer prime-onb-footer--follow">
-                <div className="prime-onb-dots">
-                  {STEPS.map((s, idx) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={`prime-onb-dot${idx === currentStepIndex ? " is-active" : ""}`}
-                      onClick={() => goToStep(idx)}
-                      aria-label={`Go to step ${idx + 1}`}
-                    />
-                  ))}
-                </div>
-                <p className="prime-onb-swipe-hint">Swipe to change steps</p>
-                <div className="prime-onb-follow-actions">
-                  <button
-                    type="button"
-                    className={`prime-onb-follow-primary${
-                      followPhase === "idle"
-                        ? " is-idle"
-                        : followPhase === "verifying"
-                          ? " is-busy"
-                          : " is-done"
-                    }`}
-                    onClick={handleFollowStart}
-                    disabled={followPhase !== "idle"}
-                    aria-busy={followPhase === "verifying"}
-                  >
-                    {followPhase === "idle" && (
-                      <>
-                        <IconBrandX className="prime-onb-follow-primary-icon" />
-                        Follow @fortytwonetwork
-                        <IconExternalLink className="prime-onb-follow-primary-external" />
-                      </>
-                    )}
-                    {followPhase === "verifying" && (
-                      <>
-                        <IconRefresh className="prime-onb-spin" size={16} />
-                        Verifying…
-                      </>
-                    )}
-                    {followPhase === "success" && (
-                      <>
-                        <IconCheck size={16} />
-                        Followed successfully
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="prime-onb-cta prime-onb-cta--final prime-onb-follow-enter"
-                    onClick={handleClose}
-                    disabled={followPhase !== "success"}
-                  >
-                    Enter Prime Chat
-                    {followPhase === "success" ? <IconChevronRight /> : null}
-                  </button>
-                </div>
-              </div>
+        <div className="prime-onb-step-viewport">
+          <div className={stepTrackClass(slidePair, slidePhase)}>
+            {slidePair ? (
+              slidePair.direction === "forward" ? (
+                <>
+                  <OnboardingStepPanel
+                    key={slidePair.from}
+                    stepIndex={slidePair.from}
+                    followPhase={followPhase}
+                    onGoToStep={goToStep}
+                    onNext={handleNext}
+                    onFollowStart={handleFollowStart}
+                    onClose={handleClose}
+                  />
+                  <OnboardingStepPanel
+                    key={slidePair.to}
+                    stepIndex={slidePair.to}
+                    ownsDialogTitle={slidePair.to === dialogTitleStepIndex}
+                    followPhase={followPhase}
+                    onGoToStep={goToStep}
+                    onNext={handleNext}
+                    onFollowStart={handleFollowStart}
+                    onClose={handleClose}
+                  />
+                </>
+              ) : (
+                <>
+                  <OnboardingStepPanel
+                    key={slidePair.to}
+                    stepIndex={slidePair.to}
+                    ownsDialogTitle={slidePair.to === dialogTitleStepIndex}
+                    followPhase={followPhase}
+                    onGoToStep={goToStep}
+                    onNext={handleNext}
+                    onFollowStart={handleFollowStart}
+                    onClose={handleClose}
+                  />
+                  <OnboardingStepPanel
+                    key={slidePair.from}
+                    stepIndex={slidePair.from}
+                    ownsDialogTitle={slidePair.from === dialogTitleStepIndex}
+                    followPhase={followPhase}
+                    onGoToStep={goToStep}
+                    onNext={handleNext}
+                    onFollowStart={handleFollowStart}
+                    onClose={handleClose}
+                  />
+                </>
+              )
             ) : (
-              <div className="prime-onb-footer">
-                <div className="prime-onb-dots">
-                  {STEPS.map((s, idx) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={`prime-onb-dot${idx === currentStepIndex ? " is-active" : ""}`}
-                      onClick={() => goToStep(idx)}
-                      aria-label={`Go to step ${idx + 1}`}
-                    />
-                  ))}
-                </div>
-                <p className="prime-onb-swipe-hint">Swipe to change steps</p>
-                <button
-                  type="button"
-                  className={`prime-onb-cta${isLastStep ? " prime-onb-cta--final" : " prime-onb-cta--default"}`}
-                  onClick={handleNext}
-                >
-                  {currentStep.buttonText}
-                  {!isLastStep ? <IconChevronRight /> : <IconCheck />}
-                </button>
-              </div>
+              <OnboardingStepPanel
+                stepIndex={currentStepIndex}
+                ownsDialogTitle
+                followPhase={followPhase}
+                onGoToStep={goToStep}
+                onNext={handleNext}
+                onFollowStart={handleFollowStart}
+                onClose={handleClose}
+              />
             )}
           </div>
         </div>
